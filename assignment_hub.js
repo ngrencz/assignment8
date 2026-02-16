@@ -1,6 +1,7 @@
 // --- Configuration & Supabase Init ---
 const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
+const isAssignmentPage = window.location.pathname.includes('assignment.html');
 
 window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
@@ -20,20 +21,24 @@ window.isWindowLargeEnough = true;
 
 // --- Window Size Checker Function ---
 function checkWindowSize() {
+    // Only run the strict sizing check on the real assignment page
+    if (!isAssignmentPage) {
+        window.isWindowLargeEnough = true;
+        return;
+    }
+
     const screenWidth = window.screen.availWidth;
     const screenHeight = window.screen.availHeight;
     const winWidth = window.outerWidth;
     const winHeight = window.outerHeight;
     const overlay = document.getElementById('size-overlay');
 
-    // Pause if window is less than 90% of screen
     if (winWidth < (screenWidth * 0.9) || winHeight < (screenHeight * 0.9)) {
         window.isWindowLargeEnough = false;
-        if (overlay) overlay.classList.add('active'); // SHOW OVERLAY
-        if (typeof log === "function") log("⚠️ Window not maximized/large enough.");
+        if (overlay) overlay.classList.add('active');
     } else {
         window.isWindowLargeEnough = true;
-        if (overlay) overlay.classList.remove('active'); // HIDE OVERLAY
+        if (overlay) overlay.classList.remove('active');
     }
 }
 
@@ -45,12 +50,20 @@ window.onblur = () => {
 };
 
 window.onfocus = () => {
-    if (typeof log === "function") log("⏱️ Window Regained: Resuming in 15s...");
+    if (typeof log === "function") log("⏱️ Window Regained.");
+    
     clearTimeout(window.resumeTimeout);
-    window.resumeTimeout = setTimeout(() => {
+
+    if (isAssignmentPage) {
+        // Apply the 15s penalty only to students
+        if (typeof log === "function") log("Penalty applied: 15s cooldown...");
+        window.resumeTimeout = setTimeout(() => {
+            window.canCount = true;
+        }, 15000);
+    } else {
+        // Dev mode: No penalty, instant resume
         window.canCount = true;
-        if (typeof log === "function") log("▶️ Penalty elapsed: Timer resumed.");
-    }, 15000);
+    }
 };
 
 window.addEventListener('resize', checkWindowSize);
@@ -64,10 +77,17 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Initial startup countdown
-window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 20000);
+if (!isAssignmentPage) {
+    window.canCount = true; 
+} else {
+    window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 20000);
+}
 
 // --- The Master Timer Loop ---
 setInterval(() => {
+    // If we are NOT on the assignment page, don't run the timer logic at all
+    if (!isAssignmentPage) return;
+
     const statePill = document.getElementById('timer-state-pill');
     const totalDisplay = document.getElementById('debug-total-time');
     const qTimeDisplay = document.getElementById('debug-q-time');
@@ -98,7 +118,7 @@ setInterval(() => {
         
         if (window.totalSecondsWorked >= 720) finishAssignment();
     } else {
-        // Handle PAUSED states
+        // Handle PAUSED states for students
         if (statePill) {
             if (!window.isWindowLargeEnough) {
                 statePill.innerText = "RESTORE WINDOW SIZE";
