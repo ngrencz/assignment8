@@ -114,23 +114,33 @@ async function checkStep() {
     if (isNaN(userAns)) return;
     feedback.style.display = "block";
 
+    // Track errors specifically for THIS sub-question to calculate its value
+    if (!current.errors) current.errors = 0;
+
     if (userAns === current.a) {
         feedback.className = "correct";
         feedback.innerText = "Correct!";
         
-        // Log individual sub-skill success
-        await supabaseClient.rpc('increment_skill', { 
-            col_name: current.col, 
-            amount: 1, 
-            user_id: currentUser 
-        });
+        // Calculate performance-based value (10 is max, floor of 1)
+        const stepScore = Math.max(1, 10 - (current.errors * 2));
+        
+        // Directly assign the value to the specific sub-skill column
+        const updateData = {};
+        updateData[current.col] = stepScore;
+        
+        await supabaseClient
+            .from('assignment')
+            .update(updateData)
+            .eq('userName', currentUser);
 
         currentStep++;
 
         if (currentStep >= sessionQuestions.length) {
+            // Master score for the whole BoxPlot skill based on total session errors
             let finalScore = Math.max(1, 10 - (boxErrorCount * 1));
             await supabaseClient.from('assignment').update({ BoxPlot: finalScore }).eq('userName', currentUser);
-            log("Box Plot Mastery Updated.");
+            
+            log(`Box Plot Session Complete. Final Score: ${finalScore}`);
             setTimeout(() => { loadNextQuestion(); }, 1500);
         } else {
             setTimeout(() => { 
@@ -139,14 +149,11 @@ async function checkStep() {
             }, 1000);
         }
     } else {
-        boxErrorCount++;
+        // Increment both session errors and current question errors
+        boxErrorCount++; 
+        current.errors++; 
+        
         feedback.className = "incorrect";
         feedback.innerText = `Not quite. ${current.hint}`;
-        
-        await supabaseClient.rpc('increment_skill', { 
-            col_name: current.col, 
-            amount: -1, 
-            user_id: currentUser 
-        });
     }
 }
