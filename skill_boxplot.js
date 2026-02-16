@@ -50,29 +50,43 @@ function renderBoxUI() {
     setTimeout(drawBoxPlot, 50); 
 }
 
-
-
 function drawBoxPlot() {
     const canvas = document.getElementById('boxCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
+    // 1. Layout & Scaling
     const padding = 40;
     const chartWidth = canvas.width - (padding * 2);
-    const scale = chartWidth / 40; // Scale based on 0-40
-    const y = 70; 
+    const maxVal = 40;
+    const scale = chartWidth / maxVal;
+    const y = 65; // The vertical center of the box plot
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw Axis
-    ctx.strokeStyle = "#94a3b8";
+    // --- 2. DRAW THE NUMBER LINE (The Axis) ---
+    ctx.strokeStyle = "#94a3b8"; // Slate gray
+    ctx.fillStyle = "#64748b";
     ctx.lineWidth = 1;
+    ctx.font = "10px Arial";
+    ctx.textAlign = "center";
+
     ctx.beginPath();
-    ctx.moveTo(padding, y + 50);
+    ctx.moveTo(padding, y + 50); // Line position
     ctx.lineTo(padding + chartWidth, y + 50);
     ctx.stroke();
 
-    // Data points
+    // Draw Ticks and Axis Numbers every 5 units
+    for (let i = 0; i <= maxVal; i += 5) {
+        let xPos = padding + (i * scale);
+        ctx.beginPath();
+        ctx.moveTo(xPos, y + 50);
+        ctx.lineTo(xPos, y + 55);
+        ctx.stroke();
+        ctx.fillText(i, xPos, y + 68); // Axis numbers
+    }
+
+    // --- 3. CALCULATE POSITIONS ---
     const pts = {
         min: padding + currentBoxData.min * scale,
         q1: padding + currentBoxData.q1 * scale,
@@ -81,37 +95,41 @@ function drawBoxPlot() {
         max: padding + currentBoxData.max * scale
     };
 
-    // Whiskers & Caps
-    ctx.strokeStyle = "#1e293b";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(pts.min, y); ctx.lineTo(pts.q1, y); // Left
-    ctx.moveTo(pts.q3, y); ctx.lineTo(pts.max, y); // Right
-    ctx.moveTo(pts.min, y-10); ctx.lineTo(pts.min, y+10); // Min Cap
-    ctx.moveTo(pts.max, y-10); ctx.lineTo(pts.max, y+10); // Max Cap
-    ctx.stroke();
-
-    // Box
-    ctx.fillStyle = "#f0fdf4";
-    ctx.fillRect(pts.q1, y - 30, pts.q3 - pts.q1, 60);
-    ctx.strokeRect(pts.q1, y - 30, pts.q3 - pts.q1, 60);
-
-    // Median Line
-    ctx.strokeStyle = "#22c55e";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(pts.med, y - 30); ctx.lineTo(pts.med, y + 30);
-    ctx.stroke();
-
-    // LABELS ON PLOT
-    ctx.fillStyle = "#1e293b";
+    // --- 4. DRAW DATA LABELS (The Floating Numbers) ---
+    ctx.fillStyle = "#1e293b"; // Dark slate
     ctx.font = "bold 12px Arial";
-    ctx.textAlign = "center";
+    // Place these well above the box so they don't crowd the whiskers
     ctx.fillText(currentBoxData.min, pts.min, y - 40);
     ctx.fillText(currentBoxData.q1, pts.q1, y - 40);
     ctx.fillText(currentBoxData.median, pts.med, y - 40);
     ctx.fillText(currentBoxData.q3, pts.q3, y - 40);
     ctx.fillText(currentBoxData.max, pts.max, y - 40);
+
+    // --- 5. DRAW WHISKERS & CAPS ---
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    // Left Whisker
+    ctx.moveTo(pts.min, y); ctx.lineTo(pts.q1, y);
+    ctx.moveTo(pts.min, y - 10); ctx.lineTo(pts.min, y + 10); // End cap
+    // Right Whisker
+    ctx.moveTo(pts.q3, y); ctx.lineTo(pts.max, y);
+    ctx.moveTo(pts.max, y - 10); ctx.lineTo(pts.max, y + 10); // End cap
+    ctx.stroke();
+
+    // --- 6. DRAW THE BOX ---
+    ctx.fillStyle = "#f0fdf4"; // Very light green fill
+    const boxWidth = pts.q3 - pts.q1;
+    ctx.fillRect(pts.q1, y - 25, boxWidth, 50);
+    ctx.strokeRect(pts.q1, y - 25, boxWidth, 50);
+    
+    // --- 7. DRAW THE MEDIAN (Bold Green) ---
+    ctx.strokeStyle = "#22c55e";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(pts.med, y - 25);
+    ctx.lineTo(pts.med, y + 25);
+    ctx.stroke();
 }
 
 async function checkStep() {
