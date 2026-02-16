@@ -6,7 +6,7 @@
     <title>6.2.4 System Debugger</title>
     
     <script>
-        const APP_VERSION = "1.0.6"; 
+        const APP_VERSION = "1.0.7"; 
         const LAST_UPDATED = "2026-02-16 16:55"; 
     </script>
 
@@ -76,6 +76,19 @@
 
                 <div class="timer-tester">
                     <h3>2. Timer Engine (12-Min Test)</h3>
+    <h3>2b. Manual Module Launcher</h3>
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <select id="module-selector" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <option value="SolveX">SolveX (Algebra)</option>
+            <option value="C6Transformation">Transformations</option>
+            <option value="LinearSystem">Linear Systems</option>
+            <option value="FigureGrowth">Figure Growth</option>
+            <option value="BoxPlot">Box Plots</option>
+        </select>
+        <button onclick="forceLoadModule()" style="flex: 1; background: #0f172a; color: white; border: none; padding: 10px; border-radius: 8px;">
+            Launch
+        </button>
+</div>
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
                         <button onclick="window.totalSecondsWorked = 715; log('Warped to 11:55');">
                         Warp to 11:55
@@ -226,6 +239,47 @@
         }
 
         // Auto-run on load
+        function skipCooldown() {
+    log("⚡ Bypassing 20s cooldown...");
+    window.canCount = true; 
+    if (window.resumeTimeout) clearTimeout(window.resumeTimeout);
+}
+
+function forceLoadModule() {
+    const targetId = document.getElementById('module-selector').value;
+    log(`🛠️ Force launching module: ${targetId}`);
+
+    // Map the dropdown ID to the specific init functions in your skill files
+    const forceMap = {
+        'C6Transformation': typeof initTransformationGame !== 'undefined' ? initTransformationGame : null,
+        'LinearSystem': typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null,
+        'FigureGrowth': typeof initFigureGrowthGame !== 'undefined' ? initFigureGrowthGame : null,
+        'SolveX': typeof initSolveXGame !== 'undefined' ? initSolveXGame : null,
+        'BoxPlot': typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null
+    };
+
+    const targetFn = forceMap[targetId];
+
+    if (targetFn) {
+        // Reset state so the Hub accepts the manual override
+        window.hasDonePrimaryLesson = true; 
+        window.isCurrentQActive = true;
+        
+        // Run the game
+        targetFn();
+        
+        // Immediately start the timer
+        skipCooldown();
+        
+        const pill = document.getElementById('timer-state-pill');
+        if (pill) { 
+            pill.innerText = "FORCED START"; 
+            pill.style.background = "#8b5cf6"; 
+        }
+    } else {
+        log(`❌ Error: Function for ${targetId} not found. Check if skill script is loaded.`);
+    }
+}
         ensureTestUser();
     </script>
 </body>
