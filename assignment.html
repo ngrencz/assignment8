@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Assignment</title>
+    <title>Math Assignment | Learning Portal</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script src="skill_transformation.js"></script>
@@ -11,30 +12,39 @@
     <script src="skill_figuregrowth.js"></script>
     <script src="skill_solveX.js"></script>
     <script src="skill_boxplot.js"></script>
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div id="header">
-    <div>
-        <span id="user-display" class="stats">Loading...</span> | 
-        <span id="lesson-display" style="color: #4A5568; font-weight: bold;">Lesson</span>
+    <div class="header-left">
+        <span id="user-display" class="stats-pill">User</span> 
+        <span id="lesson-display" class="lesson-pill">Lesson</span>
     </div>
-    <div>
-        🕒 Work Time: <span id="timer-display">00:00</span>
+    <div class="header-right">
+        <span class="timer-label">Session Timer:</span>
+        <span id="timer-display" class="timer-value">00:00</span>
     </div>
 </div>
 
-<div id="work-area" class="container">
-    <div id="question-container">
-        <h2 id="q-title">Initializing...</h2>
-        <div id="q-content"></div>
+<main class="container">
+    <div id="work-area">
+        <div class="question-header">
+            <h2 id="q-title">Loading Practice...</h2>
+            <div id="progress-indicator"></div>
+        </div>
+
+        <div id="q-content">
+            <p class="loading-text">Preparing your customized lesson...</p>
+        </div>
+
+        <div id="feedback-box" style="display: none;"></div>
     </div>
-    <div id="feedback-box"></div>
-</div>
+</main>
 
 <script>
-    // Simple UI Initializer to show User and Lesson from SessionStorage immediately
+    // Immediate UI Setup
     document.addEventListener('DOMContentLoaded', () => {
         const user = sessionStorage.getItem('current_user');
         const lesson = sessionStorage.getItem('target_lesson');
@@ -43,7 +53,6 @@
         if (lesson) document.getElementById('lesson-display').innerText = "Lesson " + lesson;
         
         if (!user || !lesson) {
-            alert("No session found. Returning to login.");
             window.location.href = 'index.html';
         }
     });
