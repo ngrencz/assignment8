@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>6.2.4 System Test Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="skill_transformation.js"></script>
+    <script src="skill_linearsystem.js"></script>
+    <script src="skill_figuregrowth.js"></script>
+    <script src="skill_solveX.js"></script>
+    <script src="skill_boxplot.js"></script>
+
+    <style>
+        .test-controls {
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 2px dashed #cbd5e0;
+        }
+        .status-pill {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .online { background: #c6f6d5; color: #22543d; }
+        .offline { background: #fed7d7; color: #822727; }
+        .log-box {
+            background: #1a1a1a;
+            color: #4CBB17;
+            padding: 15px;
+            font-family: monospace;
+            border-radius: 8px;
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Dev <span class="accent-text">Tester</span></h1>
+        
+        <div class="test-controls">
+            <h3>1. Session Mocking</h3>
+            <button onclick="mockSession('test_user', '6.2.4')">Mock Lesson 6.2.4 Session</button>
+            <span id="session-status">No Session</span>
+
+            <h3>2. UI & Component Check</h3>
+            <p>Force-load specific modules to check "Kelly Green" styling:</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <button onclick="log('Loading X...'); initSolveXGame()">Solve X</button>
+                <button onclick="log('Loading Box...'); initBoxPlotGame()">Box Plot</button>
+                <button onclick="log('Loading Logic...'); initLinearSystemGame()">Linear Systems</button>
+                <button onclick="log('Loading Growth...'); initFigureGrowthGame()">Figure Growth</button>
+                <button onclick="log('Loading Trans...'); initTransformationGame()">Transformations</button>
+            </div>
+
+            <h3>3. Routing Logic (The "Hub" Test)</h3>
+            <p>This mimics how `assignment_hub.js` chooses a problem based on the "Lowest Score" logic.</p>
+            <button onclick="testNeedBasedRouting()" style="background: var(--black);">Run Routing Diagnostic</button>
+        </div>
+
+        <div id="log" class="log-box">System ready for testing...</div>
+        <hr>
+
+        <div id="work-area">
+            <h2 id="q-title">Assignment UI Output:</h2>
+            <div id="q-content"><em>The game UI will render here...</em></div>
+            <div id="feedback-box"></div>
+        </div>
+    </div>
+
+    <script>
+        // Mocking Globals that the scripts expect
+        let currentUser = 'test_user';
+        let targetLesson = '6.2.4';
+        let isCurrentQActive = false;
+        let currentQSeconds = 0;
+        let currentQCap = 60;
+
+        function log(msg) {
+            const l = document.getElementById('log');
+            l.innerHTML += `<br>> ${msg}`;
+            l.scrollTop = l.scrollHeight;
+        }
+
+        function mockSession(user, lesson) {
+            sessionStorage.setItem('current_user', user);
+            sessionStorage.setItem('target_lesson', lesson);
+            document.getElementById('session-status').innerText = `Active: ${user} | ${lesson}`;
+            log(`Session set: ${user} on ${lesson}`);
+        }
+
+        // MOCK loadNextQuestion to act as the Hub Diagnostic
+        async function loadNextQuestion() {
+            log("Hub requested next question...");
+            testNeedBasedRouting();
+        }
+
+        async function testNeedBasedRouting() {
+            log("Fetching scores from Supabase...");
+            try {
+                const { data, error } = await supabaseClient
+                    .from('assignment')
+                    .select('*')
+                    .eq('userName', currentUser)
+                    .single();
+
+                if (error) {
+                    log("Error: " + error.message);
+                    return;
+                }
+
+                // Identify the 6.2.4 skills
+                const skills = [
+                    { name: 'SolveX', score: data.SolveX || 0, fn: initSolveXGame },
+                    { name: 'BoxPlot', score: data.BoxPlot || 0, fn: initBoxPlotGame },
+                    { name: 'LinearSystem', score: data.LinearSystem || 0, fn: initLinearSystemGame },
+                    { name: 'FigureGrowth', score: data.FigureGrowth || 0, fn: initFigureGrowthGame },
+                    { name: 'C6Transformation', score: data.C6Transformation || 0, fn: initTransformationGame }
+                ];
+
+                // Sort by score ascending (lowest first)
+                skills.sort((a, b) => a.score - b.score);
+
+                log(`LOWEST SCORE FOUND: ${skills[0].name} (${skills[0].score}/10)`);
+                log(`Routing to ${skills[0].name}...`);
+                
+                // Call the game
+                skills[0].fn();
+
+            } catch (e) {
+                log("Routing Test Failed. Are your DB columns correct?");
+            }
+        }
+    </script>
+
+    <script src="assignment_hub.js"></script>
+</body>
+</html>
