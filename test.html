@@ -6,7 +6,7 @@
     <title>6.2.4 System Debugger</title>
     
     <script>
-        const APP_VERSION = "1.0.8"; 
+        const APP_VERSION = "1.0.9"; 
         const LAST_UPDATED = "2026-02-16 16:55"; 
     </script>
 
@@ -23,7 +23,7 @@
     <style>
         :root { --panel-bg: #f8fafc; --border: #e2e8f0; }
         body { padding: 20px; font-family: sans-serif; background-color: #f1f5f9; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
         .card { background: white; border: 1px solid var(--border); padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
         
         .version-tag {
@@ -75,52 +75,32 @@
                 </div>
 
                 <div class="timer-tester">
-    <h3>2. Timer Engine (12-Min Test)</h3>
-    
-    <div style="display: flex; gap: 10px; margin-top: 10px; padding: 10px; background: #f0fdf4; border-radius: 8px;">
-        <select id="module-selector" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-            <option value="SolveX">SolveX (Algebra)</option>
-            <option value="C6Transformation">Transformations</option>
-            <option value="LinearSystem">Linear Systems</option>
-            <option value="FigureGrowth">Figure Growth</option>
-            <option value="BoxPlot">Box Plots</option>
-        </select>
-        <button onclick="forceLoadModule()" style="flex: 1; background: #0f172a; color: white; border: none; padding: 10px; border-radius: 8px;">
-            Launch
-        </button>
-    </div>
+                    <h3>2. Timer Engine (12-Min Test)</h3>
+                    <div style="display: flex; gap: 10px; margin-top: 10px; padding: 10px; background: #f0fdf4; border-radius: 8px;">
+                        <select id="module-selector" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                            <option value="SolveX">SolveX (Algebra)</option>
+                            <option value="C6Transformation">Transformations</option>
+                            <option value="LinearSystem">Linear Systems</option>
+                            <option value="FigureGrowth">Figure Growth</option>
+                            <option value="BoxPlot">Box Plots</option>
+                        </select>
+                        <button onclick="forceLoadModule()" style="flex: 1; background: #0f172a; color: white; border: none; padding: 10px; border-radius: 8px;">Launch</button>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button onclick="window.totalSecondsWorked = 715; log('Warped to 11:55');" style="width: 100%; padding: 10px; border-radius: 8px;">Warp to 11:55</button>
+                    </div>
+                </div>
+            </div>
 
-    <div style="display: flex; gap: 10px; margin-top: 10px;">
-        <button onclick="window.totalSecondsWorked = 715; log('Warped to 11:55');" style="width: 100%; padding: 10px; border-radius: 8px;">
-            Warp to 11:55
-        </button>
-    </div>
-</div>
             <div class="card">
                 <h3>3. Skill Score Overrides</h3>
                 <p><small style="color:#64748b;">Adjust and click Apply to force specific routing.</small></p>
-                
                 <div style="display: grid; gap: 12px; margin-top: 15px;">
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">SolveX <span id="v-SolveX">0</span></label>
-                        <input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')">
-                    </div>
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">BoxPlot <span id="v-BoxPlot">0</span></label>
-                        <input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')">
-                    </div>
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">LinearSystem <span id="v-LinearSystem">0</span></label>
-                        <input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')">
-                    </div>
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">FigureGrowth <span id="v-FigureGrowth">0</span></label>
-                        <input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')">
-                    </div>
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">Transformations <span id="v-C6Transformation">0</span></label>
-                        <input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')">
-                    </div>
+                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">SolveX <span id="v-SolveX">0</span></label><input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')"></div>
+                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">BoxPlot <span id="v-BoxPlot">0</span></label><input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')"></div>
+                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">LinearSystem <span id="v-LinearSystem">0</span></label><input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')"></div>
+                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">FigureGrowth <span id="v-FigureGrowth">0</span></label><input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')"></div>
+                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">Transformations <span id="v-C6Transformation">0</span></label><input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')"></div>
                 </div>
                 <button onclick="applyScoresAndRoute()" style="width:100%; margin-top:20px; background:#000; color:#fff; padding: 15px; border-radius: 8px; border: none;">Apply Scores & Launch Game</button>
             </div>
@@ -155,7 +135,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> 
 
     <script src="assignment_hub.js"></script>
 
@@ -165,12 +145,15 @@
         
         function log(msg) {
             const l = document.getElementById('log');
-            l.innerHTML += `<br><span style="color:#888;">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
-            l.scrollTop = l.scrollHeight;
+            if(l) {
+                l.innerHTML += `<br><span style="color:#888;">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+                l.scrollTop = l.scrollHeight;
+            }
         }
 
         function updateVal(id) {
-            document.getElementById('v-' + id).innerText = document.getElementById('s-' + id).value;
+            const val = document.getElementById('s-' + id).value;
+            document.getElementById('v-' + id).innerText = val;
         }
 
         function resetSliders() {
@@ -179,12 +162,6 @@
                 const slider = document.getElementById('s-' + s);
                 if (slider) { slider.value = 0; updateVal(s); }
             });
-        }
-
-        function warpTime(seconds) {
-            window.totalSecondsWorked = seconds;
-            sessionStorage.setItem('total_work_time', seconds);
-            log(`Time warped to ${seconds} seconds.`);
         }
 
         function resetSession() {
@@ -233,52 +210,47 @@
             if (error) log("DB Error: " + error.message);
             else {
                 log("Scores saved! Triggering loadNextQuestion()...");
-                loadNextQuestion(); 
+                if (typeof loadNextQuestion === 'function') loadNextQuestion(); 
+                else log("Warning: loadNextQuestion() not found in hub.");
             }
         }
 
-        // Auto-run on load
         function skipCooldown() {
-    log("⚡ Bypassing 20s cooldown...");
-    window.canCount = true; 
-    if (window.resumeTimeout) clearTimeout(window.resumeTimeout);
-}
-
-function forceLoadModule() {
-    const targetId = document.getElementById('module-selector').value;
-    log(`🛠️ Force launching module: ${targetId}`);
-
-    // Map the dropdown ID to the specific init functions in your skill files
-    const forceMap = {
-        'C6Transformation': typeof initTransformationGame !== 'undefined' ? initTransformationGame : null,
-        'LinearSystem': typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null,
-        'FigureGrowth': typeof initFigureGrowthGame !== 'undefined' ? initFigureGrowthGame : null,
-        'SolveX': typeof initSolveXGame !== 'undefined' ? initSolveXGame : null,
-        'BoxPlot': typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null
-    };
-
-    const targetFn = forceMap[targetId];
-
-    if (targetFn) {
-        // Reset state so the Hub accepts the manual override
-        window.hasDonePrimaryLesson = true; 
-        window.isCurrentQActive = true;
-        
-        // Run the game
-        targetFn();
-        
-        // Immediately start the timer
-        skipCooldown();
-        
-        const pill = document.getElementById('timer-state-pill');
-        if (pill) { 
-            pill.innerText = "FORCED START"; 
-            pill.style.background = "#8b5cf6"; 
+            log("⚡ Bypassing 20s cooldown...");
+            window.canCount = true; 
+            if (window.resumeTimeout) clearTimeout(window.resumeTimeout);
         }
-    } else {
-        log(`❌ Error: Function for ${targetId} not found. Check if skill script is loaded.`);
-    }
-}
+
+        function forceLoadModule() {
+            const targetId = document.getElementById('module-selector').value;
+            log(`🛠️ Force launching module: ${targetId}`);
+
+            const forceMap = {
+                'C6Transformation': typeof initTransformationGame !== 'undefined' ? initTransformationGame : null,
+                'LinearSystem': typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null,
+                'FigureGrowth': typeof initFigureGrowthGame !== 'undefined' ? initFigureGrowthGame : null,
+                'SolveX': typeof initSolveXGame !== 'undefined' ? initSolveXGame : null,
+                'BoxPlot': typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null
+            };
+
+            const targetFn = forceMap[targetId];
+
+            if (targetFn) {
+                window.hasDonePrimaryLesson = true; 
+                window.isCurrentQActive = true;
+                targetFn();
+                skipCooldown();
+                
+                const pill = document.getElementById('timer-state-pill');
+                if (pill) { 
+                    pill.innerText = "FORCED START"; 
+                    pill.style.background = "#8b5cf6"; 
+                }
+            } else {
+                log(`❌ Error: Function for ${targetId} not found.`);
+            }
+        }
+
         ensureTestUser();
     </script>
 </body>
