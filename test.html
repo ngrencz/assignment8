@@ -77,8 +77,9 @@
                 <div class="timer-tester">
                     <h3>2. Timer Engine (12-Min Test)</h3>
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="warpTime(715)" style="background:#f59e0b; color:white; border:none; padding:8px 12px; border-radius:6px; flex: 1;">Jump to 11:55</button>
-                        <button onclick="warpTime(0)" style="background:#64748b; color:white; border:none; padding:8px 12px; border-radius:6px; flex: 1;">Reset Clock</button>
+                        <button onclick="window.totalSecondsWorked = 715; log('Warped to 11:55');">
+                        Warp to 11:55
+                        </button>
                     </div>
                 </div>
             </div>
