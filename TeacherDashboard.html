@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Teacher Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th, td { padding: 12px; border: 1px solid var(--gray-med); text-align: left; }
+        th { background: var(--black); color: white; }
+        .status-true { color: var(--kelly-green); font-weight: bold; }
+        .status-false { color: #e53e3e; font-style: italic; }
+    </style>
+</head>
+<body class="container">
+    <h1>Classroom <span class="accent-text">Mastery</span></h1>
+    <button onclick="loadGrades()">Refresh Grades</button>
+    
+    <table id="grade-table">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>6.2.4 Status</th>
+                <th>Avg Mastery</th>
+            </tr>
+        </thead>
+        <tbody id="grade-body">
+            </tbody>
+    </table>
+
+    <script>
+        const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
+        const SB_KEY = "YOUR_KEY_HERE";
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        async function loadGrades() {
+            const { data, error } = await supabaseClient
+                .from('assignment')
+                .select('userName, C624_Completed, C6Transformation')
+                .order('userName', { ascending: true });
+
+            const body = document.getElementById('grade-body');
+            body.innerHTML = "";
+
+            data.forEach(row => {
+                const statusClass = row.C624_Completed ? 'status-true' : 'status-false';
+                const statusText = row.C624_Completed ? '✅ Complete' : '⏳ In Progress';
+                
+                body.innerHTML += `
+                    <tr>
+                        <td>${row.userName}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                        <td>${row.C6Transformation || 0}/10</td>
+                    </tr>
+                `;
+            });
+        }
+        window.onload = loadGrades;
+    </script>
+</body>
+</html>
