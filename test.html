@@ -1,46 +1,55 @@
-<script src="skill_transformation.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>6.2.4 System Test Tool</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script src="skill_transformation.js"></script>
     <script src="skill_linearsystem.js"></script>
     <script src="skill_figuregrowth.js"></script>
     <script src="skill_solveX.js"></script>
     <script src="skill_boxplot.js"></script>
+
+    <link rel="stylesheet" href="style.css">
 
     <style>
         .test-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px solid var(--black);
+            border-bottom: 2px solid #000;
             padding-bottom: 10px;
             margin-bottom: 20px;
         }
         .version-pill {
             font-family: monospace;
             font-size: 0.8rem;
-            background: var(--gray-light);
+            background: #edf2f7;
             padding: 4px 10px;
             border-radius: 5px;
-            border: 1px solid var(--gray-med);
+            border: 1px solid #cbd5e0;
         }
-        /* Existing test styles... */
         .test-controls { background: #f1f5f9; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 2px dashed #cbd5e0; }
         .log-box { background: #1a1a1a; color: #4CBB17; padding: 15px; font-family: monospace; border-radius: 8px; margin-top: 10px; max-height: 150px; overflow-y: auto; }
+        #work-area { margin-top: 20px; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
     </style>
 </head>
 <body class="container">
 
     <div class="test-header">
         <h1>Dev <span class="accent-text">Tester</span></h1>
-        <span class="version-pill">Local Version: v1.0.2</span>
+        <span class="version-pill">Local Version: v1.0.3</span>
     </div>
 
     <div class="test-controls">
         <h3>1. Session Mocking</h3>
         <button onclick="mockSession('test_user', '6.2.4')">Mock Lesson 6.2.4 Session</button>
-        <span id="session-status" class="status-pill">No Session</span>
+        <span id="session-status">No Session</span>
 
         <h3>2. UI & Component Check</h3>
-        <p>Force-load specific modules to check "Kelly Green" styling:</p>
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
             <button onclick="log('Loading X...'); initSolveXGame()">Solve X</button>
             <button onclick="log('Loading Box...'); initBoxPlotGame()">Box Plot</button>
             <button onclick="log('Loading Logic...'); initLinearSystemGame()">Linear Systems</button>
@@ -48,9 +57,8 @@
             <button onclick="log('Loading Trans...'); initTransformationGame()">Transformations</button>
         </div>
 
-        <h3>3. Routing Logic (The "Hub" Test)</h3>
-        <p>This mimics how `assignment_hub.js` chooses a problem based on the "Lowest Score" logic.</p>
-        <button onclick="testNeedBasedRouting()" style="background: var(--black); color: white;">Run Routing Diagnostic</button>
+        <h3>3. Routing Diagnostic</h3>
+        <button onclick="testNeedBasedRouting()" style="background: #000; color: #fff; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Run Routing Diagnostic</button>
     </div>
 
     <div id="log" class="log-box">System ready for testing...</div>
@@ -59,68 +67,44 @@
 
     <div id="work-area">
         <h2 id="q-title">Assignment UI Output:</h2>
-        <div id="q-content" style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; background: #fff;">
-            <em>The game UI will render here...</em>
-        </div>
+        <div id="q-content"><em>The game UI will render here...</em></div>
         <div id="feedback-box"></div>
     </div>
+
     <script>
-        if (window.location.pathname.includes('test.html')) {
-    sessionStorage.setItem('current_user', 'tester');
-    sessionStorage.setItem('target_lesson', '6.2.4');
-}
-        // Mocking Globals that the scripts expect
-let currentUser = '';
-let targetLesson = '';
-let isCurrentQActive = false;
-let currentQSeconds = 0;
-let currentQCap = 60;
+        // Mocking Globals
+        let currentUser = '';
+        let targetLesson = '';
+        let isCurrentQActive = false;
+        let currentQSeconds = 0;
+        let currentQCap = 60;
 
-function log(msg) {
-    const l = document.getElementById('log');
-    l.innerHTML += `<br>> ${msg}`;
-    l.scrollTop = l.scrollHeight;
-}
+        function log(msg) {
+            const l = document.getElementById('log');
+            l.innerHTML += `<br>> ${msg}`;
+            l.scrollTop = l.scrollHeight;
+        }
 
-// 1. IMPROVED MOCK FUNCTION
-function mockSession(user, lesson) {
-    // Set the variables the scripts actually use
-    currentUser = user;
-    targetLesson = lesson;
-    
-    // Set the storage for persistence
-    sessionStorage.setItem('current_user', user);
-    sessionStorage.setItem('target_lesson', lesson);
-    
-    document.getElementById('session-status').innerText = `Active: ${user} | ${lesson}`;
-    document.getElementById('session-status').className = 'status-pill online';
-    
-    log(`Session set: ${user} on ${lesson}`);
-    
-    // 2. TRIGGER THE HUB
-    // Now that variables are set, we tell the hub to start
-    if (typeof loadNextQuestion === "function") {
-        log("Triggering Hub logic...");
-        loadNextQuestion();
-    } else {
-        log("Error: loadNextQuestion not found. Check assignment_hub.js link.");
-    }
-}
+        function mockSession(user, lesson) {
+            currentUser = user;
+            targetLesson = lesson;
+            sessionStorage.setItem('current_user', user);
+            sessionStorage.setItem('target_lesson', lesson);
+            document.getElementById('session-status').innerText = `Active: ${user}`;
+            log(`Session set: ${user}`);
+            loadNextQuestion();
+        }
 
-// Manually override the Hub's finishAssignment so the test page doesn't redirect you
-async function finishAssignment() {
-    log("🏁 TARGET REACHED: 12 Minutes recorded.");
-    alert("Test Complete: 12 Minute threshold crossed.");
-}
-        
-
-        // MOCK loadNextQuestion to act as the Hub Diagnostic
         async function loadNextQuestion() {
             log("Hub requested next question...");
             testNeedBasedRouting();
         }
 
         async function testNeedBasedRouting() {
+            if (!currentUser) {
+                log("Error: No user set. Click Mock Session first.");
+                return;
+            }
             log("Fetching scores from Supabase...");
             try {
                 const { data, error } = await supabaseClient
@@ -129,12 +113,9 @@ async function finishAssignment() {
                     .eq('userName', currentUser)
                     .single();
 
-                if (error) {
-                    log("Error: " + error.message);
-                    return;
-                }
+                if (error) throw error;
 
-                // Identify the 6.2.4 skills
+                // !!! DOUBLE CHECK THESE NAMES MATCH YOUR SUPABASE COLUMNS !!!
                 const skills = [
                     { name: 'SolveX', score: data.SolveX || 0, fn: initSolveXGame },
                     { name: 'BoxPlot', score: data.BoxPlot || 0, fn: initBoxPlotGame },
@@ -143,18 +124,19 @@ async function finishAssignment() {
                     { name: 'C6Transformation', score: data.C6Transformation || 0, fn: initTransformationGame }
                 ];
 
-                // Sort by score ascending (lowest first)
                 skills.sort((a, b) => a.score - b.score);
-
-                log(`LOWEST SCORE FOUND: ${skills[0].name} (${skills[0].score}/10)`);
-                log(`Routing to ${skills[0].name}...`);
-                
-                // Call the game
+                log(`LOWEST SCORE: ${skills[0].name} (${skills[0].score}/10)`);
                 skills[0].fn();
 
             } catch (e) {
-                log("Routing Test Failed. Are your DB columns correct?");
+                log("Routing Test Failed. See Browser Console (F12).");
+                console.error("Diagnostic Error:", e);
             }
+        }
+
+        async function finishAssignment() {
+            log("🏁 TARGET REACHED.");
+            alert("12 Minute threshold crossed.");
         }
     </script>
 
