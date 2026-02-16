@@ -142,27 +142,52 @@
 
         // Logic to ensure user exists and scores are synced
         async function ensureTestUser() {
-            log("Syncing with Supabase...");
-            const { data, error } = await supabaseClient.from('assignment').select('*').eq('userName', 'test_user').maybeSingle();
-            
-            if (!data) {
-                log("test_user not found. Auto-creating row...");
-                await supabaseClient.from('assignment').insert([{
-                    userName: 'test_user', SolveX: 0, BoxPlot: 0, LinearSystem: 0, FigureGrowth: 0, C6Transformation: 0
-                }]);
-                log("Created successfully.");
-            } else {
-                log("test_user found. Loading DB scores into sliders.");
-                const skills = ['SolveX', 'BoxPlot', 'LinearSystem', 'FigureGrowth', 'C6Transformation'];
-                skills.forEach(s => {
-                    if(document.getElementById('s-' + s)) {
-                        document.getElementById('s-' + s).value = data[s] || 0;
-                        updateVal(s);
-                    }
-                });
-            }
-        }
+    log("Syncing with Supabase...");
+    
+    // 1. Use maybeSingle() to prevent the 406 crash
+    const { data, error } = await supabaseClient
+        .from('assignment')
+        .select('*')
+        .eq('userName', 'test_user')
+        .maybeSingle(); 
+    
+    if (error) {
+        log("Fetch Error: " + error.message);
+        return;
+    }
 
+    if (!data) {
+        log("test_user not found. Attempting to create...");
+        
+        // 2. Simplified insert - Let Supabase handle defaults
+        const { error: insErr } = await supabaseClient
+            .from('assignment')
+            .insert({ userName: 'test_user' }); 
+
+        if (insErr) {
+            log("Insert failed (400): " + insErr.message);
+            console.error("Full Insert Error:", insErr);
+        } else {
+            log("Success! Created test_user.");
+            // Refresh sliders to 0
+            resetSliders();
+        }
+    } else {
+        log("test_user active. Syncing scores...");
+        syncSliders(data);
+    }
+}
+
+function syncSliders(data) {
+    const skills = ['SolveX', 'BoxPlot', 'LinearSystem', 'FigureGrowth', 'C6Transformation'];
+    skills.forEach(s => {
+        const slider = document.getElementById('s-' + s);
+        if (slider) {
+            slider.value = data[s] || 0;
+            updateVal(s);
+        }
+    });
+}
         async function applyScoresAndRoute() {
             log("Updating DB scores...");
             const updates = {
