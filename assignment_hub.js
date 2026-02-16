@@ -41,29 +41,25 @@ setInterval(() => {
 
 // --- Navigation/Routing ---
 async function loadNextQuestion() {
-    // Hide any lingering feedback from previous questions
     const feedback = document.getElementById('feedback-box');
     if(feedback) feedback.style.display = 'none';
     
-    // Randomly pick from our 5 available skill modules
-    const pick = Math.floor(Math.random() * 5);
-    
-    switch(pick) {
-        case 0: 
-            initTransformationGame(); 
-            break;
-        case 1: 
-            initLinearSystemGame(); 
-            break;
-        case 2: 
-            initFigureGrowthGame(); 
-            break;
-        case 3: 
-            initSolveXGame(); 
-            break;
-        case 4: 
-            initBoxPlotGame(); 
-            break;
+    // Check if the user is specifically in the 6.2.4 path
+    if (targetLesson === '6.2.4') {
+        const lesson624Skills = [
+            initTransformationGame,
+            initLinearSystemGame,
+            initFigureGrowthGame,
+            initSolveXGame,
+            initBoxPlotGame
+        ];
+
+        // Pick a random skill from this specific set
+        const randomSkillInitializer = lesson624Skills[Math.floor(Math.random() * lesson624Skills.length)];
+        randomSkillInitializer();
+    } else {
+        // Fallback for other lessons if you add them later
+        document.getElementById('q-content').innerHTML = "This lesson is currently under development.";
     }
 }
 
