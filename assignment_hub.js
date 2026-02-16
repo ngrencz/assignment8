@@ -41,16 +41,29 @@ setInterval(() => {
 
 // --- Navigation/Routing ---
 async function loadNextQuestion() {
-    document.getElementById('feedback-box').style.display = 'none';
+    // Hide any lingering feedback from previous questions
+    const feedback = document.getElementById('feedback-box');
+    if(feedback) feedback.style.display = 'none';
     
-    // Randomly select a module from the pool
-    const pick = Math.floor(Math.random() * 4);
+    // Randomly pick from our 5 available skill modules
+    const pick = Math.floor(Math.random() * 5);
     
     switch(pick) {
-        case 0: initTransformationGame(); break;
-        case 1: initLinearSystemGame(); break;
-        case 2: initFigureGrowthGame(); break;
-        case 3: initSolveXGame(); break;
+        case 0: 
+            initTransformationGame(); 
+            break;
+        case 1: 
+            initLinearSystemGame(); 
+            break;
+        case 2: 
+            initFigureGrowthGame(); 
+            break;
+        case 3: 
+            initSolveXGame(); 
+            break;
+        case 4: 
+            initBoxPlotGame(); 
+            break;
     }
 }
 
