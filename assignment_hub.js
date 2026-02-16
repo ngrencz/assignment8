@@ -1,7 +1,22 @@
+// --- Configuration & Supabase Init ---
+const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
+
+// Initialize the client globally so test.html can see it
+window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+// Global State
 window.totalSecondsWorked = parseInt(sessionStorage.getItem('total_work_time')) || 0;
 window.isCurrentQActive = false;
 window.currentQSeconds = 0;
-let canCount = false; // Starts false until 20s delay or initial load
+window.currentUser = sessionStorage.getItem('current_user') || 'test_user';
+window.targetLesson = sessionStorage.getItem('target_lesson') || '6.2.4';
+
+// Logic Tracking - Must be window. so loadNextQuestion sees them
+window.hasDonePrimaryLesson = false;
+window.skillsCompletedThisSession = []; 
+let lastActivity = Date.now();
+let canCount = false; 
 let resumeTimeout = null;
 
 // --- Tab Visibility Logic ---
@@ -80,38 +95,37 @@ async function loadNextQuestion() {
         { id: 'BoxPlot', fn: initBoxPlotGame }
     ];
 
-    // Use window.targetLesson
     if (window.targetLesson === '6.2.4') {
-        if (!hasDonePrimaryLesson) {
-            hasDonePrimaryLesson = true;
-            skillsCompletedThisSession.push('C6Transformation');
+        // ADD window. HERE
+        if (!window.hasDonePrimaryLesson) {
+            window.hasDonePrimaryLesson = true;
+            window.skillsCompletedThisSession.push('C6Transformation');
             return initTransformationGame();
         }
 
-        // FETCH Mastery Scores
-        const { data, error } = await supabaseClient
+        const { data, error } = await window.supabaseClient // Use window. here too
             .from('assignment')
             .select('*')
-            .eq('userName', window.currentUser) // Use window.currentUser
-            .maybeSingle(); // Better for new users than .single()
+            .eq('userName', window.currentUser)
+            .maybeSingle(); 
 
         if (error || !data) {
             console.error("Mastery fetch issue, falling back to random.");
             return skillMap[Math.floor(Math.random() * skillMap.length)].fn();
         }
 
-        let availableSkills = skillMap.filter(s => !skillsCompletedThisSession.includes(s.id));
+        // ADD window. HERE
+        let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
         
         if (availableSkills.length === 0) {
-            skillsCompletedThisSession = [];
+            window.skillsCompletedThisSession = [];
             availableSkills = skillMap;
         }
 
-        // Sort by lowest score
         availableSkills.sort((a, b) => (data[a.id] || 0) - (data[b.id] || 0));
 
         const nextSkill = availableSkills[0];
-        skillsCompletedThisSession.push(nextSkill.id);
+        window.skillsCompletedThisSession.push(nextSkill.id); // AND window. HERE
         nextSkill.fn();
 
     } else {
