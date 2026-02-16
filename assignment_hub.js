@@ -43,14 +43,15 @@ setInterval(() => {
 async function loadNextQuestion() {
     document.getElementById('feedback-box').style.display = 'none';
     
-    // Diagnostic logic: which skill is lowest?
-    const { data } = await supabaseClient.from('assignment').select('*').eq('userName', currentUser).single();
+    // Choose a random module to test
+    const pick = Math.floor(Math.random() * 3);
     
-    // If they are on Chapter 6, we can mix these in
-    if (data.LinearSystem < 7) {
-        initLinearSystemGame();
-    } else if (targetLesson === '6.2.4') {
+    if (pick === 0) {
         initTransformationGame();
+    } else if (pick === 1) {
+        initLinearSystemGame();
+    } else {
+        initFigureGrowthGame();
     }
 }
 
