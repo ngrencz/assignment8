@@ -98,7 +98,22 @@
                 <button onclick="warpTime(0)" style="background:#64748b; color:white; border:none; padding:5px 10px; border-radius:4px;">Reset Clock</button>
             </div>
         </div>
-
+<div class="card" style="background: #0f172a; color: white; margin-bottom: 10px; border: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin:0; color: #38bdf8; font-size: 0.9rem;">🕒 Timer Engine Status</h3>
+        <span id="timer-state-pill" class="status-pill" style="background: #ef4444; color: white;">PAUSED</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px;">
+            <label style="color: #94a3b8; font-size: 0.7rem;">TOTAL WORK TIME</label>
+            <div id="debug-total-time" style="font-size: 1.2rem; font-family: monospace;">00:00 / 12:00</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px;">
+            <label style="color: #94a3b8; font-size: 0.7rem;">CURRENT Q SECS</label>
+            <div id="debug-q-time" style="font-size: 1.2rem; font-family: monospace;">0s</div>
+        </div>
+    </div>
+</div>
         <div class="card">
             <h3>Live System Output</h3>
             <div id="log" class="log-box">Initialized Control Panel...</div>
