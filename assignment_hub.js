@@ -1,3 +1,4 @@
+// --- Configuration & Supabase Init ---
 const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
@@ -10,35 +11,51 @@ let lastActivity = Date.now();
 let currentUser = sessionStorage.getItem('current_user');
 let targetLesson = sessionStorage.getItem('target_lesson');
 
-const IDLE_LIMIT = 30000;
+const IDLE_LIMIT = 30000; // 30 seconds
+const TARGET_MINUTES = 12;
 
-// Timer Loop
+// --- Global Timer Logic ---
 setInterval(() => {
     const timerEl = document.getElementById('timer-display');
-    if (Date.now() - lastActivity < IDLE_LIMIT && isCurrentQActive && currentQSeconds < currentQCap) {
+    const isIdle = (Date.now() - lastActivity > IDLE_LIMIT);
+
+    if (!isIdle && isCurrentQActive && currentQSeconds < currentQCap) {
         totalWorkSeconds++;
         currentQSeconds++;
-        timerEl.style.color = "black";
+        timerEl.style.color = "#2d3748";
     } else {
-        timerEl.style.color = "red";
+        timerEl.style.color = "#e53e3e"; // Red when idle or cap hit
     }
+
     let mins = Math.floor(totalWorkSeconds / 60);
     let secs = totalWorkSeconds % 60;
     timerEl.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+    if (mins >= TARGET_MINUTES) { finishAssignment(); }
 }, 1000);
 
-['mousedown', 'keydown', 'mousemove'].forEach(e => window.addEventListener(e, () => lastActivity = Date.now()));
+// Activity Tracking
+['mousedown', 'keydown', 'mousemove', 'touchstart'].forEach(e => 
+    window.addEventListener(e, () => lastActivity = Date.now())
+);
 
-// The "Switcher" - This loads the correct skill logic
-async function loadQuestion() {
+// --- Navigation/Routing ---
+async function loadNextQuestion() {
     document.getElementById('feedback-box').style.display = 'none';
     
-    switch(targetLesson) {
-        case '6.2.4':
-            initTransformationGame(); // Lives in skill_transformation.js
-            break;
-        case '6.2.5':
-            // initSimilarityGame(); 
-            break;
+    // In a real project, this logic branches out to different .js files
+    if (targetLesson === '6.2.4') {
+        initTransformationGame();
+    } else {
+        document.getElementById('q-content').innerHTML = "Coming soon...";
     }
 }
+
+async function finishAssignment() {
+    isCurrentQActive = false;
+    alert("Great work! You've completed your required practice time.");
+    window.location.href = 'index.html';
+}
+
+// Kickoff
+window.onload = loadNextQuestion;
