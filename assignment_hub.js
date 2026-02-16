@@ -18,27 +18,26 @@ window.canCount = false;
 window.resumeTimeout = null;
 
 // --- Activity & Tab Visibility ---
-['mousemove', 'keydown', 'mousedown', 'touchstart'].forEach(evt => {
-    window.addEventListener(evt, () => {
-        window.lastActivity = Date.now();
-        if (window.isIdle) {
-            window.isIdle = false;
-            if (typeof log === "function") log("👤 User returned. Activity detected.");
-        }
-    });
-});
+window.onblur = () => {
+    window.canCount = false;
+    clearTimeout(window.resumeTimeout);
+    if (typeof log === "function") log("⏸️ Window Lost Focus: Timer stopped.");
+};
 
+window.onfocus = () => {
+    if (typeof log === "function") log("⏱️ Window Regained: Resuming in 15s...");
+    clearTimeout(window.resumeTimeout); // Clear any existing timeouts to prevent overlap
+    window.resumeTimeout = setTimeout(() => {
+        window.canCount = true;
+        if (typeof log === "function") log("▶️ Penalty elapsed: Timer resumed.");
+    }, 15000); // 15s penalty
+};
+
+// Mirror this for tab switching to be safe
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         window.canCount = false;
         clearTimeout(window.resumeTimeout);
-        if (typeof log === "function") log("⏸️ Tab hidden: Timer stopped.");
-    } else {
-        if (typeof log === "function") log("⏱️ Tab active: Resuming in 20s...");
-        window.resumeTimeout = setTimeout(() => {
-            window.canCount = true;
-            if (typeof log === "function") log("▶️ 20s penalty elapsed: Timer resumed.");
-        }, 20000); 
     }
 });
 
