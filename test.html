@@ -6,7 +6,7 @@
     <title>6.2.4 System Debugger</title>
     
     <script>
-        const APP_VERSION = "1.0.9"; 
+        const APP_VERSION = "1.0.10"; 
         const LAST_UPDATED = "2026-02-16 16:55"; 
     </script>
 
@@ -74,24 +74,6 @@
                     <button onclick="resetSession()" style="flex: 1; background:#ef4444; color:#fff; border: none; padding: 12px; border-radius: 8px;">Wipe Data</button>
                 </div>
 
-                <div class="timer-tester">
-                    <h3>2. Timer Engine (12-Min Test)</h3>
-                    <div style="display: flex; gap: 10px; margin-top: 10px; padding: 10px; background: #f0fdf4; border-radius: 8px;">
-                        <select id="module-selector" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-                            <option value="SolveX">SolveX (Algebra)</option>
-                            <option value="C6Transformation">Transformations</option>
-                            <option value="LinearSystem">Linear Systems</option>
-                            <option value="FigureGrowth">Figure Growth</option>
-                            <option value="BoxPlot">Box Plots</option>
-                        </select>
-                        <button onclick="forceLoadModule()" style="flex: 1; background: #0f172a; color: white; border: none; padding: 10px; border-radius: 8px;">Launch</button>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="window.totalSecondsWorked = 715; log('Warped to 11:55');" style="width: 100%; padding: 10px; border-radius: 8px;">Warp to 11:55</button>
-                    </div>
-                </div>
-            </div>
-
             <div class="card">
                 <h3>3. Skill Score Overrides</h3>
                 <p><small style="color:#64748b;">Adjust and click Apply to force specific routing.</small></p>
@@ -105,24 +87,6 @@
                 <button onclick="applyScoresAndRoute()" style="width:100%; margin-top:20px; background:#000; color:#fff; padding: 15px; border-radius: 8px; border: none;">Apply Scores & Launch Game</button>
             </div>
         </div>
-
-        <div class="output-stack">
-            <div class="card" style="background: #0f172a; color: white; border: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin:0; color: #38bdf8; font-size: 0.9rem;">🕒 Timer Engine Status</h3>
-                    <span id="timer-state-pill" class="status-pill" style="background: #ef4444; color: white;">PAUSED</span>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                        <label style="color: #94a3b8; font-size: 0.7rem; display: block; margin-bottom: 4px;">TOTAL WORK</label>
-                        <div id="debug-total-time" style="font-size: 1.2rem; font-family: monospace; color: #38bdf8;">00:00 / 12:00</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                        <label style="color: #94a3b8; font-size: 0.7rem; display: block; margin-bottom: 4px;">CURRENT Q</label>
-                        <div id="debug-q-time" style="font-size: 1.2rem; font-family: monospace; color: #fbbf24;">0s</div>
-                    </div>
-                </div>
-            </div>
 
             <div class="card">
                 <h3 style="margin-top: 0;">Live System Logs</h3>
@@ -215,41 +179,6 @@
             }
         }
 
-        function skipCooldown() {
-            log("⚡ Bypassing 20s cooldown...");
-            window.canCount = true; 
-            if (window.resumeTimeout) clearTimeout(window.resumeTimeout);
-        }
-
-        function forceLoadModule() {
-            const targetId = document.getElementById('module-selector').value;
-            log(`🛠️ Force launching module: ${targetId}`);
-
-            const forceMap = {
-                'C6Transformation': typeof initTransformationGame !== 'undefined' ? initTransformationGame : null,
-                'LinearSystem': typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null,
-                'FigureGrowth': typeof initFigureGrowthGame !== 'undefined' ? initFigureGrowthGame : null,
-                'SolveX': typeof initSolveXGame !== 'undefined' ? initSolveXGame : null,
-                'BoxPlot': typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null
-            };
-
-            const targetFn = forceMap[targetId];
-
-            if (targetFn) {
-                window.hasDonePrimaryLesson = true; 
-                window.isCurrentQActive = true;
-                targetFn();
-                skipCooldown();
-                
-                const pill = document.getElementById('timer-state-pill');
-                if (pill) { 
-                    pill.innerText = "FORCED START"; 
-                    pill.style.background = "#8b5cf6"; 
-                }
-            } else {
-                log(`❌ Error: Function for ${targetId} not found.`);
-            }
-        }
 
         ensureTestUser();
     </script>
