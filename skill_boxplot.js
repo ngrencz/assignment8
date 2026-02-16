@@ -54,56 +54,98 @@ function drawBoxPlot() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
+    // Layout settings
     const padding = 40;
     const chartWidth = canvas.width - (padding * 2);
     const maxVal = 40;
     const scale = chartWidth / maxVal;
-    const y = 70; 
+    
+    // Vertical positions
+    const y = 60; // Main horizontal line of the plot
+    const labelY = y - 40; // Where the numbers sit
+    const axisY = y + 50; // Where the number line sits
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Axis
-    ctx.strokeStyle = "#94a3b8";
+    // --- 1. Draw Axis (Closer to plot) ---
+    ctx.strokeStyle = "#cbd5e1";
     ctx.fillStyle = "#64748b";
     ctx.lineWidth = 1;
-    ctx.font = "12px Arial";
+    ctx.font = "10px Arial";
     ctx.textAlign = "center";
+
     ctx.beginPath();
-    ctx.moveTo(padding, y + 50);
-    ctx.lineTo(padding + chartWidth, y + 50);
+    ctx.moveTo(padding, axisY);
+    ctx.lineTo(padding + chartWidth, axisY);
     ctx.stroke();
 
     for (let i = 0; i <= maxVal; i += 5) {
         let xPos = padding + (i * scale);
-        ctx.beginPath(); ctx.moveTo(xPos, y + 50); ctx.lineTo(xPos, y + 55); ctx.stroke();
-        ctx.fillText(i, xPos, y + 70);
+        ctx.beginPath();
+        ctx.moveTo(xPos, axisY);
+        ctx.lineTo(xPos, axisY + 5);
+        ctx.stroke();
+        ctx.fillText(i, xPos, axisY + 15);
     }
 
-    // Whiskers
+    // --- 2. Helper to draw labels on the plot ---
+    const drawLabel = (val, x) => {
+        ctx.fillStyle = "#1e293b";
+        ctx.font = "bold 12px Arial";
+        ctx.fillText(val, x, labelY);
+    };
+
+    // --- 3. Draw Whiskers (With End Caps) ---
     ctx.strokeStyle = "#1e293b";
     ctx.lineWidth = 2;
+    
+    const minX = padding + currentBoxData.min * scale;
+    const q1X = padding + currentBoxData.q1 * scale;
+    const q3X = padding + currentBoxData.q3 * scale;
+    const maxX = padding + currentBoxData.max * scale;
+    const medX = padding + currentBoxData.median * scale;
+
     ctx.beginPath();
-    ctx.moveTo(padding + currentBoxData.min * scale, y);
-    ctx.lineTo(padding + currentBoxData.q1 * scale, y);
-    ctx.moveTo(padding + currentBoxData.q3 * scale, y);
-    ctx.lineTo(padding + currentBoxData.max * scale, y);
+    // Left whisker line
+    ctx.moveTo(minX, y);
+    ctx.lineTo(q1X, y);
+    // Left cap
+    ctx.moveTo(minX, y - 10);
+    ctx.lineTo(minX, y + 10);
+    
+    // Right whisker line
+    ctx.moveTo(q3X, y);
+    ctx.lineTo(maxX, y);
+    // Right cap
+    ctx.moveTo(maxX, y - 10);
+    ctx.lineTo(maxX, y + 10);
     ctx.stroke();
 
-    // Box
-    const boxX = padding + (currentBoxData.q1 * scale);
-    const boxW = (currentBoxData.q3 - currentBoxData.q1) * scale;
+    // Labels for extremes
+    drawLabel(currentBoxData.min, minX);
+    drawLabel(currentBoxData.max, maxX);
+
+    // --- 4. Draw Box ---
+    const boxW = q3X - q1X;
     ctx.fillStyle = "#f0fdf4";
-    ctx.fillRect(boxX, y - 30, boxW, 60);
-    ctx.strokeRect(boxX, y - 30, boxW, 60);
+    ctx.fillRect(q1X, y - 25, boxW, 50);
+    ctx.strokeRect(q1X, y - 25, boxW, 50);
     
-    // Median
+    // Labels for quartiles
+    drawLabel(currentBoxData.q1, q1X);
+    drawLabel(currentBoxData.q3, q3X);
+
+    // --- 5. Draw Median Line (Green) ---
     ctx.strokeStyle = "#22c55e";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    const medX = padding + (currentBoxData.median * scale);
-    ctx.moveTo(medX, y - 30);
-    ctx.lineTo(medX, y + 30);
+    ctx.moveTo(medX, y - 25);
+    ctx.lineTo(medX, y + 25);
     ctx.stroke();
+    
+    // Label for median
+    ctx.fillStyle = "#15803d"; // Darker green for text
+    drawLabel(currentBoxData.median, medX);
 }
 
 async function checkStep() {
