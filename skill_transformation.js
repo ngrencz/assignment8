@@ -6,6 +6,10 @@ let currentSkill = "";
 const SKILLS = ['C6Translation', 'C6ReflectionX', 'C6ReflectionY', 'C6ReflectionXY', 'C6Rotation', 'C6Dilation'];
 
 async function initTransformationGame() {
+    isCurrentQActive = true;
+    currentQSeconds = 0;
+    errorCount = 0;
+
     // 1. Diagnostic: Find the lowest score to practice
     const { data, error } = await supabaseClient.from('assignment').select('*').eq('userName', currentUser).single();
     if (error) return console.error(error);
@@ -23,9 +27,6 @@ async function initTransformationGame() {
 
     // 3. Reset State
     currentShape = JSON.parse(JSON.stringify(start));
-    errorCount = 0;
-    currentQSeconds = 0;
-    isCurrentQActive = true;
     currentQCap = (currentSkill.includes('Rotation') || currentSkill.includes('XY')) ? 150 : 90;
 
     renderUI();
@@ -46,14 +47,26 @@ function applySecretMove(skill) {
 }
 
 function renderUI() {
-    document.getElementById('q-title').innerText = `Skill Focus: ${currentSkill.replace('C6', '')}`;
+    document.getElementById('q-title').innerText = `Transformations: ${currentSkill.replace('C6', '')}`;
     document.getElementById('q-content').innerHTML = `
-        <canvas id="gridCanvas" width="300" height="300" style="border:2px solid #2d3748; background:#fff; display:block; margin:auto;"></canvas>
-        <div style="margin-top:15px; display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
-            <button onclick="move('left')">Left</button> <button onclick="move('up')">Up</button> <button onclick="move('reflectX')">Reflect X</button>
-            <button onclick="move('right')">Right</button> <button onclick="move('down')">Down</button> <button onclick="move('reflectY')">Reflect Y</button>
-            <button onclick="move('rotate')">Rotate 90°</button> <button onclick="move('dilate')">Dilate x2</button> <button onclick="move('reflectXY')">Reflect Y=X</button>
-            <button onclick="checkMatch()" style="grid-column: span 3; background:#38a169; color:white; padding:12px; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">CHECK MY WORK</button>
+        <canvas id="gridCanvas" width="300" height="300"></canvas>
+        
+        <p style="text-align:center; color:var(--gray-text);">Move the green shape onto the black ghost shape.</p>
+
+        <div style="margin-top:15px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+            <button onclick="move('left')">Left</button> 
+            <button onclick="move('up')">Up</button> 
+            <button onclick="move('reflectX')">Reflect X</button>
+            
+            <button onclick="move('right')">Right</button> 
+            <button onclick="move('down')">Down</button> 
+            <button onclick="move('reflectY')">Reflect Y</button>
+            
+            <button onclick="move('rotate')">Rotate 90°</button> 
+            <button onclick="move('dilate')">Dilate x2</button> 
+            <button onclick="move('reflectXY')">Reflect Y=X</button>
+            
+            <button onclick="checkMatch()" style="grid-column: span 3; background:var(--black); box-shadow:0 4px 0 #000;">CHECK MY WORK</button>
         </div>
     `;
     draw();
@@ -76,20 +89,43 @@ function draw() {
     const canvas = document.getElementById('gridCanvas');
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0,0,300,300);
+
     // Grid Lines
-    ctx.strokeStyle="#edf2f7"; ctx.beginPath();
-    for(let i=0; i<=300; i+=30){ ctx.moveTo(i,0); ctx.lineTo(i,300); ctx.moveTo(0,i); ctx.lineTo(300,i); } ctx.stroke();
+    ctx.strokeStyle="var(--gray-light)"; 
+    ctx.beginPath();
+    for(let i=0; i<=300; i+=30){ 
+        ctx.moveTo(i,0); ctx.lineTo(i,300); 
+        ctx.moveTo(0,i); ctx.lineTo(300,i); 
+    } 
+    ctx.stroke();
+
     // Axes
-    ctx.strokeStyle="#cbd5e0"; ctx.lineWidth=2; ctx.beginPath();
-    ctx.moveTo(150,0); ctx.lineTo(150,300); ctx.moveTo(0,150); ctx.lineTo(300,150); ctx.stroke();
-    // Y=X Line
+    ctx.strokeStyle="var(--gray-med)"; 
+    ctx.lineWidth=2; 
+    ctx.beginPath();
+    ctx.moveTo(150,0); ctx.lineTo(150,300); 
+    ctx.moveTo(0,150); ctx.lineTo(300,150); 
+    ctx.stroke();
+
+    // Y=X Line (Dashboard effect)
     if(currentSkill === 'C6ReflectionXY'){
-        ctx.setLineDash([5,5]); ctx.strokeStyle="#a0aec0"; ctx.beginPath(); ctx.moveTo(0,300); ctx.lineTo(300,0); ctx.stroke(); ctx.setLineDash([]);
+        ctx.setLineDash([5,5]); ctx.strokeStyle="var(--kelly-green)"; 
+        ctx.beginPath(); ctx.moveTo(0,300); ctx.lineTo(300,0); ctx.stroke(); ctx.setLineDash([]);
     }
+
     // Shapes
-    ctx.lineWidth=1;
-    ctx.fillStyle="rgba(237,137,54,0.3)"; drawShape(ctx, targetShape); // Orange Target
-    ctx.fillStyle="rgba(49,130,206,0.7)"; drawShape(ctx, currentShape); // Blue Current
+    // Target Shape (The Ghost)
+    ctx.lineWidth=2;
+    ctx.setLineDash([4,2]);
+    ctx.strokeStyle="var(--black)";
+    ctx.fillStyle="rgba(0,0,0,0.05)";
+    drawShape(ctx, targetShape);
+
+    // Current Shape (The Kelly Green active shape)
+    ctx.setLineDash([]);
+    ctx.strokeStyle="var(--dark-green)";
+    ctx.fillStyle="rgba(76, 187, 23, 0.6)"; 
+    drawShape(ctx, currentShape);
 }
 
 function drawShape(ctx, pts) {
@@ -102,9 +138,15 @@ function drawShape(ctx, pts) {
 }
 
 async function checkMatch() {
+    const feedback = document.getElementById('feedback-box');
     const isCorrect = currentShape.every((p, i) => Math.abs(p[0]-targetShape[i][0]) < 0.1 && Math.abs(p[1]-targetShape[i][1]) < 0.1);
     
+    feedback.style.display = "block";
+
     if (isCorrect) {
+        feedback.className = "correct";
+        feedback.innerText = "Match Confirmed! Transformation complete.";
+
         let score = Math.max(1, 10 - (errorCount * 2));
         const { data } = await supabaseClient.from('assignment').select('*').eq('userName', currentUser).single();
         
@@ -117,10 +159,13 @@ async function checkMatch() {
         updates['C6Transformation'] = Math.round(total/count);
 
         await supabaseClient.from('assignment').update(updates).eq('userName', currentUser);
-        alert(`Correct! Score: ${score}/10. Mastery: ${updates['C6Transformation']}`);
-        initTransformationGame();
+        
+        setTimeout(() => {
+            initTransformationGame();
+        }, 1500);
     } else {
         errorCount++;
-        alert("Not quite! Try another move.");
+        feedback.className = "incorrect";
+        feedback.innerText = "Not quite matching. Look at the coordinates and try another move!";
     }
 }
