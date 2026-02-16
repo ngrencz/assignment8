@@ -6,7 +6,7 @@
     <title>6.2.4 System Debugger</title>
     
     <script>
-        const APP_VERSION = "1.0.7"; 
+        const APP_VERSION = "1.0.8"; 
         const LAST_UPDATED = "2026-02-16 16:55"; 
     </script>
 
@@ -75,9 +75,9 @@
                 </div>
 
                 <div class="timer-tester">
-                    <h3>2. Timer Engine (12-Min Test)</h3>
-    <h3>2b. Manual Module Launcher</h3>
-    <div style="display: flex; gap: 10px; margin-top: 10px;">
+    <h3>2. Timer Engine (12-Min Test)</h3>
+    
+    <div style="display: flex; gap: 10px; margin-top: 10px; padding: 10px; background: #f0fdf4; border-radius: 8px;">
         <select id="module-selector" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
             <option value="SolveX">SolveX (Algebra)</option>
             <option value="C6Transformation">Transformations</option>
@@ -88,15 +88,14 @@
         <button onclick="forceLoadModule()" style="flex: 1; background: #0f172a; color: white; border: none; padding: 10px; border-radius: 8px;">
             Launch
         </button>
-</div>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="window.totalSecondsWorked = 715; log('Warped to 11:55');">
-                        Warp to 11:55
-                        </button>
-                    </div>
-                </div>
-            </div>
+    </div>
 
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button onclick="window.totalSecondsWorked = 715; log('Warped to 11:55');" style="width: 100%; padding: 10px; border-radius: 8px;">
+            Warp to 11:55
+        </button>
+    </div>
+</div>
             <div class="card">
                 <h3>3. Skill Score Overrides</h3>
                 <p><small style="color:#64748b;">Adjust and click Apply to force specific routing.</small></p>
