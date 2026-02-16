@@ -1,0 +1,77 @@
+<script>
+    // Supabase Configuration
+    const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
+    const supabase = supabase.createClient(SB_URL, SB_KEY);
+
+    async function handleLogin() {
+        const userField = document.getElementById('username');
+        const lessonField = document.getElementById('lesson-select');
+        const msg = document.getElementById('msg');
+        const loginBtn = document.getElementById('login-btn');
+        
+        const username = userField.value.trim().toLowerCase();
+        if (!username) return msg.innerText = "Please enter a username.";
+
+        loginBtn.disabled = true;
+        msg.innerText = "Checking for student record...";
+
+        try {
+            // 1. Check if user exists
+            let { data, error } = await supabase
+                .from('assignment')
+                .select('userName')
+                .eq('userName', username)
+                .single();
+
+            if (error && error.code !== 'PGRST116') throw error;
+
+            if (data) {
+                // User exists -> Proceed
+                proceedToAssignment(username, lessonField.value);
+            } else {
+                // User does not exist -> Show Warning and "Create" button
+                msg.innerHTML = `
+                    <div style="color: #ed8936; margin-bottom:10px;">
+                        Username not found. Did you type it correctly?
+                    </div>
+                    <button onclick="createNewUser('${username}', '${lessonField.value}')" 
+                            style="background: #ed8936; font-size: 14px;">
+                        No, this is my first time (Create Account)
+                    </button>
+                    <button onclick="location.reload()" 
+                            style="background: none; color: #718096; font-size: 12px; margin-top:10px; border:none; text-decoration:underline; cursor:pointer;">
+                        Let me try typing it again
+                    </button>
+                `;
+                loginBtn.style.display = 'none';
+            }
+
+        } catch (err) {
+            console.error(err);
+            msg.innerText = "Connection error. Please try again.";
+            loginBtn.disabled = false;
+        }
+    }
+
+    async function createNewUser(username, lesson) {
+        const msg = document.getElementById('msg');
+        msg.innerText = "Creating account...";
+
+        const { error } = await supabase
+            .from('assignment')
+            .insert([{ userName: username, C6Transformation: 0 }]);
+
+        if (error) {
+            msg.innerText = "Error creating account. Try a different name.";
+        } else {
+            proceedToAssignment(username, lesson);
+        }
+    }
+
+    function proceedToAssignment(username, lesson) {
+        sessionStorage.setItem('current_user', username);
+        sessionStorage.setItem('target_lesson', lesson);
+        window.location.href = 'assignment.html';
+    }
+</script>
