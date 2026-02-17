@@ -191,7 +191,29 @@
 
     async function finalize() {
         const score = Math.max(1, 10 - linearErrorCount);
-        await window.supabaseClient.from('assignment').update({ LinearSystem: score }).eq('userName', window.currentUser);
-        window.loadNextQuestion();
+        
+        // 1. Try to find the client on the window object first
+        const client = window.supabaseClient;
+
+        if (client && typeof client.from === 'function') {
+            try {
+                await client
+                    .from('assignment')
+                    .update({ LinearSystem: score })
+                    .eq('userName', window.currentUser);
+            } catch (e) {
+                console.error("Database update failed:", e);
+            }
+        } else {
+            // If Supabase isn't found, we just log it and move on
+            console.warn("Supabase not initialized; skipping DB update.");
+        }
+        
+        // 2. This is the most important part - moving to the next question
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion();
+        } else {
+            console.error("Hub Error: window.loadNextQuestion is not a function.");
+        }
     }
 }
