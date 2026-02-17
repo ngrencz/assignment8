@@ -142,6 +142,7 @@ setInterval(() => {
 
 // --- Adaptive Routing & Finish logic remains the same ---
 async function loadNextQuestion() {
+    if (window.isCurrentQActive) return;
     window.currentQSeconds = 0; 
     const feedback = document.getElementById('feedback-box');
     if(feedback) {
