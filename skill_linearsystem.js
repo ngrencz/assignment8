@@ -13,11 +13,11 @@ window.initLinearSystemGame = async function() {
     currentStep = 1;
     userPoints = [];
 
-    // Generate integer intersection
+    // 1. Generate integer intersection
     const targetX = Math.floor(Math.random() * 5) - 2; 
     const targetY = Math.floor(Math.random() * 5) - 2; 
 
-    // Generate slopes
+    // 2. Generate slopes (ensuring different slopes for 1 solution)
     let m1 = Math.floor(Math.random() * 3) + 1;
     let m2;
     do { m2 = Math.floor(Math.random() * 5) - 2; } while (m1 === m2 || m2 === 0);
@@ -68,8 +68,9 @@ function renderLinearUI() {
             <button class="primary-btn" onclick="checkSolutionCount(1)">One</button>
             <button class="primary-btn" onclick="checkSolutionCount(0)">Zero</button>`;
     } else {
-        html += `<p>Step 4: Graph the lines.</p>
-            <canvas id="systemCanvas" width="300" height="300" style="background:white; border:1px solid #ccc;"></canvas>`;
+        html += `<p>Step 4: Graph the lines. Click twice for each line.</p>
+            <canvas id="systemCanvas" width="300" height="300" style="background:white; border:1px solid #ccc; cursor:crosshair;"></canvas>
+            <div id="graph-status" style="margin-top:5px; color:#3b82f6; font-weight:bold;">Line 1: Plot Point 1</div>`;
     }
 
     qContent.innerHTML = html;
@@ -82,7 +83,7 @@ window.checkPeer = function(choice, peerKey) {
         renderLinearUI();
     } else {
         linearErrorCount++;
-        alert("Try again!");
+        alert("Incorrect check. Verify the coordinates in both equations!");
     }
 };
 
@@ -92,7 +93,7 @@ window.checkSolutionCount = function(count) {
         renderLinearUI();
     } else {
         linearErrorCount++;
-        alert("Check slopes!");
+        alert("Different slopes mean they must intersect once!");
     }
 };
 
@@ -118,11 +119,19 @@ function initCanvas() {
         const rect = canvas.getBoundingClientRect();
         const x = Math.round((e.clientX - rect.left - 150) / step);
         const y = Math.round((150 - (e.clientY - rect.top)) / step);
+        
         userPoints.push({x, y});
         ctx.fillStyle = userPoints.length <= 2 ? "blue" : "red";
         ctx.beginPath(); ctx.arc(150 + x*step, 150 - y*step, 5, 0, 7); ctx.fill();
+
         if (userPoints.length === 2) validateLine(1);
         if (userPoints.length === 4) validateLine(2);
+        
+        const status = document.getElementById('graph-status');
+        if(status) {
+            const msgs = ["Line 1: Pt 1", "Line 1: Pt 2", "Line 2: Pt 1", "Line 2: Pt 2", "Success!"];
+            status.innerText = msgs[userPoints.length] || "Success!";
+        }
     };
 
     function validateLine(num) {
@@ -130,6 +139,7 @@ function initCanvas() {
         const p2 = userPoints[num === 1 ? 1 : 3];
         const m = num === 1 ? currentSystem.m1 : currentSystem.m2;
         const b = num === 1 ? currentSystem.b1 : currentSystem.b2;
+        
         const um = (p2.y - p1.y) / (p2.x - p1.x);
         const ub = p1.y - (um * p1.x);
 
@@ -142,14 +152,24 @@ function initCanvas() {
             if (num === 2) finalize();
         } else {
             linearErrorCount++;
+            alert("Incorrect line. Check your slope and intercept.");
             userPoints = num === 1 ? [] : [userPoints[0], userPoints[1]];
             drawGrid();
+            if (num === 2) {
+                 // Redraw Line 1 dots/line if Line 2 failed
+                 const lp1 = userPoints[0], lp2 = userPoints[1];
+                 ctx.strokeStyle = "blue"; ctx.beginPath();
+                 ctx.moveTo(150 + (lp1.x-10)*step, 150 - (lp1.y + currentSystem.m1*(lp1.x-10 - lp1.x))*step);
+                 ctx.lineTo(150 + (lp1.x+10)*step, 150 - (lp1.y + currentSystem.m1*(lp1.x+10 - lp1.x))*step);
+                 ctx.stroke();
+            }
         }
     }
 }
 
 async function finalize() {
     const score = Math.max(1, 10 - linearErrorCount);
+    // Returning to the original direct call
     await supabaseClient.from('assignment').update({ LinearSystem: score }).eq('userName', window.currentUser);
     window.loadNextQuestion();
 }
