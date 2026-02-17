@@ -55,45 +55,60 @@
         return html;
     }
 
-    function renderFigureUI() {
-        const qContent = document.getElementById('q-content');
-        // REMOVED THE $ SYMBOLS HERE
-        document.getElementById('q-title').innerText = `Figure Growth Analysis`;
+  function renderFigureUI() {
+    const qContent = document.getElementById('q-content');
+    document.getElementById('q-title').innerText = `Figure Growth Analysis`;
 
-        let headerHTML = "";
-        if (isVisualMode && currentPattern.f2Count <= 30) { 
-            headerHTML = `
-                <div style="display:flex; justify-content:center; align-items:flex-end; gap:30px; margin-bottom:20px; background: white; padding: 15px; border-radius: 8px;">
-                    <div style="text-align:center;"><small>Fig ${currentPattern.f1Num}</small>${generateTileHTML(currentPattern.f1Count, currentPattern.m, currentPattern.b, currentPattern.f1Num)}</div>
-                    <div style="text-align:center;"><small>Fig ${currentPattern.f2Num}</small>${generateTileHTML(currentPattern.f2Count, currentPattern.m, currentPattern.b, currentPattern.f2Num)}</div>
-                </div>`;
-        } else {
-            headerHTML = `
-                <div style="background:#f1f5f9; padding:15px; border-radius:12px; margin-bottom:20px; border: 1px solid #cbd5e1; text-align:center;">
-                    <p><strong>Figure ${currentPattern.f1Num}:</strong> ${currentPattern.f1Count} tiles</p>
-                    <p><strong>Figure ${currentPattern.f2Num}:</strong> ${currentPattern.f2Count} tiles</p>
-                </div>`;
-        }
-
-        let stepHTML = "";
-        if (currentStep === 1) {
-            // STRIPPED LaTeX FORMATTING
-            stepHTML = `
-                <p><strong>Step 1:</strong> Find the rule (y = mx + b).</p>
-                <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
-                    y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:65px"> x + 
-                    <input type="number" id="input-b" placeholder="b" class="math-input" style="width:65px">
-                </div>`;
-        } 
-        // ... (rest of the steps remain the same)
-        
-        qContent.innerHTML = headerHTML + stepHTML + `
-            <div style="text-align:center; margin-top:15px; display: flex; justify-content: center; gap: 10px;">
-                <button onclick="checkFigureAns()" class="primary-btn">Submit Answer</button>
-                <button onclick="showFigureHint()" class="secondary-btn" style="background: #64748b; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;">Get Hint</button>
-            </div>
-            <div id="hint-display" style="margin-top: 15px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.9rem; color: #92400e;"></div>`;
+    let headerHTML = "";
+    if (isVisualMode && currentPattern.f2Count <= 30) { 
+        headerHTML = `
+            <div style="display:flex; justify-content:center; align-items:flex-end; gap:30px; margin-bottom:20px; background: white; padding: 15px; border-radius: 8px;">
+                <div style="text-align:center;"><small>Fig ${currentPattern.f1Num}</small>${generateTileHTML(currentPattern.f1Count, currentPattern.m, currentPattern.b, currentPattern.f1Num)}</div>
+                <div style="text-align:center;"><small>Fig ${currentPattern.f2Num}</small>${generateTileHTML(currentPattern.f2Count, currentPattern.m, currentPattern.b, currentPattern.f2Num)}</div>
+            </div>`;
+    } else {
+        headerHTML = `
+            <div style="background:#f1f5f9; padding:15px; border-radius:12px; margin-bottom:20px; border: 1px solid #cbd5e1; text-align:center;">
+                <p><strong>Figure ${currentPattern.f1Num}:</strong> ${currentPattern.f1Count} tiles</p>
+                <p><strong>Figure ${currentPattern.f2Num}:</strong> ${currentPattern.f2Count} tiles</p>
+            </div>`;
     }
+
+    let stepHTML = "";
+    if (currentStep === 1) {
+        stepHTML = `
+            <p><strong>Step 1:</strong> Find the rule (y = mx + b).</p>
+            <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
+                y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:65px"> x + 
+                <input type="number" id="input-b" placeholder="b" class="math-input" style="width:65px">
+            </div>`;
+    } else if (currentStep === 2) {
+        stepHTML = `
+            <p><strong>Step 2:</strong> Draw Figure 3.</p>
+            <p>Click tiles to draw exactly how many tiles should be in Figure 3:</p>
+            <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
+            <p style="text-align:center; font-size: 0.8rem; color: #64748b;">(Click a tile to toggle it on/off)</p>`;
+    } else {
+        stepHTML = `
+            <p><strong>Step 3:</strong> Large Scale Prediction.</p>
+            <p>How many tiles will be in <strong>Figure ${currentPattern.targetX}</strong>?</p>
+            <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
+                Tiles = <input type="number" id="input-ans" placeholder="?" class="math-input" style="width:100px">
+            </div>`;
+    }
+
+    qContent.innerHTML = headerHTML + stepHTML + `
+        <div style="text-align:center; margin-top:15px; display: flex; justify-content: center; gap: 10px;">
+            <button onclick="checkFigureAns()" class="primary-btn">Submit Answer</button>
+            <button onclick="showFigureHint()" class="secondary-btn" style="background: #64748b; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;">Get Hint</button>
+        </div>
+        <div id="hint-display" style="margin-top: 15px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.9rem; color: #92400e;"></div>`;
+
+    // CRITICAL: Initialize the grid if we are on Step 2
+    if (currentStep === 2) {
+        setupDrawingGrid();
+    }
+}
     window.showFigureHint = function() {
         const hintBox = document.getElementById('hint-display');
         hintBox.style.display = "block";
@@ -118,7 +133,7 @@
     const feedback = document.getElementById('feedback-box');
     if (feedback) feedback.style.display = "block";
 
-    // --- Validation Logic ---
+    // --- Validation Logic (Unchanged) ---
     if (currentStep === 1) {
         stepKey = "FigureRule";
         const uM = parseInt(document.getElementById('input-m').value);
@@ -148,31 +163,56 @@
         if (currentStep < 3) {
             currentStep++;
             figureErrorCount = 0;
-            setTimeout(renderFigureUI, 1000);
+            setTimeout(() => {
+                feedback.style.display = "none"; 
+                renderFigureUI(); 
+            }, 1000);
         } else {
-                window.isCurrentQActive = false; // Reset the lock
-                feedback.innerText = "Pattern Mastered! Loading next...";
-                
-                console.log("Attempting to call window.loadNextQuestion...");
-                
-                setTimeout(() => {
-                    // Try calling the function directly from the window
-                    if (typeof window.loadNextQuestion === 'function') {
-                        window.loadNextQuestion();
-                    } else {
-                        loadNextQuestion();
-                    }
-                }, 1500);
-            }
+            // FIXED: Removed the double { here
+            window.isCurrentQActive = false; 
+            feedback.innerText = "Pattern Mastered! Loading next...";
+            
+            console.log("Attempting to call window.loadNextQuestion...");
+            
+            setTimeout(() => {
+                if (typeof window.loadNextQuestion === 'function') {
+                    window.loadNextQuestion();
+                } else {
+                    loadNextQuestion();
+                }
+            }, 1500);
+        } 
     } 
-    // --- Handling Incorrect Answer (The bottom else you asked about) ---
+    // --- Handling Incorrect Answer ---
     else {
         figureErrorCount++;
         feedback.className = "incorrect";
         feedback.innerText = "Not quite! Check your growth logic.";
     }
 };
-
+function setupDrawingGrid() {
+    const grid = document.getElementById('drawing-grid');
+    if (!grid) return;
+    
+    // Create 50 clickable tiles
+    for (let i = 0; i < 50; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'drawing-tile';
+        tile.style = "width:30px; height:30px; border:1px solid #cbd5e1; background:white; cursor:pointer; border-radius: 4px; transition: 0.2s;";
+        
+        tile.onclick = function() {
+            this.classList.toggle('active');
+            if (this.classList.contains('active')) {
+                this.style.background = "#3b82f6";
+                this.style.borderColor = "#2563eb";
+            } else {
+                this.style.background = "white";
+                this.style.borderColor = "#cbd5e1";
+            }
+        };
+        grid.appendChild(tile);
+    }
+}
     async function saveStepData(column, errorCount) {
         let adjustment = (errorCount === 0) ? 1 : (errorCount >= 3 ? -1 : 0);
         let currentMastery = window.userMastery?.[column] || 0;
@@ -195,5 +235,6 @@
             .from('assignment')
             .update(updates)
             .eq('userName', window.currentUser);
+        }
     }
 }
