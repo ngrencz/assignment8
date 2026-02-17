@@ -1,6 +1,7 @@
 // 1. Private Variables
     let currentBoxData = {};
-    let currentDataset = []; 
+    let currentDataset = []; // The SORTED list (for math)
+    let displayDataset = []; // The SHUFFLED list (for display)
     let boxErrorCount = 0;
     let boxPlotStep = 0; 
     let boxPlotSessionQuestions = [];
@@ -24,13 +25,12 @@
             window.userMastery = {};
         }
 
-        // Generate data with random skew so Mean != Median
         generateSkewedDataset();
 
         const pool = [
-            { q: "What is the Median?", a: currentBoxData.median, hint: "The middle number (the line inside the box).", col: "bp_median" },
-            { q: "What is the Range?", a: currentBoxData.max - currentBoxData.min, hint: "Max - Min", col: "bp_range" },
-            { q: "What is Q1 (Lower Quartile)?", a: currentBoxData.q1, hint: "The median of the lower half.", col: "bp_quartiles" },
+            { q: "What is the Median?", a: currentBoxData.median, hint: "Order the numbers first! Find the middle one.", col: "bp_median" },
+            { q: "What is the Range?", a: currentBoxData.max - currentBoxData.min, hint: "Highest Number - Lowest Number", col: "bp_range" },
+            { q: "What is Q1 (Lower Quartile)?", a: currentBoxData.q1, hint: "The median of the lower half of numbers.", col: "bp_quartiles" },
             { q: "What is the IQR?", a: currentBoxData.q3 - currentBoxData.q1, hint: "Q3 - Q1 (The width of the box).", col: "bp_iqr" }
         ];
 
@@ -38,7 +38,7 @@
         renderBoxUI();
     };
 
-    // --- NEW: Skewed Data Generator ---
+    // --- Skewed Data Generator ---
     function generateSkewedDataset() {
         let attempts = 0;
         let valid = false;
@@ -46,33 +46,30 @@
         while (!valid && attempts < 50) {
             let arr = [];
             
-            // Randomly decide skew direction:
-            // > 1.5 = Right Skew (bunch at low numbers)
-            // < 0.7 = Left Skew (bunch at high numbers)
-            // 1.0 = Symmetric
+            // Random Skew Logic
             const skewFactor = (Math.random() * 2) + 0.5; 
 
             for(let i=0; i<11; i++) {
-                // Use power to curve the distribution
                 let rand = Math.pow(Math.random(), skewFactor);
-                // Map to range 2-38
                 let val = Math.floor(rand * 36) + 2;
                 arr.push(val);
             }
             
+            // 1. Create the DISPLAY version (Shuffled)
+            // We clone arr first, then sort arr for the math version
+            displayDataset = [...arr].sort(() => 0.5 - Math.random());
+
+            // 2. Create the MATH version (Sorted)
             arr.sort((a, b) => a - b);
 
-            // Calculate Box Plot Stats
             const min = arr[0];
             const q1 = arr[2];
-            const median = arr[5]; // The literal middle number
+            const median = arr[5]; 
             const q3 = arr[8];
             const max = arr[10];
 
-            // Validation: Ensure the box isn't collapsed (width > 0)
-            // and whiskers exist for a nice visual.
             if (q3 > q1 && median > min && max > median) {
-                currentDataset = arr;
+                currentDataset = arr; // Store sorted for checking answers
                 currentBoxData = { min, q1, median, q3, max };
                 valid = true;
             }
@@ -87,12 +84,13 @@
 
         document.getElementById('q-title').innerText = `Box Plot Mastery (${boxPlotStep + 1}/3)`;
         
-        const dataString = currentDataset.join(', ');
+        // Show the SHUFFLED list
+        const dataString = displayDataset.join(', ');
 
         qContent.innerHTML = `
             <div style="text-align:center; margin-bottom: 20px;">
-                <p style="margin-bottom:5px; color:#64748b; font-size:0.9rem; font-weight:bold;">DATA SET (Sorted):</p>
-                <div style="font-family: 'Courier New', monospace; font-size: 1.25rem; background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px dashed #94a3b8; letter-spacing: 1px; display:inline-block;">
+                <p style="margin-bottom:5px; color:#64748b; font-size:0.9rem; font-weight:bold;">DATA SET (Random Order):</p>
+                <div style="font-family: 'Courier New', monospace; font-size: 1.25rem; background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px dashed #94a3b8; letter-spacing: 1px; display:inline-block; max-width: 90%;">
                     { ${dataString} }
                 </div>
             </div>
