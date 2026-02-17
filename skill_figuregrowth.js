@@ -59,18 +59,25 @@
     const qContent = document.getElementById('q-content');
     document.getElementById('q-title').innerText = `Figure Growth Analysis`;
 
+    // 1. Keep the Header (Tiles/Images)
     let headerHTML = "";
     if (isVisualMode && currentPattern.f2Count <= 30) { 
-        headerHTML = `
-            <div style="display:flex; justify-content:center; align-items:flex-end; gap:30px; margin-bottom:20px; background: white; padding: 15px; border-radius: 8px;">
-                <div style="text-align:center;"><small>Fig ${currentPattern.f1Num}</small>${generateTileHTML(currentPattern.f1Count, currentPattern.m, currentPattern.b, currentPattern.f1Num)}</div>
-                <div style="text-align:center;"><small>Fig ${currentPattern.f2Num}</small>${generateTileHTML(currentPattern.f2Count, currentPattern.m, currentPattern.b, currentPattern.f2Num)}</div>
-            </div>`;
+        headerHTML = `<div style="display:flex; justify-content:center; align-items:flex-end; gap:30px; margin-bottom:20px; background: white; padding: 15px; border-radius: 8px;">
+                        <div style="text-align:center;"><small>Fig ${currentPattern.f1Num}</small>${generateTileHTML(currentPattern.f1Count, currentPattern.m, currentPattern.b, currentPattern.f1Num)}</div>
+                        <div style="text-align:center;"><small>Fig ${currentPattern.f2Num}</small>${generateTileHTML(currentPattern.f2Count, currentPattern.m, currentPattern.b, currentPattern.f2Num)}</div>
+                    </div>`;
     } else {
-        headerHTML = `
-            <div style="background:#f1f5f9; padding:15px; border-radius:12px; margin-bottom:20px; border: 1px solid #cbd5e1; text-align:center;">
-                <p><strong>Figure ${currentPattern.f1Num}:</strong> ${currentPattern.f1Count} tiles</p>
-                <p><strong>Figure ${currentPattern.f2Num}:</strong> ${currentPattern.f2Count} tiles</p>
+        headerHTML = `<div style="background:#f1f5f9; padding:15px; border-radius:12px; margin-bottom:20px; border: 1px solid #cbd5e1; text-align:center;">
+                        <p><strong>Figure ${currentPattern.f1Num}:</strong> ${currentPattern.f1Count} tiles | <strong>Figure ${currentPattern.f2Num}:</strong> ${currentPattern.f2Count} tiles</p>
+                    </div>`;
+    }
+
+    // 2. Create the "Your Rule" display for Steps 2 and 3
+    let ruleDisplay = "";
+    if (currentStep > 1) {
+        ruleDisplay = `
+            <div style="background: #ecfdf5; border: 1px dashed #10b981; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; color: #065f46;">
+                <strong>Your Rule:</strong> y = ${currentPattern.m}x + ${currentPattern.b}
             </div>`;
     }
 
@@ -83,13 +90,12 @@
                 <input type="number" id="input-b" placeholder="b" class="math-input" style="width:65px">
             </div>`;
     } else if (currentStep === 2) {
-        stepHTML = `
+        stepHTML = ruleDisplay + `
             <p><strong>Step 2:</strong> Draw Figure 3.</p>
             <p>Click tiles to draw exactly how many tiles should be in Figure 3:</p>
-            <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>
-            <p style="text-align:center; font-size: 0.8rem; color: #64748b;">(Click a tile to toggle it on/off)</p>`;
+            <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>`;
     } else {
-        stepHTML = `
+        stepHTML = ruleDisplay + `
             <p><strong>Step 3:</strong> Large Scale Prediction.</p>
             <p>How many tiles will be in <strong>Figure ${currentPattern.targetX}</strong>?</p>
             <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
@@ -104,10 +110,7 @@
         </div>
         <div id="hint-display" style="margin-top: 15px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.9rem; color: #92400e;"></div>`;
 
-    // CRITICAL: Initialize the grid if we are on Step 2
-    if (currentStep === 2) {
-        setupDrawingGrid();
-    }
+    if (currentStep === 2) setupDrawingGrid();
 }
     window.showFigureHint = function() {
         const hintBox = document.getElementById('hint-display');
