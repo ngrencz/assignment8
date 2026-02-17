@@ -1,7 +1,7 @@
 
     let currentPattern = {};
-    let figureErrorCount = 0;
-    let currentStep = 1; 
+    var figureErrorCount = 0; 
+    var currentStep = 1;      
     let isVisualMode = false;
     let lastM = null; 
 
