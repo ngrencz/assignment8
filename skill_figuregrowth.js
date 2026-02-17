@@ -12,27 +12,31 @@
         currentStep = 1;
         isVisualMode = Math.random() > 0.5;
 
-        // 1. Generate Slope (m): 3 to 15
+        // 1. Generate Slope (m): Limit to 10
         let m;
-        do { m = Math.floor(Math.random() * 13) + 3; } while (m === lastM);
+        do { m = Math.floor(Math.random() * **8**) + **3**; } while (m === lastM); 
+        // (The above gives 3 to 10)
         lastM = m;
 
-        // 2. Generate Intercept (b): 1 to 20
-        const b = Math.floor(Math.random() * 20) + 1; 
+        // 2. Generate Intercept (b): Limit to 10
+        const b = Math.floor(Math.random() * **10**) + **1**; 
         
         // 3. Prompt Figures (The "Examples")
-        const f1 = Math.floor(Math.random() * 3) + 1; 
-        const gap = Math.floor(Math.random() * 5) + 2; 
+        // Keep these small so the tile counts stay low for the header
+        const f1 = Math.floor(Math.random() * **2**) + **1**; 
+        const gap = Math.floor(Math.random() * **3**) + **2**; 
         const f2 = f1 + gap;
         
-        // 4. Step 2 Figure: Any number up to 99 (not f1 or f2)
+        // 4. Step 2 Figure: Any number up to 99 (Algebraic step)
         let s2Fig;
         do { s2Fig = Math.floor(Math.random() * 98) + 1; } while (s2Fig === f1 || s2Fig === f2);
 
-        // 5. Step 3 Figure: Drawing (must be small enough for the 50-tile grid)
-        // We pick a figure that results in < 50 tiles
+        // 5. Step 3 Figure: Drawing (Calculated to stay under 50 tiles)
         let s3Fig = 1;
-        while ((m * s3Fig) + b > 48) { s3Fig++; if(s3Fig > 5) break; } 
+        while ((m * s3Fig) + b > 48) { 
+            s3Fig++; 
+            if(s3Fig > **4**) break; 
+        } 
 
         currentPattern = {
             m: m,
@@ -49,7 +53,6 @@
 
         renderFigureUI();
     };
-
     function generateTileHTML(count, m, b, figNum) {
         const isExpert = (window.userMastery?.['FigureGrowth'] || 0) >= 8;
         let html = `<div style="display: grid; grid-template-columns: repeat(5, 12px); gap: 1px; width: 65px; line-height: 0; margin: 0 auto;">`;
@@ -96,11 +99,12 @@
                 <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
                     Tiles = <input type="number" id="input-step2" placeholder="?" class="math-input" style="width:100px">
                 </div>`;
-        } else {
-            stepHTML = ruleDisplay + `<p><strong>Step 3:</strong> Draw Figure ${currentPattern.step3Num}.</p>
-                <p>Click exactly ${currentPattern.step3Ans} tiles to represent Figure ${currentPattern.step3Num}:</p>
-                <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>`;
-        }
+        }else {
+    stepHTML = ruleDisplay + `
+        <p><strong>Step 3:</strong> Draw Figure ${currentPattern.step3Num}.</p>
+        <p>Click the grid to show what Figure ${currentPattern.step3Num} looks like visually:</p>
+        <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>`;
+}
 
         qContent.innerHTML = headerHTML + stepHTML + `
             <div style="text-align:center; margin-top:15px; display: flex; justify-content: center; gap: 10px;">
@@ -113,18 +117,19 @@
     }
 
     window.showFigureHint = function() {
-        const hintBox = document.getElementById('hint-display');
-        hintBox.style.display = "block";
-        let message = "";
-        if (currentStep === 1) {
-            message = `Compare the figures! The growth (m) is the change in tiles divided by the change in figure numbers.`;
-        } else if (currentStep === 2) {
-            message = `Plug ${currentPattern.step2Num} into your rule: (${currentPattern.m} × ${currentPattern.step2Num}) + ${currentPattern.b}`;
-        } else {
-            message = `Figure ${currentPattern.step3Num} should have exactly ${currentPattern.step3Ans} tiles total.`;
-        }
-        hintBox.innerHTML = message;
-    };
+    const hintBox = document.getElementById('hint-display');
+    hintBox.style.display = "block";
+    let message = "";
+    if (currentStep === 1) {
+        message = `Compare the figures! The growth (m) is the change in tiles divided by the change in figure numbers.`;
+    } else if (currentStep === 2) {
+        message = `Plug ${currentPattern.step2Num} into your rule: (${currentPattern.m} × ${currentPattern.step2Num}) + ${currentPattern.b}`;
+    } else {
+        // Removed the specific count from the hint too
+        message = `Apply your rule (y = mx + b) using Figure ${currentPattern.step3Num} as 'x' to find how many tiles to draw.`;
+    }
+    hintBox.innerHTML = message;
+};
     
     window.checkFigureAns = async function() {
         let isCorrect = false;
