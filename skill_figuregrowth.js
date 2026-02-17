@@ -12,22 +12,22 @@
         currentStep = 1;
         isVisualMode = Math.random() > 0.5;
 
-        // 1. Generate Slope (m): Limit to 10
+        // 1. Generate Slope (m): 3 to 10
         let m;
-        do { m = Math.floor(Math.random() * **8**) + **3**; } while (m === lastM); 
-        // (The above gives 3 to 10)
+        // Math.random() * 8 + 3 gives a range from 3 to 10
+        do { m = Math.floor(Math.random() * 8) + 3; } while (m === lastM); 
         lastM = m;
 
-        // 2. Generate Intercept (b): Limit to 10
-        const b = Math.floor(Math.random() * **10**) + **1**; 
+        // 2. Generate Intercept (b): 1 to 10
+        const b = Math.floor(Math.random() * 10) + 1; 
         
         // 3. Prompt Figures (The "Examples")
-        // Keep these small so the tile counts stay low for the header
-        const f1 = Math.floor(Math.random() * **2**) + **1**; 
-        const gap = Math.floor(Math.random() * **3**) + **2**; 
+        // first figure is 1 or 2. Gap is 2, 3, or 4.
+        const f1 = Math.floor(Math.random() * 2) + 1; 
+        const gap = Math.floor(Math.random() * 3) + 2; 
         const f2 = f1 + gap;
         
-        // 4. Step 2 Figure: Any number up to 99 (Algebraic step)
+        // 4. Step 2 Figure: Any number up to 99 (not f1 or f2)
         let s2Fig;
         do { s2Fig = Math.floor(Math.random() * 98) + 1; } while (s2Fig === f1 || s2Fig === f2);
 
@@ -35,7 +35,7 @@
         let s3Fig = 1;
         while ((m * s3Fig) + b > 48) { 
             s3Fig++; 
-            if(s3Fig > **4**) break; 
+            if(s3Fig > 4) break; 
         } 
 
         currentPattern = {
