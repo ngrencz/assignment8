@@ -10,82 +10,123 @@
         figureErrorCount = 0;
         currentStep = 1;
         
-        // 50% chance to be visual squares vs text
         isVisualMode = Math.random() > 0.5;
 
-        const m = Math.floor(Math.random() * 3) + 1; 
-        const b = Math.floor(Math.random() * 4) + 1; 
+        // WIDER RANGES for m and b
+        const m = Math.floor(Math.random() * 5) + 2; // Growth: 2 to 6
+        const b = Math.floor(Math.random() * 8) + 1; // Starting: 1 to 8
+        
+        // RANDOMIZE which figures are used as the prompt
+        // Example: Instead of Fig 1 & 2, maybe Fig 2 & 4 or Fig 1 & 3
+        const firstFig = Math.floor(Math.random() * 2) + 1; // Figure 1 or 2
+        const secondFig = firstFig + (Math.floor(Math.random() * 3) + 2); // At least 2 steps away
         
         currentPattern = {
             m: m,
             b: b,
-            fig1Count: m + b,
-            fig2Count: (m * 2) + b,
+            f1Num: firstFig,
+            f1Count: (m * firstFig) + b,
+            f2Num: secondFig,
+            f2Count: (m * secondFig) + b,
             fig3Count: (m * 3) + b,
-            targetX: Math.floor(Math.random() * 15) + 10 
+            targetX: Math.floor(Math.random() * 20) + 15 // Target Fig 15 to 35
         };
 
         renderFigureUI();
     };
+
+    function generateTileHTML(count, m, b, figNum) {
+        // IMPROVED VISUALS: Shows b (constant) in a different color than m (growth)
+        // This helps students "see" the equation in the picture
+        let html = `<div style="display: grid; grid-template-columns: repeat(5, 12px); gap: 1px; width: 65px; line-height: 0;">`;
+        
+        for (let i = 0; i < count; i++) {
+            // Tiles representing 'b' are orange, 'm' are blue
+            const color = (i < b) ? '#f97316' : '#3b82f6';
+            html += `<div style="width:12px; height:12px; background:${color}; border:0.5px solid white;"></div>`;
+        }
+        html += `</div>`;
+        return html;
+    }
 
     function renderFigureUI() {
         const qContent = document.getElementById('q-content');
         document.getElementById('q-title').innerText = `Figure Growth Analysis`;
 
         let headerHTML = "";
-        if (isVisualMode) {
+        if (isVisualMode && currentPattern.f2Count <= 30) { 
             headerHTML = `
-                <div style="display:flex; justify-content:center; gap:20px; margin-bottom:20px;">
-                    <div><small>Fig 1</small><br>${generateTileHTML(currentPattern.fig1Count)}</div>
-                    <div><small>Fig 2</small><br>${generateTileHTML(currentPattern.fig2Count)}</div>
+                <div style="display:flex; justify-content:center; align-items:flex-end; gap:30px; margin-bottom:20px; background: white; padding: 15px; border-radius: 8px;">
+                    <div style="text-align:center;"><small>Fig ${currentPattern.f1Num}</small>${generateTileHTML(currentPattern.f1Count, currentPattern.m, currentPattern.b, currentPattern.f1Num)}</div>
+                    <div style="text-align:center;"><small>Fig ${currentPattern.f2Num}</small>${generateTileHTML(currentPattern.f2Count, currentPattern.m, currentPattern.b, currentPattern.f2Num)}</div>
                 </div>`;
         } else {
             headerHTML = `
-                <div style="background:#f8fafc; padding:15px; border-radius:12px; margin-bottom:20px; border:1px solid #e2e8f0; text-align:center;">
-                    <p><strong>Figure 1:</strong> ${currentPattern.fig1Count} tiles | <strong>Figure 2:</strong> ${currentPattern.fig2Count} tiles</p>
+                <div style="background:#f1f5f9; padding:15px; border-radius:12px; margin-bottom:20px; border: 1px solid #cbd5e1; text-align:center;">
+                    <p><strong>Figure ${currentPattern.f1Num}:</strong> ${currentPattern.f1Count} tiles</p>
+                    <p><strong>Figure ${currentPattern.f2Num}:</strong> ${currentPattern.f2Count} tiles</p>
                 </div>`;
         }
 
         let stepHTML = "";
         if (currentStep === 1) {
             stepHTML = `
-                <p><strong>Step 1:</strong> Find the rule (y = mx + b)</p>
+                <p><strong>Step 1:</strong> Find the rule ($y = mx + b$).</p>
                 <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
-                    y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:60px"> x + 
-                    <input type="number" id="input-b" placeholder="b" class="math-input" style="width:60px">
+                    y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:65px"> x + 
+                    <input type="number" id="input-b" placeholder="b" class="math-input" style="width:65px">
                 </div>`;
         } else if (currentStep === 2) {
-            // THE DRAWING STEP
+            const gridCells = Math.max(50, currentPattern.fig3Count + 10);
             stepHTML = `
-                <p><strong>Step 2:</strong> Use the growth pattern to "draw" <strong>Figure 3</strong>.</p>
-                <p><small>Click tiles to add/remove them.</small></p>
+                <p><strong>Step 2:</strong> Draw <strong>Figure 3</strong> by clicking tiles.</p>
                 <div id="tile-grid" style="display: grid; grid-template-columns: repeat(10, 25px); gap: 2px; justify-content: center; margin: 20px 0;">
-                    ${Array(50).fill().map((_, i) => `<div class="drawing-tile" onclick="this.classList.toggle('active')" style="width:25px; height:25px; border:1px solid #cbd5e1; cursor:pointer;"></div>`).join('')}
+                    ${Array(gridCells).fill().map(() => `<div class="drawing-tile" onclick="this.classList.toggle('active')" style="width:25px; height:25px; border:1px solid #cbd5e1; cursor:pointer; background:white;"></div>`).join('')}
                 </div>`;
         } else {
             stepHTML = `
-                <p><strong>Step 3:</strong> Use your rule to predict <strong>Figure ${currentPattern.targetX}</strong>.</p>
+                <p><strong>Step 3:</strong> Total tiles for <strong>Figure ${currentPattern.targetX}</strong>?</p>
                 <div style="text-align: center; margin: 20px 0;">
-                    <input type="number" id="input-ans" placeholder="Total tiles" class="math-input" style="width: 150px;">
+                    <input type="number" id="input-ans" placeholder="Total tiles" class="math-input" style="width: 160px;">
                 </div>`;
         }
 
-        qContent.innerHTML = headerHTML + stepHTML + `
-            <div style="text-align:center;"><button onclick="checkFigureAns()" class="primary-btn">Submit Answer</button></div>
+        qContent.innerHTML = `
+            ${headerHTML}
+            ${stepHTML}
+            <div style="text-align:center; margin-top:15px; display: flex; justify-content: center; gap: 10px;">
+                <button onclick="checkFigureAns()" class="primary-btn">Submit Answer</button>
+                <button onclick="showFigureHint()" class="secondary-btn" style="background: #64748b; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;">Get Hint</button>
+            </div>
+            <div id="hint-display" style="margin-top: 15px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.9rem; color: #92400e;"></div>
             <style>
-                .tile-unit { width:12px; height:12px; background:#3b82f6; border:1px solid white; display:inline-block; }
-                .drawing-tile.active { background:#3b82f6; border-color:#1d4ed8; }
+                .drawing-tile.active { background:#3b82f6 !important; border-color:#1e3a8a !important; }
             </style>`;
     }
 
-    function generateTileHTML(count) {
-        // Generates a small cluster of squares to represent the tiles
-        return `<div style="width:80px; line-height:0;">${Array(count).fill().map(() => `<div class="tile-unit"></div>`).join('')}</div>`;
-    }
+    window.showFigureHint = function() {
+        const hintBox = document.getElementById('hint-display');
+        hintBox.style.display = "block";
+        
+        let message = "";
+        if (currentStep === 1) {
+            const diffTiles = currentPattern.f2Count - currentPattern.f1Count;
+            const diffFigs = currentPattern.f2Num - currentPattern.f1Num;
+            message = `<strong>Growth (m):</strong> The tiles increased by ${diffTiles} over ${diffFigs} steps. Divide them to find <em>m</em>! <br><strong>Start (b):</strong> Subtract <em>m</em> from Figure 1 to find Figure 0.`;
+        } else if (currentStep === 2) {
+            message = `Use your rule: multiply ${currentPattern.m} by 3, then add ${currentPattern.b}. You need to click exactly ${currentPattern.fig3Count} tiles.`;
+        } else {
+            message = `Plug ${currentPattern.targetX} into your equation: (${currentPattern.m} × ${currentPattern.targetX}) + ${currentPattern.b}.`;
+        }
+        
+        hintBox.innerHTML = message;
+    };
 
     window.checkFigureAns = async function() {
         let isCorrect = false;
         let stepKey = "";
+        const feedback = document.getElementById('feedback-box');
+        feedback.style.display = "block";
 
         if (currentStep === 1) {
             stepKey = "FigureRule";
@@ -101,9 +142,6 @@
             const uAns = parseInt(document.getElementById('input-ans').value);
             isCorrect = (uAns === (currentPattern.m * currentPattern.targetX) + currentPattern.b);
         }
-
-        const feedback = document.getElementById('feedback-box');
-        feedback.style.display = "block";
 
         if (isCorrect) {
             feedback.className = "correct";
@@ -124,9 +162,10 @@
         } else {
             figureErrorCount++;
             feedback.className = "incorrect";
-            feedback.innerText = currentStep === 2 ? "Count carefully! Figure 3 follows your growth rule." : "Not quite. Check your math!";
+            feedback.innerText = "Not quite! Look at how much the tile count changes between figures.";
         }
     };
+
 
     async function saveStepData(column, earnedXP) {
         let currentMastery = window.userMastery?.[column] || 0;
