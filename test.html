@@ -6,7 +6,7 @@
     <title>6.2.4 System Debugger</title>
     
     <script>
-        const APP_VERSION = "1.0.13"; 
+        const APP_VERSION = "1.0.14"; 
         const LAST_UPDATED = "2026-02-16 19:15"; 
     </script>
 
@@ -141,21 +141,6 @@
                 if (slider) { slider.value = data[s] || 0; updateVal(s); }
             });
         }
-
-        async function ensureTestUser() {
-    log("Connecting...");
-    const { data, error } = await supabaseClient
-        .from('assignment')
-        .select('*')
-        .eq('userName', 'test_user')
-        .maybeSingle();
-
-    if (data) syncSliders(data);
-}
-
-    const { data, error } = await client.from('assignment').select('*').eq('userName', 'test_user').maybeSingle();
-    if (data) syncSliders(data);
-}
 
         async function ensureTestUser() { 
     log("Connecting...");
