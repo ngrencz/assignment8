@@ -1,5 +1,5 @@
-let linearErrorCountLocal = 0;
-let currentStepLocal = 1; 
+let linearErrorCount = 0;
+let currentStep = 1; 
 let currentSystem = {};
 let userPoints = [];
 
@@ -9,8 +9,8 @@ const maleNames = ["Liam", "Noah", "Caleb", "Ethan", "Leo", "Isaac"];
 window.initLinearSystemGame = async function() {
     window.isCurrentQActive = true;
     window.currentQSeconds = 0;
-    linearErrorCountLocal = 0;
-    currentStepLocal = 1;
+    linearErrorCount = 0;
+    currentStep = 1;
     userPoints = [];
 
     // 1. Generate integer intersection
@@ -55,15 +55,15 @@ function renderLinearUI() {
             </p>
         </div>`;
 
-    if (currentStepLocal === 1) {
+    if (currentStep === 1) {
         html += `<p>Step 1: ${currentSystem.girl.name} thinks the solution is (${currentSystem.girl.x}, ${currentSystem.girl.y}). Correct?</p>
             <button class="primary-btn" onclick="checkPeer(true, 'girl')">Yes</button>
             <button class="secondary-btn" onclick="checkPeer(false, 'girl')">No</button>`;
-    } else if (currentStepLocal === 2) {
+    } else if (currentStep === 2) {
         html += `<p>Step 2: ${currentSystem.boy.name} thinks the solution is (${currentSystem.boy.x}, ${currentSystem.boy.y}). Correct?</p>
             <button class="primary-btn" onclick="checkPeer(true, 'boy')">Yes</button>
             <button class="secondary-btn" onclick="checkPeer(false, 'boy')">No</button>`;
-    } else if (currentStepLocal === 3) {
+    } else if (currentStep === 3) {
         html += `<p>Step 3: How many solutions does this system have?</p>
             <button class="primary-btn" onclick="checkSolutionCount(1)">One</button>
             <button class="primary-btn" onclick="checkSolutionCount(0)">Zero</button>`;
@@ -74,25 +74,25 @@ function renderLinearUI() {
     }
 
     qContent.innerHTML = html;
-    if (currentStepLocal === 4) initCanvas();
+    if (currentStep === 4) initCanvas();
 }
 
 window.checkPeer = function(choice, peerKey) {
     if (choice === currentSystem[peerKey].isCorrect) {
-        currentStepLocal++;
+        currentStep++;
         renderLinearUI();
     } else {
-        linearErrorCountLocal++;
+        linearErrorCount++;
         alert("Incorrect check. Verify the coordinates in both equations!");
     }
 };
 
 window.checkSolutionCount = function(count) {
     if (count === 1) {
-        currentStepLocal = 4;
+        currentStep = 4;
         renderLinearUI();
     } else {
-        linearErrorCountLocal++;
+        linearErrorCount++;
         alert("Different slopes mean they must intersect once!");
     }
 };
@@ -151,7 +151,7 @@ function initCanvas() {
             ctx.stroke();
             if (num === 2) finalize();
         } else {
-            linearErrorCountLocal++;
+            linearErrorCount++;
             alert("Incorrect line. Check your slope and intercept.");
             userPoints = num === 1 ? [] : [userPoints[0], userPoints[1]];
             drawGrid();
@@ -168,7 +168,7 @@ function initCanvas() {
 }
 
 async function finalize() {
-    const score = Math.max(1, 10 - linearErrorCountLocal);
+    const score = Math.max(1, 10 - linearErrorCount);
     // Use the global supabaseClient
     await supabaseClient.from('assignment').update({ LinearSystem: score }).eq('userName', window.currentUser);
     
