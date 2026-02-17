@@ -6,8 +6,8 @@
     <title>6.2.4 System Debugger</title>
     
     <script>
-        const APP_VERSION = "1.0.10"; 
-        const LAST_UPDATED = "2026-02-16 19:00"; 
+        const APP_VERSION = "1.0.11"; 
+        const LAST_UPDATED = "2026-02-16 19:15"; 
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,7 +36,7 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
         <div>
             <h1>Dev <span class="accent-text">Control Panel</span></h1>
-            <div class="version-tag">Build: <script>document.write(APP_VERSION)</script> | Updated: <script>document.write(LAST_UPDATED)</script></div>
+            <div class="version-tag">Build: <script>document.write(APP_VERSION)</script></div>
         </div>
         <div class="card" style="padding: 10px 20px; text-align: right; margin: 0;">
             <label style="color: #64748b; font-size: 12px;">Active Session:</label><br>
@@ -52,11 +52,22 @@
                     <button onclick="ensureTestUser()" style="flex: 2; background: #4CBB17; color: white; border: none; padding: 12px; border-radius: 8px;">Sync 'test_user'</button>
                     <button onclick="resetSession()" style="flex: 1; background:#ef4444; color:#fff; border: none; padding: 12px; border-radius: 8px;">Wipe Data</button>
                 </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
+                    <select id="module-selector" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                        <option value="SolveX">SolveX (Algebra)</option>
+                        <option value="C6Transformation">Transformations</option>
+                        <option value="LinearSystem">Linear Systems</option>
+                        <option value="FigureGrowth">Figure Growth</option>
+                        <option value="BoxPlot">Box Plots</option>
+                    </select>
+                    <button onclick="forceLoadModule()" style="flex: 1; background: #8b5cf6; color: white; border: none; padding: 10px; border-radius: 8px;">Force Launch</button>
+                </div>
             </div>
 
             <div class="card">
-                <h3>2. Skill Score Overrides</h3>
-                <p><small style="color:#64748b;">Adjust and click Apply to force specific routing.</small></p>
+                <h3>2. Adaptive Routing (Sliders)</h3>
+                <p><small style="color:#64748b;">Adjust and click Apply to test student flow.</small></p>
                 <div style="display: grid; gap: 12px; margin-top: 15px;">
                     <div><label style="display:flex; justify-content:space-between; font-size: 13px;">SolveX <span id="v-SolveX">0</span></label><input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')"></div>
                     <div><label style="display:flex; justify-content:space-between; font-size: 13px;">BoxPlot <span id="v-BoxPlot">0</span></label><input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')"></div>
@@ -64,7 +75,7 @@
                     <div><label style="display:flex; justify-content:space-between; font-size: 13px;">FigureGrowth <span id="v-FigureGrowth">0</span></label><input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')"></div>
                     <div><label style="display:flex; justify-content:space-between; font-size: 13px;">Transformations <span id="v-C6Transformation">0</span></label><input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')"></div>
                 </div>
-                <button onclick="applyScoresAndRoute()" style="width:100%; margin-top:20px; background:#000; color:#fff; padding: 15px; border-radius: 8px; border: none;">Apply Scores & Launch Game</button>
+                <button onclick="applyScoresAndRoute()" style="width:100%; margin-top:20px; background:#000; color:#fff; padding: 15px; border-radius: 8px; border: none;">Apply Scores & Launch Hub Flow</button>
             </div>
         </div>
 
@@ -96,48 +107,49 @@
             }
         }
 
+        function forceLoadModule() {
+            const targetId = document.getElementById('module-selector').value;
+            log(`🛠️ Dev Bypass: Launching ${targetId}`);
+
+            const forceMap = {
+                'C6Transformation': typeof initTransformationGame !== 'undefined' ? initTransformationGame : null,
+                'LinearSystem': typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null,
+                'FigureGrowth': typeof initFigureGrowthGame !== 'undefined' ? initFigureGrowthGame : null,
+                'SolveX': typeof initSolveXGame !== 'undefined' ? initSolveXGame : null,
+                'BoxPlot': typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null
+            };
+
+            const targetFn = forceMap[targetId];
+            if (targetFn) {
+                window.hasDonePrimaryLesson = true; // Tell hub we finished transformations
+                window.isCurrentQActive = true;
+                targetFn();
+            } else {
+                log(`❌ Error: ${targetId} function missing.`);
+            }
+        }
+
         function updateVal(id) {
             const val = document.getElementById('s-' + id).value;
-            const display = document.getElementById('v-' + id);
-            if(display) display.innerText = val;
-        }
-
-        function resetSession() {
-            sessionStorage.clear();
-            log("Session wiped. Reloading...");
-            setTimeout(() => location.reload(), 500);
-        }
-
-        async function ensureTestUser() {
-            log("Connecting to Supabase...");
-            const { data, error } = await supabaseClient.from('assignment').select('*').eq('userName', 'test_user').maybeSingle();
-            
-            if (error) { log("Fetch Error: " + error.message); return; }
-
-            if (!data) {
-                log("test_user not found. Creating row...");
-                const { error: insErr } = await supabaseClient.from('assignment').insert({ userName: 'test_user' });
-                if (insErr) log("Insert failed: " + insErr.message);
-                else { log("Success! Created test_user."); location.reload(); }
-            } else {
-                log("test_user found. Syncing sliders...");
-                syncSliders(data);
-            }
+            document.getElementById('v-' + id).innerText = val;
         }
 
         function syncSliders(data) {
             const skills = ['SolveX', 'BoxPlot', 'LinearSystem', 'FigureGrowth', 'C6Transformation'];
             skills.forEach(s => {
                 const slider = document.getElementById('s-' + s);
-                if (slider) { 
-                    slider.value = data[s] || 0; 
-                    updateVal(s); 
-                }
+                if (slider) { slider.value = data[s] || 0; updateVal(s); }
             });
         }
 
+        async function ensureTestUser() {
+            log("Connecting...");
+            const { data, error } = await supabaseClient.from('assignment').select('*').eq('userName', 'test_user').maybeSingle();
+            if (data) syncSliders(data);
+        }
+
         async function applyScoresAndRoute() {
-            log("Saving custom scores to DB...");
+            log("Saving scores...");
             const updates = {
                 SolveX: parseInt(document.getElementById('s-SolveX').value),
                 BoxPlot: parseInt(document.getElementById('s-BoxPlot').value),
@@ -145,15 +157,8 @@
                 FigureGrowth: parseInt(document.getElementById('s-FigureGrowth').value),
                 C6Transformation: parseInt(document.getElementById('s-C6Transformation').value)
             };
-
-            const { error } = await supabaseClient.from('assignment').update(updates).eq('userName', 'test_user');
-            
-            if (error) log("DB Error: " + error.message);
-            else {
-                log("Scores saved! Triggering loadNextQuestion()...");
-                if (typeof loadNextQuestion === 'function') loadNextQuestion(); 
-                else log("Warning: loadNextQuestion() not found in hub.");
-            }
+            await supabaseClient.from('assignment').update(updates).eq('userName', 'test_user');
+            loadNextQuestion(); // Uses Hub logic (will prioritize Transformations if lesson start)
         }
 
         ensureTestUser();
