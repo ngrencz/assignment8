@@ -1,178 +1,158 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>6.2.4 System Debugger</title>
-    
-    <script>
-        const APP_VERSION = "1.0.13"; 
-        const LAST_UPDATED = "2026-02-16 19:15"; 
-    </script>
+{
+    let linearErrorCount = 0;
+    let currentStep = 1; 
+    let currentSystem = {};
+    let userPoints = [];
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="skill_transformation.js"></script>
-    <script src="skill_linearsystem.js"></script>
-    <script src="skill_figuregrowth.js"></script>
-    <script src="skill_solveX.js"></script>
-    <script src="skill_boxplot.js"></script>
+    const femaleNames = ["Maya", "Sarah", "Elena", "Chloe", "Amara", "Jasmine"];
+    const maleNames = ["Liam", "Noah", "Caleb", "Ethan", "Leo", "Isaac"];
 
-    <link rel="stylesheet" href="style.css">
+    window.initLinearSystemGame = async function() {
+        window.isCurrentQActive = true;
+        window.currentQSeconds = 0;
+        linearErrorCount = 0;
+        currentStep = 1;
+        userPoints = [];
 
-    <style>
-        :root { --panel-bg: #f8fafc; --border: #e2e8f0; }
-        body { padding: 20px; font-family: sans-serif; background-color: #f1f5f9; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-        .card { background: white; border: 1px solid var(--border); padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .version-tag { background: #1e293b; color: #38bdf8; padding: 5px 12px; border-radius: 20px; font-family: monospace; font-size: 11px; display: inline-block; margin-bottom: 10px; }
-        .log-box { background: #1a1a1a; color: #4CBB17; padding: 15px; font-family: monospace; border-radius: 8px; height: 250px; overflow-y: auto; font-size: 13px; margin-top: 10px; }
-        input[type="range"] { width: 100%; accent-color: #4CBB17; cursor: pointer; }
-        button { cursor: pointer; transition: opacity 0.2s; font-weight: bold; }
-        button:hover { opacity: 0.8; }
-    </style>
-</head>
-<body>
+        // Generate target intersection
+        const targetX = Math.floor(Math.random() * 5) - 2; 
+        const targetY = Math.floor(Math.random() * 5) - 2; 
 
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-        <div>
-            <h1>Dev <span class="accent-text">Control Panel</span></h1>
-            <div class="version-tag">Build: <script>document.write(APP_VERSION)</script></div>
-        </div>
-        <div class="card" style="padding: 10px 20px; text-align: right; margin: 0;">
-            <label style="color: #64748b; font-size: 12px;">Active Session:</label><br>
-            <strong id="session-user-display">test_user</strong>
-        </div>
-    </div>
+        // Generate slopes
+        let m1 = Math.floor(Math.random() * 3) + 1;
+        let m2;
+        do { m2 = Math.floor(Math.random() * 5) - 2; } while (m1 === m2 || m2 === 0);
 
-    <div class="grid">
-        <div class="card-stack">
-            <div class="card">
-                <h3>1. User & DB Management</h3>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button onclick="ensureTestUser()" style="flex: 2; background: #4CBB17; color: white; border: none; padding: 12px; border-radius: 8px;">Sync 'test_user'</button>
-                    <button onclick="resetSession()" style="flex: 1; background:#ef4444; color:#fff; border: none; padding: 12px; border-radius: 8px;">Wipe Data</button>
-                </div>
+        const b1 = targetY - (m1 * targetX);
+        const b2 = targetY - (m2 * targetX);
 
-                <div style="display: flex; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
-                    <select id="module-selector" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-                        <option value="SolveX">SolveX (Algebra)</option>
-                        <option value="C6Transformation">Transformations</option>
-                        <option value="LinearSystem">Linear Systems</option>
-                        <option value="FigureGrowth">Figure Growth</option>
-                        <option value="BoxPlot">Box Plots</option>
-                    </select>
-                    <button onclick="forceLoadModule()" style="flex: 1; background: #8b5cf6; color: white; border: none; padding: 10px; border-radius: 8px;">Force Launch</button>
-                </div>
-            </div>
+        const girl = femaleNames[Math.floor(Math.random() * femaleNames.length)];
+        const boy = maleNames[Math.floor(Math.random() * maleNames.length)];
 
-            <div class="card">
-                <h3>2. Adaptive Routing (Sliders)</h3>
-                <p><small style="color:#64748b;">Adjust and click Apply to test student flow.</small></p>
-                <div style="display: grid; gap: 12px; margin-top: 15px;">
-                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">SolveX <span id="v-SolveX">0</span></label><input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')"></div>
-                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">BoxPlot <span id="v-BoxPlot">0</span></label><input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')"></div>
-                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">LinearSystem <span id="v-LinearSystem">0</span></label><input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')"></div>
-                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">FigureGrowth <span id="v-FigureGrowth">0</span></label><input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')"></div>
-                    <div><label style="display:flex; justify-content:space-between; font-size: 13px;">Transformations <span id="v-C6Transformation">0</span></label><input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')"></div>
-                </div>
-                <button onclick="applyScoresAndRoute()" style="width:100%; margin-top:20px; background:#000; color:#fff; padding: 15px; border-radius: 8px; border: none;">Apply Scores & Launch Hub Flow</button>
-            </div>
-        </div>
+        const girlCorrect = Math.random() > 0.5;
+        const boyCorrect = !girlCorrect;
 
-        <div class="output-stack">
-            <div class="card">
-                <h3 style="margin-top: 0;">Live System Logs</h3>
-                <div id="log" class="log-box">System Initialized...</div>
-                
-                <div id="work-area" style="margin-top:20px; border-top: 2px solid #f1f5f9; padding-top:20px;">
-                    <h2 id="q-title" style="font-size: 1.1rem; color: #1e293b;">Question Preview:</h2>
-                    <div id="q-content" style="min-height: 100px;"><em>The selected math game will render here.</em></div>
-                    <div id="feedback-box" style="display:none; margin-top:15px; padding:15px; border-radius:8px;"></div>
-                </div>
-            </div>
-        </div>
-    </div> 
+        currentSystem = {
+            m1, b1, m2, b2,
+            targetX, targetY,
+            girl: { name: girl, x: girlCorrect ? targetX : targetX + 1, y: girlCorrect ? targetY : targetY + 1, isCorrect: girlCorrect },
+            boy: { name: boy, x: boyCorrect ? targetX : targetX - 1, y: boyCorrect ? targetY : targetY - 1, isCorrect: boyCorrect },
+            eq1Disp: `y = ${m1}x ${b1 >= 0 ? '+ ' + b1 : '- ' + Math.abs(b1)}`,
+            eq2Disp: `y = ${m2}x ${b2 >= 0 ? '+ ' + b2 : '- ' + Math.abs(b2)}`
+        };
 
-    <script src="assignment_hub.js"></script>
+        renderLinearUI();
+    };
 
-    <script>
-        window.currentUser = 'test_user';
-        window.targetLesson = '6.2.4';
-        
-        function log(msg) {
-            const l = document.getElementById('log');
-            if(l) {
-                l.innerHTML += `<br><span style="color:#888;">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
-                l.scrollTop = l.scrollHeight;
-            }
+    function renderLinearUI() {
+        const qContent = document.getElementById('q-content');
+        document.getElementById('q-title').innerText = "System Analysis";
+
+        let html = `
+            <div style="background:#f8fafc; padding:15px; border-radius:12px; margin-bottom:15px; border: 1px solid #e2e8f0; text-align:center;">
+                <p style="font-family:monospace; font-size:1.2rem; margin:0;">
+                    1: <strong>${currentSystem.eq1Disp}</strong><br>
+                    2: <strong>${currentSystem.eq2Disp}</strong>
+                </p>
+            </div>`;
+
+        if (currentStep === 1) {
+            html += `<p>Step 1: ${currentSystem.girl.name} thinks the solution is (${currentSystem.girl.x}, ${currentSystem.girl.y}). Correct?</p>
+                <button class="primary-btn" onclick="checkPeer(true, 'girl')">Yes</button>
+                <button class="secondary-btn" onclick="checkPeer(false, 'girl')">No</button>`;
+        } else if (currentStep === 2) {
+            html += `<p>Step 2: ${currentSystem.boy.name} thinks the solution is (${currentSystem.boy.x}, ${currentSystem.boy.y}). Correct?</p>
+                <button class="primary-btn" onclick="checkPeer(true, 'boy')">Yes</button>
+                <button class="secondary-btn" onclick="checkPeer(false, 'boy')">No</button>`;
+        } else if (currentStep === 3) {
+            html += `<p>Step 3: How many solutions does this system have?</p>
+                <button class="primary-btn" onclick="checkSolutionCount(1)">One</button>
+                <button class="primary-btn" onclick="checkSolutionCount(0)">Zero</button>`;
+        } else {
+            html += `<p>Step 4: Graph the lines.</p>
+                <canvas id="systemCanvas" width="300" height="300" style="background:white; border:1px solid #ccc;"></canvas>`;
         }
 
-        function forceLoadModule() {
-            const targetId = document.getElementById('module-selector').value;
-            log(`🛠️ Dev Bypass: Launching ${targetId}`);
+        qContent.innerHTML = html;
+        if (currentStep === 4) initCanvas();
+    }
 
-            const forceMap = {
-                'C6Transformation': typeof initTransformationGame !== 'undefined' ? initTransformationGame : null,
-                'LinearSystem': typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null,
-                'FigureGrowth': typeof initFigureGrowthGame !== 'undefined' ? initFigureGrowthGame : null,
-                'SolveX': typeof initSolveXGame !== 'undefined' ? initSolveXGame : null,
-                'BoxPlot': typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null
-            };
+    window.checkPeer = function(choice, peerKey) {
+        if (choice === currentSystem[peerKey].isCorrect) {
+            currentStep++;
+            renderLinearUI();
+        } else {
+            linearErrorCount++;
+            alert("Try again!");
+        }
+    };
 
-            const targetFn = forceMap[targetId];
-            if (targetFn) {
-                window.hasDonePrimaryLesson = true; // Tell hub we finished transformations
-                window.isCurrentQActive = true;
-                targetFn();
+    window.checkSolutionCount = function(count) {
+        if (count === 1) {
+            currentStep = 4;
+            renderLinearUI();
+        } else {
+            linearErrorCount++;
+            alert("Check slopes!");
+        }
+    };
+
+    function initCanvas() {
+        const canvas = document.getElementById('systemCanvas');
+        const ctx = canvas.getContext('2d');
+        const step = 30;
+
+        function drawGrid() {
+            ctx.clearRect(0,0,300,300);
+            ctx.strokeStyle = "#eee";
+            for(let i=0; i<=300; i+=step) {
+                ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,300); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(300,i); ctx.stroke();
+            }
+            ctx.strokeStyle = "#000";
+            ctx.beginPath(); ctx.moveTo(150,0); ctx.lineTo(150,300); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,150); ctx.lineTo(300,150); ctx.stroke();
+        }
+        drawGrid();
+
+        canvas.onclick = function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left - 150) / step);
+            const y = Math.round((150 - (e.clientY - rect.top)) / step);
+            userPoints.push({x, y});
+            ctx.fillStyle = userPoints.length <= 2 ? "blue" : "red";
+            ctx.beginPath(); ctx.arc(150 + x*step, 150 - y*step, 5, 0, 7); ctx.fill();
+            if (userPoints.length === 2) validateLine(1);
+            if (userPoints.length === 4) validateLine(2);
+        };
+
+        function validateLine(num) {
+            const p1 = userPoints[num === 1 ? 0 : 2];
+            const p2 = userPoints[num === 1 ? 1 : 3];
+            const m = num === 1 ? currentSystem.m1 : currentSystem.m2;
+            const b = num === 1 ? currentSystem.b1 : currentSystem.b2;
+            const um = (p2.y - p1.y) / (p2.x - p1.x);
+            const ub = p1.y - (um * p1.x);
+
+            if (um === m && Math.abs(ub - b) < 0.1) {
+                ctx.strokeStyle = num === 1 ? "blue" : "red";
+                ctx.beginPath();
+                ctx.moveTo(150 + (p1.x-10)*step, 150 - (p1.y + um*(p1.x-10 - p1.x))*step);
+                ctx.lineTo(150 + (p1.x+10)*step, 150 - (p1.y + um*(p1.x+10 - p1.x))*step);
+                ctx.stroke();
+                if (num === 2) finalize();
             } else {
-                log(`❌ Error: ${targetId} function missing.`);
+                linearErrorCount++;
+                userPoints = num === 1 ? [] : [userPoints[0], userPoints[1]];
+                drawGrid();
             }
         }
+    }
 
-        function updateVal(id) {
-            const val = document.getElementById('s-' + id).value;
-            document.getElementById('v-' + id).innerText = val;
-        }
-
-        function syncSliders(data) {
-            const skills = ['SolveX', 'BoxPlot', 'LinearSystem', 'FigureGrowth', 'C6Transformation'];
-            skills.forEach(s => {
-                const slider = document.getElementById('s-' + s);
-                if (slider) { slider.value = data[s] || 0; updateVal(s); }
-            });
-        }
-
-        async function ensureTestUser() {
-    log("Connecting...");
-    const { data, error } = await supabaseClient
-        .from('assignment')
-        .select('*')
-        .eq('userName', 'test_user')
-        .maybeSingle();
-
-    if (data) syncSliders(data);
+    async function finalize() {
+        const score = Math.max(1, 10 - linearErrorCount);
+        // We use window.currentUser to match your Hub's global variable
+        await supabaseClient.from('assignment').update({ LinearSystem: score }).eq('userName', window.currentUser);
+        window.loadNextQuestion();
+    }
 }
-
-        async function applyScoresAndRoute() {
-            log("Saving scores...");
-            const updates = {
-                SolveX: parseInt(document.getElementById('s-SolveX').value),
-                BoxPlot: parseInt(document.getElementById('s-BoxPlot').value),
-                LinearSystem: parseInt(document.getElementById('s-LinearSystem').value),
-                FigureGrowth: parseInt(document.getElementById('s-FigureGrowth').value),
-                C6Transformation: parseInt(document.getElementById('s-C6Transformation').value)
-            };
-            await supabaseClient.from('assignment').update(updates).eq('userName', 'test_user');
-            loadNextQuestion(); // Uses Hub logic (will prioritize Transformations if lesson start)
-        }
-        async function resetSession() {
-    if (!confirm("Wipe all mastery data for test_user?")) return;
-    log("🗑️ Wiping data...");
-    const zeros = { SolveX: 0, BoxPlot: 0, LinearSystem: 0, FigureGrowth: 0, C6Transformation: 0, FigureRule: 0, FigureDraw: 0, FigureX: 0 };
-    await supabaseClient.from('assignment').update(zeros).eq('userName', 'test_user');
-    location.reload(); 
-}
-        ensureTestUser();
-    </script>
-</body>
-</html>
