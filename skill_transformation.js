@@ -1,33 +1,50 @@
+/**
+ * Transformation Geometry Game
+ * Features: Adaptive difficulty, Step-by-Step execution, Smooth LERP animation,
+ * Manual dilation input, and Performance-based Supabase tracking.
+ */
+
 // Global State
 var currentShape = [];
 var targetShape = [];
-var originalStartShape = []; // To allow "Reset to Start"
+var originalStartShape = [];
 var transErrorCount = 0;
-var currentMastery = 0;
-var moveSequence = []; 
 var currentRound = 1;
-var editingIndex = -1; 
+var editingIndex = -1;
 var isAnimating = false;
-var lastTargetJSON = ""; 
+var lastTargetJSON = "";
+var moveSequence = [];
+var sessionSkills = { translation: 0, reflection: 0, rotation: 0, dilation: 0 };
+var roundResults = []; // Stores 1 for success, 0 for failure attempts
+
+// Shape Library
+const SHAPES = {
+    rightTriangle: [[0,0], [0,3], [3,0]],
+    isoscelesTriangle: [[0,0], [2,4], [4,0]],
+    rectangle: [[0,0], [0,2], [4,2], [4,0]],
+    trapezoid: [[0,0], [1,2], [3,2], [4,0]],
+    parallelogram: [[0,0], [3,0], [4,2], [1,2]],
+    star: [[0,2], [0.5,0.5], [2,0.5], [0.8,-0.5], [1,-2], [0,-1], [-1,-2], [-0.8,-0.5], [-2,0.5], [-0.5,0.5]]
+};
 
 window.initTransformationGame = async function() {
     window.isCurrentQActive = true;
     window.currentQSeconds = 0;
     transErrorCount = 0;
     currentRound = 1;
-    editingIndex = -1;
+    roundResults = [];
+    sessionSkills = { translation: 0, reflection: 0, rotation: 0, dilation: 0 };
 
     try {
         const { data } = await window.supabaseClient
             .from('assignment')
-            .select('*')
+            .select('C6Translation, C6Reflection, C6Rotation, C6Dilation, C6Transformation')
             .eq('userName', window.currentUser)
             .maybeSingle();
-        currentMastery = data?.C6Transformation || 0;
+        window.userProgress = data || { C6Translation: 0, C6Reflection: 0, C6Rotation: 0, C6Dilation: 0, C6Transformation: 0 };
     } catch (e) {
-        currentMastery = 0;
+        window.userProgress = { C6Translation: 0, C6Reflection: 0, C6Rotation: 0, C6Dilation: 0, C6Transformation: 0 };
     }
-
     startNewRound();
 };
 
@@ -36,47 +53,49 @@ function startNewRound() {
     editingIndex = -1;
     isAnimating = false;
     
-    // Force a minimum of 3 steps, up to 6 based on mastery
-    let minSteps = Math.max(3, currentMastery >= 5 ? 4 : 3);
-    let stepCount = minSteps + Math.floor(Math.random() * 3);
+    // Sort skills to find weakest
+    let skills = [
+        { name: 'translation', val: window.userProgress.C6Translation },
+        { name: 'reflection', val: window.userProgress.C6Reflection },
+        { name: 'rotation', val: window.userProgress.C6Rotation },
+        { name: 'dilation', val: window.userProgress.C6Dilation }
+    ].sort((a, b) => a.val - b.val);
 
     let validChallenge = false;
     while (!validChallenge) {
-        let startX = Math.floor(Math.random() * 5) - 2; 
-        let startY = Math.floor(Math.random() * 5) - 2;
-        originalStartShape = [[startX, startY], [startX, startY + 2], [startX + 2, startY]];
-        currentShape = JSON.parse(JSON.stringify(originalStartShape));
+        const shapeKeys = Object.keys(SHAPES);
+        const baseCoords = SHAPES[shapeKeys[Math.floor(Math.random() * shapeKeys.length)]];
+        
+        let offX = Math.floor(Math.random() * 5) - 2;
+        let offY = Math.floor(Math.random() * 5) - 2;
+        currentShape = baseCoords.map(p => [p[0] + offX, p[1] + offY]);
+        
+        originalStartShape = JSON.parse(JSON.stringify(currentShape));
         targetShape = JSON.parse(JSON.stringify(currentShape));
 
+        // Generate 3-5 steps
+        let stepCount = Math.max(3, Math.floor(Math.random() * 3) + 3);
         for (let i = 0; i < stepCount; i++) {
-            let moveType = ['translation', 'reflectX', 'reflectY', 'rotate'][Math.floor(Math.random() * 4)];
-            applyMoveToPoints(targetShape, generateMove(moveType));
+            let typePool = Math.random() > 0.4 ? [skills[0].name] : ['translation', 'reflection', 'rotation', 'dilation'];
+            let pickedType = typePool[Math.floor(Math.random() * typePool.length)];
+            
+            if (pickedType === 'reflection') pickedType = Math.random() > 0.5 ? 'reflectX' : 'reflectY';
+            applyMoveToPoints(targetShape, generateMove(pickedType));
         }
 
-        let targetJSON = JSON.stringify(targetShape);
+        // Boundary check: ensure target is within -10 to 10 and not microscopic
         let isOnGrid = targetShape.every(p => Math.abs(p[0]) <= 10 && Math.abs(p[1]) <= 10);
-        let isDifferent = targetJSON !== JSON.stringify(originalStartShape);
-        
-        if (targetJSON !== lastTargetJSON && isOnGrid && isDifferent) {
-            lastTargetJSON = targetJSON;
-            validChallenge = true;
-        }
+        let isVisible = targetShape.every(p => Math.abs(p[0]) > 0.05 || Math.abs(p[1]) > 0.05);
+
+        if (JSON.stringify(targetShape) !== JSON.stringify(originalStartShape) && isOnGrid && isVisible) validChallenge = true;
     }
     renderUI();
 }
 
 function generateMove(type) {
-    if (type === 'translation') {
-        let dx = 0, dy = 0;
-        while(dx === 0 && dy === 0) {
-            dx = Math.floor(Math.random() * 7) - 3;
-            dy = Math.floor(Math.random() * 7) - 3;
-        }
-        return { type, dx, dy };
-    }
-    if (type === 'rotate') {
-        return { type, deg: [90, 180][Math.floor(Math.random() * 2)], dir: ['CW', 'CCW'][Math.floor(Math.random() * 2)] };
-    }
+    if (type === 'translation') return { type, dx: Math.floor(Math.random() * 5) - 2, dy: Math.floor(Math.random() * 5) - 2 };
+    if (type === 'rotate') return { type, deg: [90, 180][Math.floor(Math.random() * 2)], dir: ['CW', 'CCW'][Math.floor(Math.random() * 2)] };
+    if (type === 'dilation') return { type, factor: [0.25, 0.5, 0.75, 2, 3][Math.floor(Math.random() * 5)] };
     return { type };
 }
 
@@ -91,6 +110,7 @@ function applyMoveToPoints(pts, m) {
             else if ((m.deg === 90 && m.dir === 'CW')) { p[0] = y; p[1] = -x; }
             else if ((m.deg === 90 && m.dir === 'CCW')) { p[0] = -y; p[1] = x; }
         }
+        else if (m.type === 'dilation') { p[0] *= m.factor; p[1] *= m.factor; }
     });
 }
 
@@ -99,7 +119,7 @@ function renderUI() {
     if (!qContent) return;
     document.getElementById('q-title').innerText = `Transformations (Round ${currentRound}/3)`;
     
-    let html = `
+    qContent.innerHTML = `
         <div style="display: flex; justify-content: center; margin-bottom: 10px; position:relative;">
             <canvas id="gridCanvas" width="440" height="440" style="background: white; border-radius: 8px; border: 1px solid #94a3b8; cursor: crosshair;"></canvas>
             <div id="coord-tip" style="position:absolute; bottom:10px; right:10px; background:rgba(15, 23, 42, 0.8); color:white; padding:4px 10px; border-radius:4px; font-family:monospace; font-size:11px; pointer-events:none;">(0, 0)</div>
@@ -111,7 +131,7 @@ function renderUI() {
                     <div onclick="${isAnimating ? '' : `editStep(${i})`}" style="padding:4px 8px; cursor:pointer;">${i+1}. ${formatMove(m)}</div>
                     <div onclick="${isAnimating ? '' : `undoTo(${i})`}" style="padding:4px 6px; background:rgba(255,0,0,0.2); cursor:pointer; border-left:1px solid rgba(255,255,255,0.1);">✕</div>
                 </div>`).join('')}
-            ${moveSequence.length === 0 ? '<span style="color:#94a3b8; font-size:12px;">Add your first move...</span>' : ''}
+            ${moveSequence.length === 0 ? '<span style="color:#94a3b8; font-size:12px;">Add a move to start...</span>' : ''}
         </div>
 
         <div id="control-panel" style="background:#fff; border:1px solid #e2e8f0; padding:12px; border-radius:10px; display:grid; grid-template-columns: 1fr 1fr; gap:10px; pointer-events: ${isAnimating ? 'none' : 'auto'}; opacity: ${isAnimating ? 0.7 : 1};">
@@ -119,7 +139,8 @@ function renderUI() {
                 <option value="translation">Translation</option>
                 <option value="reflectX">Reflection (X-Axis)</option>
                 <option value="reflectY">Reflection (Y-Axis)</option>
-                <option value="rotate">Rotation</option>
+                <option value="rotate">Rotation (Origin)</option>
+                <option value="dilation">Dilation (Origin)</option>
             </select>
             <div id="sub-inputs" style="grid-column: span 2; display:flex; gap:10px; align-items:center; justify-content:center; padding:5px;"></div>
             
@@ -131,7 +152,6 @@ function renderUI() {
         </div>
     `;
 
-    qContent.innerHTML = html;
     setupCanvas();
     updateSubInputs(); 
     draw(currentShape); 
@@ -142,6 +162,7 @@ function formatMove(m) {
     if (m.type === 'reflectX') return `Ref-X`;
     if (m.type === 'reflectY') return `Ref-Y`;
     if (m.type === 'rotate') return `Rot ${m.deg}${m.dir}`;
+    if (m.type === 'dilation') return `Dil x${m.factor}`;
 }
 
 function setupCanvas() {
@@ -159,13 +180,12 @@ function setupCanvas() {
 window.updateSubInputs = function() {
     const val = document.getElementById('move-selector').value;
     const container = document.getElementById('sub-inputs');
-    // If we are editing, pre-fill the values
     let existing = (editingIndex !== -1) ? moveSequence[editingIndex] : null;
 
     if (val === 'translation') {
         container.innerHTML = `
-            X: <input type="number" id="dx" value="${existing?.dx || 0}" style="width:80px; height:35px; text-align:center;">
-            Y: <input type="number" id="dy" value="${existing?.dy || 0}" style="width:80px; height:35px; text-align:center;">`;
+            X: <input type="number" id="dx" value="${existing?.dx || 0}" style="width:70px; height:35px; text-align:center;">
+            Y: <input type="number" id="dy" value="${existing?.dy || 0}" style="width:70px; height:35px; text-align:center;">`;
     } else if (val === 'rotate') {
         container.innerHTML = `
             <select id="rot-deg" style="height:35px;">
@@ -176,16 +196,10 @@ window.updateSubInputs = function() {
                 <option value="CW" ${existing?.dir == 'CW' ? 'selected' : ''}>CW</option>
                 <option value="CCW" ${existing?.dir == 'CCW' ? 'selected' : ''}>CCW</option>
             </select>`;
+    } else if (val === 'dilation') {
+        container.innerHTML = `Scale: <input type="number" id="dil-factor" step="0.25" value="${existing?.factor || 1}" style="width:80px; height:35px; text-align:center;">`;
     } else container.innerHTML = "";
 }
-
-window.editStep = function(i) {
-    editingIndex = i;
-    const move = moveSequence[i];
-    renderUI(); // Re-render to show edit mode
-    document.getElementById('move-selector').value = move.type;
-    updateSubInputs(); // Refresh inputs to show specific values
-};
 
 window.executeAction = async function() {
     const type = document.getElementById('move-selector').value;
@@ -196,14 +210,14 @@ window.executeAction = async function() {
     } else if (type === 'rotate') {
         m.deg = parseInt(document.getElementById('rot-deg').value);
         m.dir = document.getElementById('rot-dir').value;
+    } else if (type === 'dilation') {
+        m.factor = parseFloat(document.getElementById('dil-factor').value) || 1;
     }
 
     if (editingIndex === -1) {
-        // Normal Step-by-Step behavior
         moveSequence.push(m);
         await animateMove(currentShape, m);
     } else {
-        // Update specific step and REPLAY from start to show new outcome
         moveSequence[editingIndex] = m;
         editingIndex = -1;
         await replayAll();
@@ -214,7 +228,7 @@ window.executeAction = async function() {
 async function animateMove(pts, m) {
     isAnimating = true;
     let startPoints = JSON.parse(JSON.stringify(pts));
-    applyMoveToPoints(pts, m); // Update 'currentShape' state
+    applyMoveToPoints(pts, m);
     let endPoints = JSON.parse(JSON.stringify(pts));
 
     const frames = 15;
@@ -256,12 +270,15 @@ function draw(pts) {
     const ctx = canvas.getContext('2d'), step = 20, center = 220;
     ctx.clearRect(0,0,440,440);
 
+    // Grid
     ctx.strokeStyle="#f1f5f9"; ctx.beginPath();
     for(let i=0; i<=440; i+=step){ ctx.moveTo(i,0); ctx.lineTo(i,440); ctx.moveTo(0,i); ctx.lineTo(440,i); } ctx.stroke();
     
+    // Axes
     ctx.strokeStyle="#64748b"; ctx.lineWidth=2; ctx.beginPath();
     ctx.moveTo(center,0); ctx.lineTo(center,440); ctx.moveTo(0,center); ctx.lineTo(440,center); ctx.stroke();
 
+    // Labels
     ctx.fillStyle = "#94a3b8"; ctx.font = "9px Arial"; ctx.textAlign = "center";
     for(let i = -10; i <= 10; i++) {
         if(i === 0) continue;
@@ -269,9 +286,11 @@ function draw(pts) {
         ctx.fillText(i, center - 10, center - (i * step) + 3);
     }
 
+    // Ghost Target
     ctx.setLineDash([4,2]); ctx.strokeStyle="rgba(0,0,0,0.2)"; ctx.fillStyle="rgba(0,0,0,0.03)";
     drawShape(ctx, targetShape, center, step);
 
+    // Current Shape
     ctx.setLineDash([]); ctx.strokeStyle="#15803d"; ctx.fillStyle="rgba(34, 197, 94, 0.6)"; 
     drawShape(ctx, pts, center, step);
 }
@@ -292,22 +311,43 @@ window.checkWin = function() {
     );
 
     if (isCorrect) {
+        roundResults.push(1);
         currentRound++;
         if (currentRound > 3) finishGame();
         else { alert("✅ Target Reached!"); startNewRound(); }
     } else {
         transErrorCount++;
-        alert("❌ Shapes do not match yet. Keep transforming!");
+        roundResults.push(0);
+        let lastMove = moveSequence[moveSequence.length - 1];
+        if (lastMove) {
+            let cat = lastMove.type.includes('reflect') ? 'reflection' : (lastMove.type === 'rotate' ? 'rotation' : (lastMove.type === 'dilation' ? 'dilation' : 'translation'));
+            sessionSkills[cat]++;
+        }
+        alert("❌ Shapes do not match yet.");
     }
 };
 
 async function finishGame() {
     window.isCurrentQActive = false; 
-    document.getElementById('q-content').innerHTML = `<div style="text-align:center; padding:40px;"><h3>Perfect!</h3><p>Mastery levels updated.</p></div>`;
+    document.getElementById('q-content').innerHTML = `<div style="text-align:center; padding:40px;"><h3>Perfect!</h3><p>Saving progress...</p></div>`;
+
     if (window.supabaseClient && window.currentUser) {
-        let adj = (transErrorCount === 0) ? 1 : (transErrorCount > 3 ? -1 : 0);
-        let newScore = Math.max(0, Math.min(10, currentMastery + adj));
-        await window.supabaseClient.from('assignment').update({ C6Transformation: newScore }).eq('userName', window.currentUser);
+        let updates = {};
+        ['translation', 'reflection', 'rotation', 'dilation'].forEach(skill => {
+            let errors = sessionSkills[skill];
+            let key = `C6${skill.charAt(0).toUpperCase() + skill.slice(1)}`;
+            let currentVal = window.userProgress[key] || 0;
+            let change = (errors === 0) ? 1 : (errors >= 2 ? -1 : 0);
+            updates[key] = Math.max(0, Math.min(10, currentVal + change));
+        });
+
+        let winCount = roundResults.filter(r => r === 1).length;
+        let successRate = (winCount / roundResults.length) * 100;
+        let aggChange = (successRate >= 70) ? 1 : (successRate <= 50 ? -1 : 0);
+        updates.C6Transformation = Math.max(0, Math.min(10, (window.userProgress.C6Transformation || 0) + aggChange));
+
+        await window.supabaseClient.from('assignment').update(updates).eq('userName', window.currentUser);
     }
+    
     setTimeout(() => { if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); }, 1500);
 }
