@@ -1,7 +1,7 @@
-var linearErrorCount = 0;
-var currentStep = 1; 
-var currentSystem = {};
-var userPoints = [];
+let linearErrorCountLocal = 0;
+let currentStep = 1; 
+let currentSystem = {};
+let userPoints = [];
 
 const femaleNames = ["Maya", "Sarah", "Elena", "Chloe", "Amara", "Jasmine"];
 const maleNames = ["Liam", "Noah", "Caleb", "Ethan", "Leo", "Isaac"];
@@ -9,7 +9,7 @@ const maleNames = ["Liam", "Noah", "Caleb", "Ethan", "Leo", "Isaac"];
 window.initLinearSystemGame = async function() {
     window.isCurrentQActive = true;
     window.currentQSeconds = 0;
-    linearErrorCount = 0;
+    linearErrorCountLocal = 0;
     currentStep = 1;
     userPoints = [];
 
@@ -82,7 +82,7 @@ window.checkPeer = function(choice, peerKey) {
         currentStep++;
         renderLinearUI();
     } else {
-        linearErrorCount++;
+        linearErrorCountLocal++;
         alert("Incorrect check. Verify the coordinates in both equations!");
     }
 };
@@ -92,7 +92,7 @@ window.checkSolutionCount = function(count) {
         currentStep = 4;
         renderLinearUI();
     } else {
-        linearErrorCount++;
+        linearErrorCountLocal++;
         alert("Different slopes mean they must intersect once!");
     }
 };
@@ -151,7 +151,7 @@ function initCanvas() {
             ctx.stroke();
             if (num === 2) finalize();
         } else {
-            linearErrorCount++;
+            linearErrorCountLocal++;
             alert("Incorrect line. Check your slope and intercept.");
             userPoints = num === 1 ? [] : [userPoints[0], userPoints[1]];
             drawGrid();
@@ -168,7 +168,7 @@ function initCanvas() {
 }
 
 async function finalize() {
-    const score = Math.max(1, 10 - linearErrorCount);
+    const score = Math.max(1, 10 - linearErrorCountLocal);
     // Use the global supabaseClient
     await supabaseClient.from('assignment').update({ LinearSystem: score }).eq('userName', window.currentUser);
     
