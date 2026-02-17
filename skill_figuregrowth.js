@@ -1,68 +1,58 @@
-// Unique variables for this module (keep 'let')
+// --- Figure Growth State ---
 let currentPattern = {};
 let figureErrorCount = 0;
-let currentSubSkill = ""; // FigureRule, FigureDraw, or FigureX
+let currentStep = 1; // 1: FigureRule, 2: FigureDraw (Fig 3), 3: FigureX
 
 function initFigureGrowthGame() {
-    isCurrentQActive = true;
-    
-    // NO 'let' here - these belong to the Hub
-    currentQSeconds = 0;
-    currentQCap = 180; 
+    window.isCurrentQActive = true;
+    window.currentQSeconds = 0;
     
     figureErrorCount = 0;
+    currentStep = 1; 
 
-    // 1. Generate a random linear pattern: y = mx + b
-    const growthRate = Math.floor(Math.random() * 3) + 2; // m = 2, 3, or 4
-    const startingTiles = Math.floor(Math.random() * 5) + 1; // b = 1 to 5
+    const m = Math.floor(Math.random() * 3) + 2; 
+    const b = Math.floor(Math.random() * 5) + 1; 
     
     currentPattern = {
-        m: growthRate,
-        b: startingTiles,
-        fig2Count: (growthRate * 2) + startingTiles,
-        fig6Count: (growthRate * 6) + startingTiles,
-        targetX: Math.floor(Math.random() * 50) + 10 
+        m: m,
+        b: b,
+        fig2Count: (m * 2) + b,
+        fig6Count: (m * 6) + b,
+        targetX: Math.floor(Math.random() * 30) + 10 
     };
-
-    // 2. Pick sub-skill
-    const subSkills = ['FigureRule', 'FigureDraw', 'FigureX'];
-    currentSubSkill = subSkills[Math.floor(Math.random() * subSkills.length)];
 
     renderFigureUI();
 }
 
 function renderFigureUI() {
-    document.getElementById('q-title').innerText = "Tile Pattern Growth";
+    document.getElementById('q-title').innerText = `Tile Pattern Analysis`;
     
     let content = `
-        <div style="background: var(--gray-light); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--gray-med); text-align: center;">
-            <p style="margin: 0 0 10px 0; font-size: 1.1rem;"><strong>Figure 2</strong> has <span class="accent-text" style="font-weight:bold;">${currentPattern.fig2Count}</span> tiles.</p>
-            <p style="margin: 0; font-size: 1.1rem;"><strong>Figure 6</strong> has <span class="accent-text" style="font-weight:bold;">${currentPattern.fig6Count}</span> tiles.</p>
+        <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0; text-align: center;">
+            <p><strong>Figure 2:</strong> ${currentPattern.fig2Count} tiles | <strong>Figure 6:</strong> ${currentPattern.fig6Count} tiles</p>
         </div>
     `;
 
-    
-
-    if (currentSubSkill === 'FigureRule') {
+    if (currentStep === 1) {
         content += `
-            <p>Find the rule for the pattern:</p>
-            <div style="font-size: 1.5rem; font-weight: bold; text-align: center; margin: 20px 0;">
-                y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:80px"> x + 
-                <input type="number" id="input-b" placeholder="b" class="math-input" style="width:80px">
+            <p><strong>Step 1:</strong> Find the rule (y = mx + b)</p>
+            <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
+                y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:70px"> x + 
+                <input type="number" id="input-b" placeholder="b" class="math-input" style="width:70px">
             </div>
         `;
-    } else if (currentSubSkill === 'FigureX') {
+    } else if (currentStep === 2) {
         content += `
-            <p>Based on the growth, how many tiles will be in <strong>Figure ${currentPattern.targetX}</strong>?</p>
+            <p><strong>Step 2:</strong> How many tiles are in <strong>Figure 3</strong>?</p>
             <div style="text-align: center; margin: 20px 0;">
-                <input type="number" id="input-ans" placeholder="Total tiles" class="math-input" style="width: 180px;">
+                <input type="number" id="input-ans" placeholder="Total tiles" class="math-input" style="width: 150px;">
             </div>
         `;
-    } else { // Figure 3 count
+    } else {
         content += `
-            <p>Sketch <strong>Figure 3</strong> on your paper. How many tiles should it have in total?</p>
+            <p><strong>Step 3:</strong> How many tiles in <strong>Figure ${currentPattern.targetX}</strong>?</p>
             <div style="text-align: center; margin: 20px 0;">
-                <input type="number" id="input-ans" placeholder="Tiles in Fig 3" class="math-input" style="width: 180px;">
+                <input type="number" id="input-ans" placeholder="Total tiles" class="math-input" style="width: 150px;">
             </div>
         `;
     }
@@ -73,46 +63,60 @@ function renderFigureUI() {
 
 async function checkFigureAns() {
     let isCorrect = false;
+    let stepKey = "";
     const feedback = document.getElementById('feedback-box');
     feedback.style.display = "block";
 
-    if (currentSubSkill === 'FigureRule') {
-        const userM = parseInt(document.getElementById('input-m').value);
-        const userB = parseInt(document.getElementById('input-b').value);
-        isCorrect = (userM === currentPattern.m && userB === currentPattern.b);
-    } else if (currentSubSkill === 'FigureX') {
-        const userAns = parseInt(document.getElementById('input-ans').value);
-        const correctAns = (currentPattern.m * currentPattern.targetX) + currentPattern.b;
-        isCorrect = (userAns === correctAns);
-    } else { // Figure 3 count
-        const userAns = parseInt(document.getElementById('input-ans').value);
-        const correctAns = (currentPattern.m * 3) + currentPattern.b;
-        isCorrect = (userAns === correctAns);
+    if (currentStep === 1) {
+        stepKey = "FigureRule";
+        const uM = parseInt(document.getElementById('input-m').value);
+        const uB = parseInt(document.getElementById('input-b').value);
+        isCorrect = (uM === currentPattern.m && uB === currentPattern.b);
+    } else if (currentStep === 2) {
+        stepKey = "FigureDraw";
+        const uAns = parseInt(document.getElementById('input-ans').value);
+        isCorrect = (uAns === (currentPattern.m * 3) + currentPattern.b);
+    } else {
+        stepKey = "FigureX";
+        const uAns = parseInt(document.getElementById('input-ans').value);
+        isCorrect = (uAns === (currentPattern.m * currentPattern.targetX) + currentPattern.b);
     }
 
     if (isCorrect) {
-        feedback.className = "correct";
-        feedback.innerText = "Excellent! You found the pattern.";
+        feedback.className = "correct-box";
+        feedback.innerText = "Correct! Saving step progress...";
         
-        let score = Math.max(1, 10 - (figureErrorCount * 2));
-        await updateFigureMastery(score);
-        
-        setTimeout(loadNextQuestion, 1500);
+        // Save this specific step's score
+        let stepScore = Math.max(1, 10 - figureErrorCount);
+        await saveStepData(stepKey, stepScore);
+
+        if (currentStep < 3) {
+            currentStep++;
+            figureErrorCount = 0; // Reset errors for the next step
+            setTimeout(renderFigureUI, 1000);
+        } else {
+            // Final completion - update main FigureGrowth average
+            feedback.innerText = "Pattern Mastered!";
+            window.isCurrentQActive = false;
+            setTimeout(loadNextQuestion, 1500);
+        }
     } else {
         figureErrorCount++;
-        feedback.className = "incorrect";
-        feedback.innerHTML = `
-            <span>Not quite.</span><br>
-            <small>Hint: The tiles increased by <strong>${currentPattern.fig6Count - currentPattern.fig2Count}</strong> over 4 figures (6 minus 2). Divide to find the growth rate (m)!</small>
-        `;
+        feedback.className = "incorrect-box";
+        feedback.innerText = "Try again! Check your growth rate.";
     }
 }
 
-async function updateFigureMastery(score) {
-    // Simplified update to trigger Hub logic
+async function saveStepData(column, score) {
     let updates = {};
-    updates[currentSubSkill] = score;
+    updates[column] = score;
+    // We also update the main FigureGrowth column as an overall progress indicator
     updates['FigureGrowth'] = score; 
 
-    await supabaseClient.from('assignment').update(updates).eq('userName', currentUser);
+    const { error } = await window.supabaseClient
+        .from('assignment')
+        .update(updates)
+        .eq('userName', window.currentUser);
+
+    if (error) console.error("Update failed:", error.message);
 }
