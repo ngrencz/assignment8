@@ -1,4 +1,4 @@
-{
+
     // 1. Private Variables (Trapped inside this block so they don't conflict)
     let currentBoxData = {};
     let boxErrorCount = 0;
@@ -180,4 +180,4 @@
             feedback.innerText = `❌ Not quite. Hint: ${current.hint}`;
         }
     };
-}
+
