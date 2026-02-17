@@ -112,7 +112,7 @@
         hintBox.innerHTML = message;
     };
     
-    window.checkFigureAns = async function() {
+   window.checkFigureAns = async function() {
         let isCorrect = false;
         let stepKey = "";
         const feedback = document.getElementById('feedback-box');
@@ -137,34 +137,61 @@
             feedback.className = "correct";
             feedback.innerText = "✅ Correct!";
             
-            // Wait for the integer-safe database update
-            await saveStepData(stepKey, figureErrorCount);
+            // We use try/catch so a database error doesn't freeze the game
+            try {
+                await saveStepData(stepKey, figureErrorCount);
+            } catch (e) {
+                console.error("Database save failed, but continuing game:", e);
+            }
 
             if (currentStep < 3) {
                 currentStep++;
                 figureErrorCount = 0;
-                // Clear the hint box for the next step
-                const hintBox = document.getElementById('hint-display');
-                if (hintBox) hintBox.style.display = "none";
-                
                 setTimeout(renderFigureUI, 1000);
             } else {
                 window.isCurrentQActive = false;
                 feedback.innerText = "Pattern Mastered! Loading next...";
                 
-                // IMPORTANT: Use window. to reach the Hub's function
-                if (typeof window.loadNextQuestion === 'function') {
-                    setTimeout(window.loadNextQuestion, 1500);
-                } else {
-                    console.error("Hub function 'loadNextQuestion' not found.");
-                }
+                // FORCE progression even if database is slow
+                console.log("Attempting to call window.loadNextQuestion...");
+                setTimeout(() => {
+                    if (typeof window.loadNextQuestion === 'function') {
+                        window.loadNextQuestion();
+                    } else {
+                        console.error("Critical: window.loadNextQuestion is not a function!");
+                    }
+                }, 1500);
             }
         } else {
             figureErrorCount++;
             feedback.className = "incorrect";
-            feedback.innerText = "Not quite! Look at how much the tile count changes between figures.";
+            feedback.innerText = "Not quite! Check your growth logic.";
         }
     };
+
+    async function saveStepData(column, errorCount) {
+        let adjustment = (errorCount === 0) ? 1 : (errorCount >= 3 ? -1 : 0);
+        let currentMastery = window.userMastery?.[column] || 0;
+        let newMastery = Math.max(0, Math.min(10, currentMastery + adjustment));
+
+        if (!window.userMastery) window.userMastery = {};
+        window.userMastery[column] = newMastery;
+
+        const avg = ((window.userMastery['FigureRule'] || 0) + 
+                     (window.userMastery['FigureDraw'] || 0) + 
+                     (window.userMastery['FigureX'] || 0)) / 3;
+        
+        let updates = {};
+        updates[column] = newMastery;
+        updates['FigureGrowth'] = Math.round(avg); // Strict integer for int2 columns
+
+        // The 'await' here will pause the script. 
+        // If Supabase returns a 400, the try/catch in checkFigureAns will catch it.
+        return await window.supabaseClient
+            .from('assignment')
+            .update(updates)
+            .eq('userName', window.currentUser);
+    }
     async function saveStepData(column, figureErrorCount) {
         // 1. Integer-only adjustment: +1 if perfect, 0 if minor struggle, -1 if 3+ errors
         let adjustment = 0;
