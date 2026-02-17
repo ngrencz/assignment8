@@ -235,6 +235,5 @@ function setupDrawingGrid() {
             .from('assignment')
             .update(updates)
             .eq('userName', window.currentUser);
-        }
     }
 }
