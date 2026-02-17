@@ -4,6 +4,14 @@ var currentStep = 1;
 let isVisualMode = false;
 let lastM = null; 
 
+// --- DRAG STATE VARIABLES ---
+let isDrawing = false;
+
+// Global listener to catch mouseup anywhere (stops painting if you drag off-screen)
+window.addEventListener('mouseup', () => {
+    isDrawing = false;
+});
+
 window.initFigureGrowthGame = async function() {
     window.isCurrentQActive = true;
     window.currentQSeconds = 0;
@@ -29,7 +37,7 @@ window.initFigureGrowthGame = async function() {
     do { s2Fig = Math.floor(Math.random() * 98) + 1; } while (s2Fig === f1 || s2Fig === f2);
 
     // 5. Step 3 Figure: Drawing (Calculated to stay under 50 tiles)
-    // FIX: Ensure Step 3 figure is NOT the same as f1, f2, or the step 2 prediction
+    // Ensure Step 3 figure is NOT the same as f1, f2, or the step 2 prediction
     let s3Fig;
     let safeLoops = 0;
     do {
@@ -58,7 +66,6 @@ window.initFigureGrowthGame = async function() {
 };
 
 function generateTileHTML(count, m, b, figNum) {
-    // Only show color diff if not expert
     const isExpert = (window.userMastery?.['FigureGrowth'] || 0) >= 8;
     let html = `<div style="display: grid; grid-template-columns: repeat(5, 12px); gap: 1px; width: 65px; line-height: 0; margin: 0 auto;">`;
     for (let i = 0; i < count; i++) {
@@ -92,7 +99,6 @@ function renderFigureUI() {
         </div>` : "";
 
     let stepHTML = "";
-    // FIX: Increased input width to 85px to fit double digits comfortably
     if (currentStep === 1) {
         stepHTML = `<p><strong>Step 1:</strong> Find the rule (y = mx + b).</p>
             <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
@@ -108,8 +114,8 @@ function renderFigureUI() {
     } else {
         stepHTML = ruleDisplay + `
             <p><strong>Step 3:</strong> Draw Figure ${currentPattern.step3Num}.</p>
-            <p>Click the grid to show what Figure ${currentPattern.step3Num} looks like visually:</p>
-            <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>`;
+            <p>Click and drag on the grid to draw Figure ${currentPattern.step3Num}:</p>
+            <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; touch-action: none;"></div>`;
     }
 
     qContent.innerHTML = headerHTML + stepHTML + `
@@ -121,6 +127,58 @@ function renderFigureUI() {
         <div id="hint-display" style="margin-top: 15px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.9rem; color: #92400e;"></div>`;
 
     if (currentStep === 3) setupDrawingGrid();
+}
+
+// --- UPDATED DRAWING LOGIC FOR CLICK-AND-DRAG ---
+function setupDrawingGrid() {
+    const grid = document.getElementById('drawing-grid');
+    if (!grid) return;
+    grid.innerHTML = ""; 
+    
+    // Prevent default drag/select behavior on the grid container
+    grid.ondragstart = () => false;
+
+    let paintMode = true; // Determines if we are Painting (true) or Erasing (false)
+
+    for (let i = 0; i < 50; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'drawing-tile';
+        tile.style = "width:30px; height:30px; border:1px solid #cbd5e1; background:white; cursor:pointer; border-radius: 4px; user-select: none;";
+        
+        // Helper to set visual state
+        const setTileState = (isActive) => {
+            if (isActive) {
+                tile.classList.add('active');
+                tile.style.background = "#3b82f6";
+                tile.style.borderColor = "#2563eb";
+            } else {
+                tile.classList.remove('active');
+                tile.style.background = "white";
+                tile.style.borderColor = "#cbd5e1";
+            }
+        };
+
+        // 1. Mouse Down: Start the drag and determine intent (Paint vs Erase)
+        tile.onmousedown = function(e) {
+            e.preventDefault(); // Stop text selection
+            isDrawing = true;
+            
+            // If the tile we clicked is already active, we want to ERASE.
+            // If it's empty, we want to PAINT.
+            paintMode = !tile.classList.contains('active');
+            
+            setTileState(paintMode);
+        };
+
+        // 2. Mouse Enter: If dragging, apply the current paint mode
+        tile.onmouseenter = function() {
+            if (isDrawing) {
+                setTileState(paintMode);
+            }
+        };
+
+        grid.appendChild(tile);
+    }
 }
 
 window.showFigureHint = function() {
@@ -176,7 +234,6 @@ window.checkFigureAns = async function() {
                 renderFigureUI(); 
             }, 1000);
         } else {
-            // FIX: Removed intermediate saves. Only save at the end.
             finishFigureGame();
         } 
     } else {
@@ -189,24 +246,6 @@ window.checkFigureAns = async function() {
     }
 };
 
-function setupDrawingGrid() {
-    const grid = document.getElementById('drawing-grid');
-    if (!grid) return;
-    grid.innerHTML = ""; 
-    for (let i = 0; i < 50; i++) {
-        const tile = document.createElement('div');
-        tile.className = 'drawing-tile';
-        tile.style = "width:30px; height:30px; border:1px solid #cbd5e1; background:white; cursor:pointer; border-radius: 4px;";
-        tile.onclick = function() {
-            this.classList.toggle('active');
-            this.style.background = this.classList.contains('active') ? "#3b82f6" : "white";
-            this.style.borderColor = this.classList.contains('active') ? "#2563eb" : "#cbd5e1";
-        };
-        grid.appendChild(tile);
-    }
-}
-
-// FIX: New unified scoring function matching LinearSystem logic
 async function finishFigureGame() {
     window.isCurrentQActive = false;
     const feedback = document.getElementById('feedback-box');
@@ -222,7 +261,7 @@ async function finishFigureGame() {
 
             let currentScore = data ? (data.FigureGrowth || 0) : 0;
             
-            // Standard Logic: 0 errors = +1, 2+ errors = -1, 1 error = no change
+            // Standard Logic: 0 errors = +1, 2+ errors = -1
             let adjustment = 0;
             if (figureErrorCount === 0) adjustment = 1;
             else if (figureErrorCount >= 2) adjustment = -1;
