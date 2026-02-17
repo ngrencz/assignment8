@@ -173,14 +173,20 @@ function initCanvas() {
             if (validate(1)) {
                 if(status) status.innerText = "Line 1 Saved. Line 2: Point 1";
             } else {
-                alert("Incorrect. Point not on Eq 1."); userPoints = []; drawGrid();
+                linearErrorCount++; // FIX: Added error tracking here
+                alert("Incorrect. Point not on Eq 1."); 
+                userPoints = []; 
+                drawGrid();
             }
         } else if (userPoints.length === 4) {
             if (validate(2)) {
                 if(status) status.innerText = "Correct! Set Complete.";
                 finishGame(); 
             } else {
-                alert("Incorrect. Point not on Eq 2."); userPoints = [userPoints[0], userPoints[1]]; drawGrid();
+                linearErrorCount++; // FIX: Added error tracking here
+                alert("Incorrect. Point not on Eq 2."); 
+                userPoints = [userPoints[0], userPoints[1]]; 
+                drawGrid();
             }
         } else {
             if(status) status.innerText = userPoints.length === 1 ? "Line 1: Point 2" : "Line 2: Point 2";
@@ -199,7 +205,7 @@ function initCanvas() {
 }
 
 async function finishGame() {
-    window.isCurrentQActive = false; // Stop the timer like in SolveX
+    window.isCurrentQActive = false;
 
     if (window.supabaseClient && window.currentUser) {
         try {
@@ -211,8 +217,25 @@ async function finishGame() {
                 .maybeSingle();
 
             let currentScore = data ? (data.LinearSystem || 0) : 0;
-            let adjustment = (linearErrorCount === 0) ? 1 : 0;
+            
+            // LOGIC FIX:
+            // 0 errors = +1
+            // 1 error  = 0
+            // 2+ errors = -1
+            let adjustment = 0;
+            if (linearErrorCount === 0) {
+                adjustment = 1;
+            } else if (linearErrorCount >= 2) {
+                adjustment = -1;
+            } 
+            // If linearErrorCount is 1, adjustment remains 0
+
             let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
+
+            // Optional: Log for debugging
+            if(typeof log === 'function') {
+                log(`LinearSystem Errors: ${linearErrorCount}. Score: ${currentScore} -> ${newScore}`);
+            }
 
             // Perform Update
             await window.supabaseClient
@@ -225,7 +248,6 @@ async function finishGame() {
         }
     }
     
-    // Exact delay and call style from the working SolveX module
     setTimeout(() => { 
         if (typeof loadNextQuestion === 'function') {
             loadNextQuestion(); 
