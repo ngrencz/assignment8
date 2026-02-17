@@ -220,15 +220,27 @@
         el.innerText = msgs[userPoints.length] || "Intersection Found!";
     }
 
-    async function finalize() {
+   async function finalize() {
         const score = Math.max(1, 10 - linearErrorCount);
-        try {
-            await window.supabaseClient.from('assignment').update({ LinearSystem: score }).eq('userName', window.currentUser);
-        } catch (e) { console.error(e); }
         
-        // Explicitly calling the function you confirmed
+        // Use window.supabaseClient or just supabaseClient, whichever exists
+        const client = window.supabaseClient || (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+
+        if (client) {
+            try {
+                await client
+                    .from('assignment')
+                    .update({ LinearSystem: score })
+                    .eq('userName', window.currentUser);
+            } catch (e) {
+                console.error("Database update failed:", e);
+            }
+        } else {
+            console.warn("Supabase client not found. Skipping database update.");
+        }
+        
+        // Always move to the next question even if the database fails
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
         }
     }
-}
