@@ -14,17 +14,19 @@ async function initSolveXGame() {
 
     // 1. Determine difficulty scaling
     try {
-        const { data } = await window.supabaseClient
-            .from('assignment')
-            .select('SolveX')
-            .eq('userName', window.currentUser)
-            .maybeSingle();
-        
-        currentScore = data ? (data.SolveX || 0) : 0;
+        if (window.supabaseClient && window.currentUser) {
+            const { data } = await window.supabaseClient
+                .from('assignment')
+                .select('SolveX')
+                .eq('userName', window.currentUser)
+                .maybeSingle();
+            
+            currentScore = data ? (data.SolveX || 0) : 0;
 
-        if (currentScore >= 8) problemsNeeded = 2; // Harder but fewer
-        else if (currentScore >= 5) problemsNeeded = 3;
-        else problemsNeeded = 4;
+            if (currentScore >= 8) problemsNeeded = 2; // Harder but fewer
+            else if (currentScore >= 5) problemsNeeded = 3;
+            else problemsNeeded = 4;
+        }
     } catch (e) {
         currentScore = 0;
         problemsNeeded = 3;
@@ -90,7 +92,9 @@ function generateEquations() {
 }
 
 function renderSolveXUI() {
-    document.getElementById('q-title').innerText = `Algebra: Multi-Step Equations`;
+    const titleEl = document.getElementById('q-title');
+    if (titleEl) titleEl.innerText = `Algebra: Multi-Step Equations`;
+
     let eq = currentEquations[problemsSolved];
     let displayHtml = "";
 
@@ -107,6 +111,7 @@ function renderSolveXUI() {
         displayHtml = `<div style="font-size: 2.5rem; letter-spacing: 2px;">${eq.text}</div>`;
     }
 
+    // Added the <div id="feedback-box"> at the bottom
     document.getElementById('q-content').innerHTML = `
         <div class="card" style="padding: 50px; text-align: center; margin-bottom: 25px;">
             ${displayHtml}
@@ -118,9 +123,13 @@ function renderSolveXUI() {
                 <input type="number" id="solve-ans" class="math-input" step="any" placeholder="?" style="width: 120px; font-size: 1.5rem; padding: 10px;">
                 <button onclick="checkSolveX()" class="primary-btn">Submit Answer</button>
             </div>
+            <div id="feedback-box" style="display:none; margin-top:20px; font-weight:bold; padding:10px; border-radius:8px;"></div>
         </div>
     `;
-    document.getElementById('feedback-box').style.display = 'none';
+    
+    // Now this element exists, so we can style it safely
+    const feedback = document.getElementById('feedback-box');
+    if (feedback) feedback.style.display = 'none';
 }
 
 async function checkSolveX() {
@@ -129,11 +138,14 @@ async function checkSolveX() {
     const feedback = document.getElementById('feedback-box');
 
     if (isNaN(userAns)) return;
-    feedback.style.display = "block";
+    
+    // Basic Styling for feedback classes (if not in CSS)
+    const successStyle = "background: #dcfce7; color: #166534; border: 1px solid #86efac;";
+    const errorStyle = "background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;";
 
     if (Math.abs(userAns - correctAns) < 0.01) {
         problemsSolved++;
-        feedback.className = "correct";
+        feedback.style.cssText = `display:block; ${successStyle} margin-top:20px; padding:10px; border-radius:8px;`;
         feedback.innerText = "Correct! Excellent work.";
 
         // --- SECTION A: THE SET IS FINISHED ---
@@ -155,15 +167,24 @@ async function checkSolveX() {
                 log(`SolveX Balance: ${currentScore} -> ${newScore} (Adj: ${adjustment})`);
             }
 
-            await window.supabaseClient
-                .from('assignment')
-                .update({ SolveX: newScore })
-                .eq('userName', window.currentUser);
+            if (window.supabaseClient && window.currentUser) {
+                await window.supabaseClient
+                    .from('assignment')
+                    .update({ SolveX: newScore })
+                    .eq('userName', window.currentUser);
+            }
             
             feedback.innerText = adjustment > 0 ? "Mastery Increasing!" : (adjustment < 0 ? "Keep practicing!" : "Set Complete.");
             
             // Go back to the Hub for a new skill
-            setTimeout(() => { loadNextQuestion(); }, 1500);
+            setTimeout(() => { 
+                if (typeof window.loadNextQuestion === 'function') {
+                    window.loadNextQuestion(); 
+                } else {
+                    // Fallback if running inside test.html without hub
+                    document.getElementById('q-content').innerHTML = `<div style="text-align:center; padding:50px;"><h2>Set Complete!</h2></div>`;
+                }
+            }, 1500);
 
         } else {
             // --- SECTION B: THE SET IS NOT FINISHED ---
@@ -174,7 +195,7 @@ async function checkSolveX() {
     } else {
         // --- SECTION C: WRONG ANSWER ---
         solveXErrorCount++;
-        feedback.className = "incorrect";
+        feedback.style.cssText = `display:block; ${errorStyle} margin-top:20px; padding:10px; border-radius:8px;`;
         feedback.innerText = "Check your calculations. Remember to apply the same operation to both sides!";
     }
 }
