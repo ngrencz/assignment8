@@ -1,24 +1,31 @@
 /**
- * Transformation Geometry Game - Final V6
- * Features: 
- * - No Popups (Flash notifications)
- * - Integer Spinners (with decimal typing support)
- * - Robust Edit/Undo
- * - Vertex Coordinate List
- * - Performance Tracking
+ * Transformation Geometry Game - V7
+ * Features:
+ * - Visual Matching (Shape-based, not Vertex-order based)
+ * - Split Animation (X then Y for translations)
+ * - Specific C6 Database Columns
+ * - Adaptive Difficulty (Targets weakest skills)
+ * - Min 3 Moves
  */
 
 // Global State
 var currentShape = [];
 var targetShape = [];
 var originalStartShape = [];
-var transErrorCount = 0;
 var currentRound = 1;
 var editingIndex = -1;
 var isAnimating = false;
 var moveSequence = [];
-var sessionSkills = { translation: 0, reflection: 0, rotation: 0, dilation: 0 };
 var roundResults = []; 
+
+// Session error tracking for specific columns
+var sessionErrors = {
+    C6Translation: 0,
+    C6ReflectionX: 0,
+    C6ReflectionY: 0,
+    C6Rotation: 0,
+    C6Dilation: 0
+};
 
 // Shape Library
 const SHAPES = {
@@ -27,27 +34,36 @@ const SHAPES = {
     rectangle: [[0,0], [0,2], [4,2], [4,0]],
     trapezoid: [[0,0], [1,2], [3,2], [4,0]],
     parallelogram: [[0,0], [3,0], [4,2], [1,2]],
-    star: [[0,2], [0.5,0.5], [2,0.5], [0.8,-0.5], [1,-2], [0,-1], [-1,-2], [-0.8,-0.5], [-2,0.5], [-0.5,0.5]]
+    L_shape: [[0,0], [0,4], [2,4], [2,2], [4,2], [4,0]]
 };
 
 window.initTransformationGame = async function() {
     window.isCurrentQActive = true;
     window.currentQSeconds = 0;
-    transErrorCount = 0;
     currentRound = 1;
     roundResults = [];
-    sessionSkills = { translation: 0, reflection: 0, rotation: 0, dilation: 0 };
+    
+    // Reset session errors
+    sessionErrors = {
+        C6Translation: 0, C6ReflectionX: 0, C6ReflectionY: 0, C6Rotation: 0, C6Dilation: 0
+    };
 
-    // Fetch previous progress
+    // Fetch previous progress to determine difficulty
     try {
         const { data } = await window.supabaseClient
             .from('assignment')
-            .select('C6Translation, C6Reflection, C6Rotation, C6Dilation, C6Transformation')
+            .select('C6Translation, C6ReflectionX, C6ReflectionY, C6Rotation, C6Dilation, C6Transformation')
             .eq('userName', window.currentUser)
             .maybeSingle();
-        window.userProgress = data || { C6Translation: 0, C6Reflection: 0, C6Rotation: 0, C6Dilation: 0, C6Transformation: 0 };
+        window.userProgress = data || { 
+            C6Translation: 0, C6ReflectionX: 0, C6ReflectionY: 0, 
+            C6Rotation: 0, C6Dilation: 0, C6Transformation: 0 
+        };
     } catch (e) {
-        window.userProgress = { C6Translation: 0, C6Reflection: 0, C6Rotation: 0, C6Dilation: 0, C6Transformation: 0 };
+        window.userProgress = { 
+            C6Translation: 0, C6ReflectionX: 0, C6ReflectionY: 0, 
+            C6Rotation: 0, C6Dilation: 0, C6Transformation: 0 
+        };
     }
     
     startNewRound();
@@ -58,51 +74,64 @@ function startNewRound() {
     editingIndex = -1;
     isAnimating = false;
     
-    // Sort skills to find weakest
-    let skills = [
-        { name: 'translation', val: window.userProgress.C6Translation },
-        { name: 'reflection', val: window.userProgress.C6Reflection },
-        { name: 'rotation', val: window.userProgress.C6Rotation },
-        { name: 'dilation', val: window.userProgress.C6Dilation }
-    ].sort((a, b) => a.val - b.val);
+    // Adaptive Logic: Create a weighted pool based on lowest scores
+    let skillWeights = [
+        { type: 'translation', score: window.userProgress.C6Translation },
+        { type: 'reflectX', score: window.userProgress.C6ReflectionX },
+        { type: 'reflectY', score: window.userProgress.C6ReflectionY },
+        { type: 'rotate', score: window.userProgress.C6Rotation },
+        { type: 'dilation', score: window.userProgress.C6Dilation }
+    ];
+    
+    // Sort by score ascending (lower score = higher priority)
+    skillWeights.sort((a, b) => a.score - b.score);
+    
+    // Create pool: Weighted heavily towards the bottom 2 skills
+    let typePool = [];
+    skillWeights.forEach((skill, index) => {
+        let weight = index < 2 ? 4 : 1; // 4x more likely if it's a weak skill
+        for(let k=0; k<weight; k++) typePool.push(skill.type);
+    });
 
     let validChallenge = false;
     while (!validChallenge) {
         const shapeKeys = Object.keys(SHAPES);
         const baseCoords = SHAPES[shapeKeys[Math.floor(Math.random() * shapeKeys.length)]];
         
-        let offX = Math.floor(Math.random() * 5) - 2;
-        let offY = Math.floor(Math.random() * 5) - 2;
+        // Random start position near center
+        let offX = Math.floor(Math.random() * 4) - 2;
+        let offY = Math.floor(Math.random() * 4) - 2;
         currentShape = baseCoords.map(p => [p[0] + offX, p[1] + offY]);
         
         originalStartShape = JSON.parse(JSON.stringify(currentShape));
         targetShape = JSON.parse(JSON.stringify(currentShape));
 
-        // Generate 3-5 steps
-        let stepCount = Math.max(3, Math.floor(Math.random() * 2) + 3);
+        // Generate Minimum 3 steps
+        let stepCount = Math.floor(Math.random() * 3) + 3; // Generates 3, 4, or 5
+        
         for (let i = 0; i < stepCount; i++) {
-            let typePool = Math.random() > 0.4 ? [skills[0].name] : ['translation', 'reflection', 'rotation', 'dilation'];
             let pickedType = typePool[Math.floor(Math.random() * typePool.length)];
-            
-            if (pickedType === 'reflection') pickedType = Math.random() > 0.5 ? 'reflectX' : 'reflectY';
             applyMoveToPoints(targetShape, generateMove(pickedType));
         }
 
+        // Boundary check (-10 to 10) and ensure it's not microscopic
         let isOnGrid = targetShape.every(p => Math.abs(p[0]) <= 10 && Math.abs(p[1]) <= 10);
-        // Ensure not too small
         let isVisible = targetShape.every(p => Math.abs(p[0]) > 0.05 || Math.abs(p[1]) > 0.05);
+        let moved = JSON.stringify(targetShape) !== JSON.stringify(originalStartShape);
 
-        if (JSON.stringify(targetShape) !== JSON.stringify(originalStartShape) && isOnGrid && isVisible) validChallenge = true;
+        if (moved && isOnGrid && isVisible) validChallenge = true;
     }
     renderUI();
 }
 
 function generateMove(type) {
     if (type === 'translation') return { type, dx: Math.floor(Math.random() * 5) - 2, dy: Math.floor(Math.random() * 5) - 2 };
+    // Force non-zero translation if possible, though 0 is valid but boring
+    if (type === 'translation' && Math.random() > 0.5) return { type, dx: Math.floor(Math.random() * 6) - 3, dy: Math.floor(Math.random() * 6) - 3 };
+    
     if (type === 'rotate') return { type, deg: [90, 180][Math.floor(Math.random() * 2)], dir: ['CW', 'CCW'][Math.floor(Math.random() * 2)] };
-    // Dilation factors: 0.25, 0.5, 0.75, 2, 3
-    if (type === 'dilation') return { type, factor: [0.25, 0.5, 0.75, 2, 3][Math.floor(Math.random() * 5)] };
-    return { type };
+    if (type === 'dilation') return { type, factor: [0.5, 2][Math.floor(Math.random() * 2)] }; // Simplifed pool for solvability
+    return { type }; // reflectX, reflectY need no params
 }
 
 function applyMoveToPoints(pts, m) {
@@ -125,7 +154,6 @@ function renderUI() {
     if (!qContent) return;
     document.getElementById('q-title').innerText = `Transformations (Round ${currentRound}/3)`;
     
-    // Main UI Layout
     qContent.innerHTML = `
         <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 10px; position:relative;">
             <div style="position:relative; width:440px; height:440px;">
@@ -188,7 +216,6 @@ function showFlash(msg, type) {
     overlay.style.display = 'block';
     overlay.style.backgroundColor = type === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)';
     
-    // Slight animation
     overlay.animate([
         { opacity: 0, transform: 'translate(-50%, -40%)' },
         { opacity: 1, transform: 'translate(-50%, -50%)' }
@@ -204,8 +231,8 @@ function updateCoordinateList() {
     const tarDiv = document.getElementById('target-coords');
     if (!curDiv || !tarDiv) return;
 
-    curDiv.innerHTML = currentShape.map((p, i) => `P${i+1}: (${p[0].toFixed(2)}, ${p[1].toFixed(2)})`).join('<br>');
-    tarDiv.innerHTML = targetShape.map((p, i) => `P${i+1}: (${p[0].toFixed(2)}, ${p[1].toFixed(2)})`).join('<br>');
+    curDiv.innerHTML = currentShape.map((p, i) => `(${p[0].toFixed(2)}, ${p[1].toFixed(2)})`).join('<br>');
+    tarDiv.innerHTML = targetShape.map((p, i) => `(${p[0].toFixed(2)}, ${p[1].toFixed(2)})`).join('<br>');
 }
 
 function formatMove(m) {
@@ -229,15 +256,12 @@ function setupCanvas() {
     };
 }
 
-// Global functions must be explicitly attached to window
 window.updateSubInputs = function() {
     const val = document.getElementById('move-selector').value;
     const container = document.getElementById('sub-inputs');
-    // If we are editing, grab the values from the move being edited
     let existing = (editingIndex !== -1) ? moveSequence[editingIndex] : null;
 
     if (val === 'translation') {
-        // step="1" for integer spinners, but user can type decimals
         container.innerHTML = `
             <div style="display:flex; align-items:center;">
                 <span style="font-weight:bold; margin-right:5px;">X:</span> 
@@ -268,12 +292,10 @@ window.updateSubInputs = function() {
 
 window.editStep = function(i) {
     editingIndex = i;
-    // We must manually trigger the UI update to show the "Update" button
-    // But first, we need to set the dropdown to the correct type so updateSubInputs works
     const move = moveSequence[i];
-    renderUI(); // Re-render to show orange highlight
+    renderUI(); 
     document.getElementById('move-selector').value = move.type;
-    updateSubInputs(); // Now populate inputs with existing values
+    updateSubInputs(); 
 };
 
 window.cancelEdit = function() {
@@ -307,23 +329,50 @@ window.executeAction = async function() {
     renderUI();
 };
 
+// Modified animation to split X and Y movement for translations
 async function animateMove(pts, m) {
     isAnimating = true;
     let startPoints = JSON.parse(JSON.stringify(pts));
-    applyMoveToPoints(pts, m);
-    let endPoints = JSON.parse(JSON.stringify(pts));
+    
+    // Check for split translation (dx AND dy are non-zero)
+    if (m.type === 'translation' && m.dx !== 0 && m.dy !== 0) {
+        
+        // Leg 1: Move X only
+        let midPoints = startPoints.map(p => [p[0] + m.dx, p[1]]);
+        await runLerp(startPoints, midPoints);
+        
+        // Brief pause between axis change
+        await new Promise(r => setTimeout(r, 100));
 
+        // Leg 2: Move Y only
+        let endPoints = midPoints.map(p => [p[0], p[1] + m.dy]);
+        await runLerp(midPoints, endPoints);
+
+        // Update final state in place
+        applyMoveToPoints(pts, m);
+
+    } else {
+        // Standard single animation for everything else
+        applyMoveToPoints(pts, m);
+        let endPoints = JSON.parse(JSON.stringify(pts));
+        await runLerp(startPoints, endPoints);
+    }
+    
+    isAnimating = false;
+}
+
+// Helper to run the frame loop
+async function runLerp(fromPts, toPts) {
     const frames = 15;
     for (let f = 1; f <= frames; f++) {
         let t = f / frames;
-        let interp = startPoints.map((p, i) => [
-            p[0] + (endPoints[i][0] - p[0]) * t,
-            p[1] + (endPoints[i][1] - p[1]) * t
+        let interp = fromPts.map((p, i) => [
+            p[0] + (toPts[i][0] - p[0]) * t,
+            p[1] + (toPts[i][1] - p[1]) * t
         ]);
         draw(interp);
-        await new Promise(r => setTimeout(r, 20));
+        await new Promise(r => setTimeout(r, 20)); // approx 300ms total
     }
-    isAnimating = false;
 }
 
 async function replayAll() {
@@ -352,7 +401,7 @@ function draw(pts) {
     const ctx = canvas.getContext('2d'), step = 20, center = 220;
     ctx.clearRect(0,0,440,440);
 
-    // Grid Lines
+    // Grid
     ctx.strokeStyle="#f1f5f9"; ctx.beginPath();
     for(let i=0; i<=440; i+=step){ ctx.moveTo(i,0); ctx.lineTo(i,440); ctx.moveTo(0,i); ctx.lineTo(440,i); } ctx.stroke();
     
@@ -395,10 +444,17 @@ function drawShape(ctx, pts, center, step, fill) {
     });
 }
 
+// UPDATED: Visual Win Check (ignores vertex order)
 window.checkWin = function() {
-    const isCorrect = currentShape.every((p, i) => 
-        Math.abs(p[0] - targetShape[i][0]) < 0.1 && 
-        Math.abs(p[1] - targetShape[i][1]) < 0.1
+    // Sort logic: X ascending, then Y ascending
+    const sorter = (a, b) => (a[0] - b[0]) || (a[1] - b[1]);
+    
+    let sortedCurrent = [...currentShape].sort(sorter);
+    let sortedTarget = [...targetShape].sort(sorter);
+
+    const isCorrect = sortedCurrent.every((p, i) => 
+        Math.abs(p[0] - sortedTarget[i][0]) < 0.1 && 
+        Math.abs(p[1] - sortedTarget[i][1]) < 0.1
     );
 
     if (isCorrect) {
@@ -411,15 +467,18 @@ window.checkWin = function() {
             else startNewRound();
         }, 1500);
     } else {
-        transErrorCount++;
-        roundResults.push(0);
-        showFlash("Not quite. Check coords.", "error");
-        
+        // Track error type based on last move
         let lastMove = moveSequence[moveSequence.length - 1];
         if (lastMove) {
-            let cat = lastMove.type.includes('reflect') ? 'reflection' : (lastMove.type === 'rotate' ? 'rotation' : (lastMove.type === 'dilation' ? 'dilation' : 'translation'));
-            sessionSkills[cat]++;
+            if (lastMove.type === 'translation') sessionErrors.C6Translation++;
+            else if (lastMove.type === 'reflectX') sessionErrors.C6ReflectionX++;
+            else if (lastMove.type === 'reflectY') sessionErrors.C6ReflectionY++;
+            else if (lastMove.type === 'rotate') sessionErrors.C6Rotation++;
+            else if (lastMove.type === 'dilation') sessionErrors.C6Dilation++;
         }
+        
+        roundResults.push(0);
+        showFlash("Not quite. Check coords.", "error");
     }
 };
 
@@ -427,7 +486,6 @@ async function finishGame() {
     window.isCurrentQActive = false; 
     const qContent = document.getElementById('q-content');
     
-    // Clear content and show big success message
     qContent.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
             <div style="font-size:60px;">🏆</div>
@@ -438,14 +496,21 @@ async function finishGame() {
 
     if (window.supabaseClient && window.currentUser) {
         let updates = {};
-        ['translation', 'reflection', 'rotation', 'dilation'].forEach(skill => {
-            let errors = sessionSkills[skill];
-            let key = `C6${skill.charAt(0).toUpperCase() + skill.slice(1)}`;
-            let currentVal = window.userProgress[key] || 0;
+        
+        // Helper to calc new score: 0 errors = +1, 2+ errors = -1
+        const calcScore = (current, errors) => {
             let change = (errors === 0) ? 1 : (errors >= 2 ? -1 : 0);
-            updates[key] = Math.max(0, Math.min(10, currentVal + change));
-        });
+            return Math.max(0, Math.min(10, current + change));
+        };
 
+        // Update specific columns
+        updates.C6Translation = calcScore(window.userProgress.C6Translation || 0, sessionErrors.C6Translation);
+        updates.C6ReflectionX = calcScore(window.userProgress.C6ReflectionX || 0, sessionErrors.C6ReflectionX);
+        updates.C6ReflectionY = calcScore(window.userProgress.C6ReflectionY || 0, sessionErrors.C6ReflectionY);
+        updates.C6Rotation = calcScore(window.userProgress.C6Rotation || 0, sessionErrors.C6Rotation);
+        updates.C6Dilation = calcScore(window.userProgress.C6Dilation || 0, sessionErrors.C6Dilation);
+
+        // Update Aggregate
         let winCount = roundResults.filter(r => r === 1).length;
         let successRate = (winCount / roundResults.length) * 100;
         let aggChange = (successRate >= 70) ? 1 : (successRate <= 50 ? -1 : 0);
@@ -454,7 +519,6 @@ async function finishGame() {
         await window.supabaseClient.from('assignment').update(updates).eq('userName', window.currentUser);
     }
     
-    // Wait 2 seconds so user sees the trophy, then reload
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
     }, 2500);
