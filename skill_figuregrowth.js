@@ -32,11 +32,13 @@
         do { s2Fig = Math.floor(Math.random() * 98) + 1; } while (s2Fig === f1 || s2Fig === f2);
 
         // 5. Step 3 Figure: Drawing (Calculated to stay under 50 tiles)
-        let s3Fig = 1;
-        while ((m * s3Fig) + b > 48) { 
-            s3Fig++; 
-            if(s3Fig > 4) break; 
-        } 
+        let s3Fig = Math.floor(Math.random() * 4) + 1; 
+        
+        // Safety Check: If the random figure is too big for the grid, 
+        // keep reducing it until it fits.
+        while ((m * s3Fig) + b > 48 && s3Fig > 1) {
+            s3Fig--;
+        }
 
         currentPattern = {
             m: m,
@@ -47,10 +49,9 @@
             f2Count: (m * f2) + b,
             step2Num: s2Fig,
             step2Ans: (m * s2Fig) + b,
-            step3Num: s3Fig,
+            step3Num: s3Fig, // Now has much better variety!
             step3Ans: (m * s3Fig) + b
         };
-
         renderFigureUI();
     };
     function generateTileHTML(count, m, b, figNum) {
