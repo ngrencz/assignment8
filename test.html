@@ -160,13 +160,7 @@
             await supabaseClient.from('assignment').update(updates).eq('userName', 'test_user');
             loadNextQuestion(); // Uses Hub logic (will prioritize Transformations if lesson start)
         }
-        async function resetSession() {
-    if (!confirm("Wipe all mastery data for test_user?")) return;
-    log("🗑️ Wiping data...");
-    const zeros = { SolveX: 0, BoxPlot: 0, LinearSystem: 0, FigureGrowth: 0, C6Transformation: 0, FigureRule: 0, FigureDraw: 0, FigureX: 0 };
-    await supabaseClient.from('assignment').update(zeros).eq('userName', 'test_user');
-    location.reload(); 
-}
+
         ensureTestUser();
     </script>
 </body>
