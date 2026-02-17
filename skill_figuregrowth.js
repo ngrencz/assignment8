@@ -137,7 +137,6 @@
             feedback.className = "correct";
             feedback.innerText = "✅ Correct!";
             
-            // We use try/catch so a database error doesn't freeze the game
             try {
                 await saveStepData(stepKey, figureErrorCount);
             } catch (e) {
@@ -152,7 +151,6 @@
                 window.isCurrentQActive = false;
                 feedback.innerText = "Pattern Mastered! Loading next...";
                 
-                // FORCE progression even if database is slow
                 console.log("Attempting to call window.loadNextQuestion...");
                 setTimeout(() => {
                     if (typeof window.loadNextQuestion === 'function') {
@@ -169,37 +167,27 @@
         }
     };
 
-    async function saveStepData(column, figureErrorCount) {
-        // 1. Integer-only adjustment: +1 if perfect, 0 if minor struggle, -1 if 3+ errors
-        let adjustment = 0;
-        if (figureErrorCount === 0) adjustment = 1;
-        else if (figureErrorCount >= 3) adjustment = -1;
-
-        // 2. Calculate new mastery (Cap between 0 and 10)
+    async function saveStepData(column, errorCount) {
+        let adjustment = (errorCount === 0) ? 1 : (errorCount >= 3 ? -1 : 0);
         let currentMastery = window.userMastery?.[column] || 0;
         let newMastery = Math.max(0, Math.min(10, currentMastery + adjustment));
 
-        // 3. Update local tracking
         if (!window.userMastery) window.userMastery = {};
         window.userMastery[column] = newMastery;
 
-        // 4. Prepare updates for Supabase
-        let updates = {};
-        updates[column] = newMastery;
-        
-        // Calculate the main FigureGrowth average as a whole number
         const avg = ((window.userMastery['FigureRule'] || 0) + 
                      (window.userMastery['FigureDraw'] || 0) + 
                      (window.userMastery['FigureX'] || 0)) / 3;
         
-        updates['FigureGrowth'] = Math.round(avg); // Force to nearest Integer
+        let updates = {};
+        updates[column] = newMastery;
+        updates['FigureGrowth'] = Math.round(avg); 
 
-        // 5. Send to Supabase
-        const { error } = await window.supabaseClient
+        // This ensures the game doesn't proceed until the DB confirms, 
+        // OR the try/catch above handles the timeout.
+        return await window.supabaseClient
             .from('assignment')
             .update(updates)
             .eq('userName', window.currentUser);
-
-        if (error) console.error("Database Error:", error.message);
     }
 }
