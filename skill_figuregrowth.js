@@ -1,4 +1,4 @@
-{
+
     let currentPattern = {};
     let figureErrorCount = 0;
     let currentStep = 1; 
@@ -207,4 +207,4 @@
 
         return await window.supabaseClient.from('assignment').update(updates).eq('userName', window.currentUser);
     }
-}
+
