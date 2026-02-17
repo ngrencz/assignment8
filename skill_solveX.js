@@ -139,37 +139,32 @@ async function checkSolveX() {
         feedback.innerText = "Correct! Excellent work.";
 
         // 3. Check if the SET is finished
-        if (problemsSolved >= problemsNeeded) {
-            window.isCurrentQActive = false; // Stop timer immediately
+       if (problemsSolved >= problemsNeeded) {
+            window.isCurrentQActive = false; // Stop timer
 
-            // 4. Meaningful Growth Logic (The XP System)
-            // Perfect set = 1.2 pts, 1-2 errors = 0.6 pts, 3+ errors = 0.2 pts
-            let earnedXP = 0;
-            if (solveXErrorCount === 0) earnedXP = 1.2;
-            else if (solveXErrorCount <= 2) earnedXP = 0.6;
-            else earnedXP = 0.2;
-
-            // currentScore was defined at the top of your script during init
-            let newScore = Math.min(10, currentScore + earnedXP);
-            
-            // Log to your Dev Panel so you can see the math happening
-            if (typeof log === 'function') {
-                log(`Algebra XP: ${currentScore} + ${earnedXP} = ${newScore.toFixed(1)}`);
+            let adjustment = 0;
+            if (solveXErrorCount === 0) {
+                adjustment = 1;  // Move up
+            } else if (solveXErrorCount >= 3) {
+                adjustment = -1; // Move down (needs more practice)
+            } else {
+                adjustment = 0;  // Stay put (neutral)
             }
 
-            // 5. Save to Supabase
+            // Calculate new integer score (capped 0-10)
+            let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
+            
+            if (typeof log === 'function') {
+                log(`SolveX Balance: ${currentScore} -> ${newScore} (Adj: ${adjustment})`);
+            }
+
             await window.supabaseClient
                 .from('assignment')
-                .update({ SolveX: parseFloat(newScore.toFixed(1)) })
+                .update({ SolveX: newScore })
                 .eq('userName', window.currentUser);
             
-            feedback.innerText = `Set Complete! Mastery: ${newScore.toFixed(1)}/10`;
-            
-            // 6. Transition back to the Hub
+            feedback.innerText = adjustment > 0 ? "Mastery Increasing!" : (adjustment < 0 ? "Keep practicing!" : "Set Complete.");
             setTimeout(() => { loadNextQuestion(); }, 1500);
-        } else {
-            // Not finished with the set yet? Load the next equation
-            setTimeout(renderSolveXUI, 1200);
         }
     } else {
         // 7. Error Handling
