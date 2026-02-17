@@ -244,3 +244,4 @@
             window.loadNextQuestion();
         }
     }
+}
