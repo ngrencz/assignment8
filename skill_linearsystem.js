@@ -1,4 +1,4 @@
-{
+(function() {
     let linearErrorCount = 0;
     let currentStep = 1; 
     let currentSystem = {};
@@ -7,7 +7,6 @@
     const femaleNames = ["Maya", "Sarah", "Elena", "Chloe", "Amara", "Jasmine"];
     const maleNames = ["Liam", "Noah", "Caleb", "Ethan", "Leo", "Isaac"];
 
-    // Changed back to Singular to match your Hub's call
     window.initLinearSystemGame = async function() {
         window.isCurrentQActive = true;
         window.currentQSeconds = 0;
@@ -16,31 +15,35 @@
         userPoints = [];
 
         // 1. Generate integer intersection
-        const targetX = Math.floor(Math.random() * 5) - 2; 
-        const targetY = Math.floor(Math.random() * 5) - 2; 
+        const targetX = Math.floor(Math.random() * 5) - 2; // -2 to 2
+        const targetY = Math.floor(Math.random() * 5) - 2; // -2 to 2
 
         // 2. Generate different slopes (Guaranteeing exactly 1 solution)
-        let m1 = Math.floor(Math.random() * 3) + 1;
+        let m1 = Math.floor(Math.random() * 2) + 1; // Slopes of 1 or 2 are easier to graph
         let m2;
         do { m2 = Math.floor(Math.random() * 5) - 2; } while (m1 === m2 || m2 === 0);
 
         const b1 = targetY - (m1 * targetX);
         const b2 = targetY - (m2 * targetX);
 
+        // Safety: If intercept is off-grid (>5 or <-5), just re-roll
+        if (Math.abs(b1) > 5 || Math.abs(b2) > 5) {
+            return window.initLinearSystemGame();
+        }
+
         const girl = femaleNames[Math.floor(Math.random() * femaleNames.length)];
         const boy = maleNames[Math.floor(Math.random() * maleNames.length)];
 
-        // Randomize if they are right or wrong
         const girlCorrect = Math.random() > 0.5;
-        const boyCorrect = !girlCorrect; // Usually make one right, one wrong
+        const boyCorrect = !girlCorrect;
 
         currentSystem = {
             m1, b1, m2, b2,
             targetX, targetY,
             girl: { name: girl, x: girlCorrect ? targetX : targetX + 1, y: girlCorrect ? targetY : targetY + 1, isCorrect: girlCorrect },
             boy: { name: boy, x: boyCorrect ? targetX : targetX - 1, y: boyCorrect ? targetY : targetY - 1, isCorrect: boyCorrect },
-            eq1Disp: `y = ${m1}x ${b1 >= 0 ? '+ ' + b1 : '- ' + Math.abs(b1)}`,
-            eq2Disp: `y = ${m2}x ${b2 >= 0 ? '+ ' + b2 : '- ' + Math.abs(b2)}`
+            eq1Disp: `y = ${m1 === 1 ? '' : m1}x ${b1 >= 0 ? '+ ' + b1 : '- ' + Math.abs(b1)}`,
+            eq2Disp: `y = ${m2 === 1 ? '' : m2 === -1 ? '-' : m2}x ${b2 >= 0 ? '+ ' + b2 : '- ' + Math.abs(b2)}`
         };
 
         renderLinearUI();
@@ -48,6 +51,7 @@
 
     function renderLinearUI() {
         const qContent = document.getElementById('q-content');
+        if (!qContent) return;
         document.getElementById('q-title').innerText = "System Analysis";
 
         let html = `
@@ -73,8 +77,8 @@
         } else if (currentStep === 3) {
             html += `<p><strong>Step 3:</strong> How many solutions does this system have?</p>
                 <div style="display:grid; grid-template-columns: 1fr; gap:10px;">
-                    <button class="primary-btn" onclick="checkSolutionCount(0)">None (Parallel)</button>
                     <button class="primary-btn" onclick="checkSolutionCount(1)">Exactly One (Intersecting)</button>
+                    <button class="primary-btn" onclick="checkSolutionCount(0)">None (Parallel)</button>
                     <button class="primary-btn" onclick="checkSolutionCount(Infinity)">Infinite (Coincident)</button>
                 </div>`;
         } else {
@@ -111,7 +115,7 @@
         feedback.style.display = "block";
         if (count === 1) {
             feedback.className = "correct";
-            feedback.innerText = "Correct! Different slopes = One solution. Now graph it!";
+            feedback.innerText = "Correct! Slopes are different = One solution. Now graph it!";
             currentStep = 4;
             setTimeout(renderLinearUI, 1200);
         } else {
@@ -161,10 +165,12 @@
             const m = num === 1 ? currentSystem.m1 : currentSystem.m2;
             const b = num === 1 ? currentSystem.b1 : currentSystem.b2;
             
+            if (p1.x === p2.x) { userPoints.pop(); return; } 
+
             const userM = (p2.y - p1.y) / (p2.x - p1.x);
             const userB = p1.y - (userM * p1.x);
 
-            if (userM === m && userB === b) {
+            if (userM === m && Math.abs(userB - b) < 0.1) {
                 ctx.strokeStyle = num === 1 ? "#3b82f6" : "#ef4444";
                 ctx.beginPath();
                 ctx.moveTo(150 + (p1.x-10)*step, 150 - (p1.y + userM*(p1.x-10 - p1.x))*step);
@@ -176,8 +182,14 @@
                 alert("Incorrect line. Try again!");
                 userPoints = num === 1 ? [] : [userPoints[0], userPoints[1]];
                 drawGrid();
-                // If it was line 2 that failed, redraw line 1 so they don't lose progress
-                if (num === 2) { /* Add redraw logic here if needed */ }
+                if (num === 2) { 
+                    // Redraw line 1
+                    const lp1 = userPoints[0], lp2 = userPoints[1];
+                    ctx.strokeStyle = "#3b82f6"; ctx.beginPath();
+                    ctx.moveTo(150 + (lp1.x-10)*step, 150 - (lp1.y + currentSystem.m1*(lp1.x-10 - lp1.x))*step);
+                    ctx.lineTo(150 + (lp1.x+10)*step, 150 - (lp1.y + currentSystem.m1*(lp1.x+10 - lp1.x))*step);
+                    ctx.stroke();
+                }
             }
         }
     }
@@ -191,29 +203,16 @@
 
     async function finalize() {
         const score = Math.max(1, 10 - linearErrorCount);
-        
-        // 1. Try to find the client on the window object first
         const client = window.supabaseClient;
 
         if (client && typeof client.from === 'function') {
             try {
-                await client
-                    .from('assignment')
-                    .update({ LinearSystem: score })
-                    .eq('userName', window.currentUser);
-            } catch (e) {
-                console.error("Database update failed:", e);
-            }
-        } else {
-            // If Supabase isn't found, we just log it and move on
-            console.warn("Supabase not initialized; skipping DB update.");
+                await client.from('assignment').update({ LinearSystem: score }).eq('userName', window.currentUser);
+            } catch (e) { console.error("DB Error:", e); }
         }
         
-        // 2. This is the most important part - moving to the next question
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
-        } else {
-            console.error("Hub Error: window.loadNextQuestion is not a function.");
         }
     }
-}
+})();
