@@ -169,29 +169,6 @@
         }
     };
 
-    async function saveStepData(column, errorCount) {
-        let adjustment = (errorCount === 0) ? 1 : (errorCount >= 3 ? -1 : 0);
-        let currentMastery = window.userMastery?.[column] || 0;
-        let newMastery = Math.max(0, Math.min(10, currentMastery + adjustment));
-
-        if (!window.userMastery) window.userMastery = {};
-        window.userMastery[column] = newMastery;
-
-        const avg = ((window.userMastery['FigureRule'] || 0) + 
-                     (window.userMastery['FigureDraw'] || 0) + 
-                     (window.userMastery['FigureX'] || 0)) / 3;
-        
-        let updates = {};
-        updates[column] = newMastery;
-        updates['FigureGrowth'] = Math.round(avg); // Strict integer for int2 columns
-
-        // The 'await' here will pause the script. 
-        // If Supabase returns a 400, the try/catch in checkFigureAns will catch it.
-        return await window.supabaseClient
-            .from('assignment')
-            .update(updates)
-            .eq('userName', window.currentUser);
-    }
     async function saveStepData(column, figureErrorCount) {
         // 1. Integer-only adjustment: +1 if perfect, 0 if minor struggle, -1 if 3+ errors
         let adjustment = 0;
