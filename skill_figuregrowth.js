@@ -29,13 +29,18 @@ window.initFigureGrowthGame = async function() {
     do { s2Fig = Math.floor(Math.random() * 98) + 1; } while (s2Fig === f1 || s2Fig === f2);
 
     // 5. Step 3 Figure: Drawing (Calculated to stay under 50 tiles)
-    let s3Fig = Math.floor(Math.random() * 4) + 1; 
-    
-    // Safety Check: If the random figure is too big for the grid, 
-    // keep reducing it until it fits.
-    while ((m * s3Fig) + b > 48 && s3Fig > 1) {
-        s3Fig--;
-    }
+    // FIX: Ensure Step 3 figure is NOT the same as f1, f2, or the step 2 prediction
+    let s3Fig;
+    let safeLoops = 0;
+    do {
+        s3Fig = Math.floor(Math.random() * 4) + 1; 
+        
+        // If random generated a big one that doesn't fit, reduce it
+        while ((m * s3Fig) + b > 48 && s3Fig > 1) {
+            s3Fig--;
+        }
+        safeLoops++;
+    } while ((s3Fig === f1 || s3Fig === f2 || s3Fig === s2Fig) && safeLoops < 20);
 
     currentPattern = {
         m: m,
@@ -53,6 +58,7 @@ window.initFigureGrowthGame = async function() {
 };
 
 function generateTileHTML(count, m, b, figNum) {
+    // Only show color diff if not expert
     const isExpert = (window.userMastery?.['FigureGrowth'] || 0) >= 8;
     let html = `<div style="display: grid; grid-template-columns: repeat(5, 12px); gap: 1px; width: 65px; line-height: 0; margin: 0 auto;">`;
     for (let i = 0; i < count; i++) {
@@ -86,17 +92,18 @@ function renderFigureUI() {
         </div>` : "";
 
     let stepHTML = "";
+    // FIX: Increased input width to 85px to fit double digits comfortably
     if (currentStep === 1) {
         stepHTML = `<p><strong>Step 1:</strong> Find the rule (y = mx + b).</p>
             <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
-                y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:65px"> x + 
-                <input type="number" id="input-b" placeholder="b" class="math-input" style="width:65px">
+                y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:85px"> x + 
+                <input type="number" id="input-b" placeholder="b" class="math-input" style="width:85px">
             </div>`;
     } else if (currentStep === 2) {
         stepHTML = ruleDisplay + `<p><strong>Step 2:</strong> Intermediate Prediction.</p>
             <p>How many tiles are in <strong>Figure ${currentPattern.step2Num}</strong>?</p>
             <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
-                Tiles = <input type="number" id="input-step2" placeholder="?" class="math-input" style="width:100px">
+                Tiles = <input type="number" id="input-step2" placeholder="?" class="math-input" style="width:110px">
             </div>`;
     } else {
         stepHTML = ruleDisplay + `
@@ -105,7 +112,6 @@ function renderFigureUI() {
             <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;"></div>`;
     }
 
-    // FIX ADDED HERE: Added the feedback-box div so the JS can find it
     qContent.innerHTML = headerHTML + stepHTML + `
         <div style="text-align:center; margin-top:15px; display: flex; justify-content: center; gap: 10px;">
             <button onclick="checkFigureAns()" class="primary-btn">Submit Answer</button>
@@ -134,31 +140,24 @@ window.showFigureHint = function() {
     
 window.checkFigureAns = async function() {
     let isCorrect = false;
-    let stepKey = "";
-    
-    // This will now work because we added the div in renderFigureUI
     const feedback = document.getElementById('feedback-box');
     if (feedback) feedback.style.display = "block";
 
     // Gather inputs
     if (currentStep === 1) {
-        stepKey = "FigureRule";
         const mInput = document.getElementById('input-m');
         const bInput = document.getElementById('input-b');
-        if(!mInput || !bInput) return; // safety
+        if(!mInput || !bInput) return; 
         
         const uM = parseInt(mInput.value);
         const uB = parseInt(bInput.value);
         isCorrect = (uM === currentPattern.m && uB === currentPattern.b);
     } else if (currentStep === 2) {
-        stepKey = "FigureX";
         const step2Input = document.getElementById('input-step2');
         if(!step2Input) return;
-
         const uAns = parseInt(step2Input.value);
         isCorrect = (uAns === currentPattern.step2Ans);
     } else {
-        stepKey = "FigureDraw";
         const activeTiles = document.querySelectorAll('.drawing-tile.active').length;
         isCorrect = (activeTiles === currentPattern.step3Ans);
     }
@@ -166,32 +165,25 @@ window.checkFigureAns = async function() {
     if (isCorrect) {
         if(feedback) {
             feedback.className = "correct";
-            feedback.style.color = "#16a34a"; // Add inline style just in case class is missing
+            feedback.style.color = "#16a34a"; 
             feedback.innerText = "✅ Correct!";
         }
         
-        try { await saveStepData(stepKey, figureErrorCount); } catch (e) { console.error(e); }
-
         if (currentStep < 3) {
             currentStep++;
-            figureErrorCount = 0;
             setTimeout(() => { 
                 if(feedback) feedback.style.display = "none"; 
                 renderFigureUI(); 
             }, 1000);
         } else {
-            window.isCurrentQActive = false; 
-            if(feedback) feedback.innerText = "Pattern Mastered!";
-            setTimeout(() => { 
-                if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion();
-                else location.reload();
-            }, 1500);
+            // FIX: Removed intermediate saves. Only save at the end.
+            finishFigureGame();
         } 
     } else {
         figureErrorCount++;
         if(feedback) {
             feedback.className = "incorrect";
-            feedback.style.color = "#dc2626"; // Add inline style just in case
+            feedback.style.color = "#dc2626";
             feedback.innerText = "Not quite! Try again.";
         }
     }
@@ -200,7 +192,7 @@ window.checkFigureAns = async function() {
 function setupDrawingGrid() {
     const grid = document.getElementById('drawing-grid');
     if (!grid) return;
-    grid.innerHTML = ""; // Clear existing just in case
+    grid.innerHTML = ""; 
     for (let i = 0; i < 50; i++) {
         const tile = document.createElement('div');
         tile.className = 'drawing-tile';
@@ -214,19 +206,41 @@ function setupDrawingGrid() {
     }
 }
 
-async function saveStepData(column, errorCount) {
-    let adjustment = (errorCount === 0) ? 1 : (errorCount >= 3 ? -1 : 0);
-    if (!window.userMastery) window.userMastery = {};
-    let currentMastery = window.userMastery[column] || 0;
-    let newMastery = Math.max(0, Math.min(10, currentMastery + adjustment));
-    window.userMastery[column] = newMastery;
-
-    const avg = ((window.userMastery['FigureRule'] || 0) + (window.userMastery['FigureDraw'] || 0) + (window.userMastery['FigureX'] || 0)) / 3;
-    let updates = {};
-    updates[column] = newMastery;
-    updates['FigureGrowth'] = Math.round(avg); 
+// FIX: New unified scoring function matching LinearSystem logic
+async function finishFigureGame() {
+    window.isCurrentQActive = false;
+    const feedback = document.getElementById('feedback-box');
+    if(feedback) feedback.innerText = "Pattern Mastered!";
 
     if (window.supabaseClient && window.currentUser) {
-         return await window.supabaseClient.from('assignment').update(updates).eq('userName', window.currentUser);
+        try {
+            const { data } = await window.supabaseClient
+                .from('assignment')
+                .select('FigureGrowth')
+                .eq('userName', window.currentUser)
+                .maybeSingle();
+
+            let currentScore = data ? (data.FigureGrowth || 0) : 0;
+            
+            // Standard Logic: 0 errors = +1, 2+ errors = -1, 1 error = no change
+            let adjustment = 0;
+            if (figureErrorCount === 0) adjustment = 1;
+            else if (figureErrorCount >= 2) adjustment = -1;
+            
+            let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
+
+            await window.supabaseClient
+                .from('assignment')
+                .update({ FigureGrowth: newScore })
+                .eq('userName', window.currentUser);
+            
+        } catch(e) { 
+            console.error("Database sync failed:", e); 
+        }
     }
+
+    setTimeout(() => { 
+        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion();
+        else location.reload();
+    }, 1500);
 }
