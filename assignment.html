@@ -17,17 +17,25 @@
 </head>
 <body>
 
+<div id="size-overlay">
+    <div class="overlay-content">
+        <h1>Please Maximize Your Window</h1>
+        <p>To keep things fair, practice must be done in a full-sized window.</p>
+    </div>
+</div>
+
 <div id="header">
     <div class="header-left">
         <span id="user-display" class="stats-pill">User</span> 
         <span id="lesson-display" class="lesson-pill">Lesson</span>
+        <span id="timer-state-pill" class="stats-pill" style="margin-left:10px; font-size: 0.7rem; color: white;">INITIALIZING</span>
     </div>
     <div class="header-right">
         <span id="version-tag" style="font-size: 0.7rem; color: var(--gray-med); margin-right: 15px; vertical-align: middle;">
             v1.0.2
         </span>
         <span class="timer-label">Session Timer:</span>
-        <span id="timer-display" class="timer-value">00:00</span>
+        <span id="debug-total-time" class="timer-value">00:00</span>
     </div>
 </div>
 
@@ -55,7 +63,6 @@
         if (user) document.getElementById('user-display').innerText = user;
         if (lesson) document.getElementById('lesson-display').innerText = "Lesson " + lesson;
         
-        // Safety check to ensure we don't loop if already on index
         if ((!user || !lesson) && !window.location.pathname.endsWith('index.html')) {
             window.location.href = 'index.html';
         }
