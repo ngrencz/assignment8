@@ -249,7 +249,9 @@ async function loadNextQuestion() {
         { id: 'SolveX', fn: typeof initSolveXGame !== 'undefined' ? initSolveXGame : null },
         { id: 'BoxPlot', fn: typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null },
         { id: 'Similarity', fn: typeof initSimilarityGame !== 'undefined' ? initSimilarityGame : null },
-        { id: 'ComplexShapes', fn: typeof initComplexShapesGame !== 'undefined' ? initComplexShapesGame : null }
+        { id: 'ComplexShapes', fn: typeof initComplexShapesGame !== 'undefined' ? initComplexShapesGame : null },
+        { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
+        { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null }
     ].filter(s => s.fn !== null);
 
     if (window.targetLesson === '6.2.4' || window.targetLesson === 'C6Review') {
