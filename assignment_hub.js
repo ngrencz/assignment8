@@ -137,27 +137,35 @@ async function loadNextQuestion() {
     
     window.scrollTo(0,0);
 
+    // Get the exact hour string from session storage
+    const currentHour = sessionStorage.getItem('target_hour') || "00";
+
     // 1. DYNAMIC DATABASE CHECK/CREATE/WARN LOGIC
     try {
         let { data, error } = await window.supabaseClient
             .from('assignment')
             .select('*')
             .eq('userName', window.currentUser)
-            .eq('hour', 0)
+            .eq('hour', currentHour)
             .maybeSingle();
 
-        // Create record if missing (Warn in console)
+        // Create record if missing using the correct hour string
         if (!data && !error) {
-            console.warn(`User ${window.currentUser} not found. Creating new record...`);
+            console.warn(`User ${window.currentUser} not found for Hour ${currentHour}. Creating record...`);
             await window.supabaseClient
                 .from('assignment')
-                .insert([{ userName: window.currentUser, hour: 0, [window.targetLesson]: false }]);
+                .insert([{ 
+                    userName: window.currentUser, 
+                    hour: currentHour, 
+                    [window.targetLesson]: false 
+                }]);
             
+            // Re-fetch using the correct hour string
             const { data: refreshed } = await window.supabaseClient
                 .from('assignment')
                 .select('*')
                 .eq('userName', window.currentUser)
-                .eq('hour', 0)
+                .eq('hour', currentHour)
                 .maybeSingle();
             data = refreshed;
         }
@@ -187,11 +195,12 @@ async function loadNextQuestion() {
             return initTransformationGame();
         }
 
-        const { data } = await window.supabaseClient
+        // Fixed the fetch here as well to use currentHour instead of 0
+        const { data: skillData } = await window.supabaseClient
             .from('assignment')
             .select('*')
             .eq('userName', window.currentUser)
-            .eq('hour', 0)
+            .eq('hour', currentHour)
             .maybeSingle(); 
 
         let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
@@ -200,7 +209,8 @@ async function loadNextQuestion() {
             availableSkills = skillMap;
         }
 
-        availableSkills.sort((a, b) => (data[a.id] || 0) - (data[b.id] || 0));
+        // Use the re-fetched skillData for sorting
+        availableSkills.sort((a, b) => (skillData ? (skillData[a.id] || 0) : 0) - (skillData ? (skillData[b.id] || 0) : 0));
         const nextSkill = availableSkills[0];
         window.skillsCompletedThisSession.push(nextSkill.id);
         nextSkill.fn();
