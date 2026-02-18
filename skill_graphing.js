@@ -24,19 +24,24 @@ window.initGraphingGame = async function() {
     window.currentQSeconds = 0;
     graphRound = 1;
 
-    // Initialize Progress
-    if (!window.userProgress) window.userProgress = {};
+    // Initialize Mastery State
+    if (!window.userMastery) window.userMastery = {};
 
     try {
         if (window.supabaseClient && window.currentUser) {
+            const currentHour = sessionStorage.getItem('target_hour');
             const { data } = await window.supabaseClient
                 .from('assignment')
                 .select('Graphing')
                 .eq('userName', window.currentUser)
+                .eq('hour', currentHour) // Added hour constraint
                 .maybeSingle();
-            window.userProgress.Graphing = data?.Graphing || 0;
+            
+            window.userMastery.Graphing = data?.Graphing || 0;
         }
-    } catch (e) { console.log("Supabase sync error."); }
+    } catch (e) { 
+        console.log("Supabase sync error, using local state"); 
+    }
 
     startGraphingRound();
 };
@@ -214,6 +219,7 @@ function setupCanvasInteractions() {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
+        // Calculate grid coordinates based on click
         let gridX = Math.round((mouseX - 200) / 20);
         let gridY = Math.round((200 - mouseY) / 20);
 
@@ -254,9 +260,9 @@ function setupCanvasInteractions() {
 async function handleRoundWin() {
     showFlash("Nice Shape!", "success");
     
-    let current = window.userProgress.Graphing || 0;
+    let current = window.userMastery.Graphing || 0;
     let nextScore = Math.min(10, current + 1);
-    window.userProgress.Graphing = nextScore;
+    window.userMastery.Graphing = nextScore;
 
     if (window.supabaseClient && window.currentUser) {
         try {
@@ -266,7 +272,9 @@ async function handleRoundWin() {
                 .update({ Graphing: nextScore })
                 .eq('userName', window.currentUser)
                 .eq('hour', currentHour);
-        } catch (e) { console.error("DB Save Fail", e); }
+        } catch (e) { 
+            console.error("DB Save Fail", e); 
+        }
     }
 
     graphRound++;
