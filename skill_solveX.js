@@ -132,7 +132,10 @@ function renderSolveXUI() {
 }
 
 async function checkSolveX() {
-    const userAns = parseFloat(document.getElementById('solve-ans').value);
+    const userAnsInput = document.getElementById('solve-ans');
+    if (!userAnsInput) return;
+
+    const userAns = parseFloat(userAnsInput.value);
     const correctAns = currentEquations[problemsSolved].ans;
     const feedback = document.getElementById('feedback-box');
 
@@ -142,45 +145,38 @@ async function checkSolveX() {
     const errorStyle = "background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;";
     const warningStyle = "background: #fef9c3; color: #854d0e; border: 1px solid #fde047;";
 
-    // --- CHECK ANSWER ---
+    // --- 1. CHECK ANSWER ---
     if (Math.abs(userAns - correctAns) < 0.01) {
-        // 1. Calculate Score Change
-        let scoreChange = 0;
-        let msg = "";
+        let scoreChange = isFirstAttempt ? 1 : -1;
+        let msg = isFirstAttempt ? "Correct! (+1 Skill)" : "Correct, but you needed help. (-1 Skill)";
+        
+        feedback.style.cssText = `display:block; ${isFirstAttempt ? successStyle : warningStyle} margin-top:20px; padding:10px; border-radius:8px;`;
 
-        if (isFirstAttempt) {
-            scoreChange = 1;
-            msg = "Correct! (+1 Skill)";
-            feedback.style.cssText = `display:block; ${successStyle} margin-top:20px; padding:10px; border-radius:8px;`;
-        } else {
-            scoreChange = -1;
-            msg = "Correct, but you needed help. (-1 Skill)";
-            feedback.style.cssText = `display:block; ${warningStyle} margin-top:20px; padding:10px; border-radius:8px;`;
-        }
-
-        // 2. Update Local State
-        let oldScore = currentScore;
+        // Update Local State
         currentScore = Math.max(0, Math.min(10, currentScore + scoreChange));
         problemsSolved++;
 
-        // 3. Update Database IMMEDIATELY
-        if (typeof log === 'function') log(`SolveX: ${oldScore} -> ${currentScore} (Delta: ${scoreChange})`);
-
+        // --- 2. UPDATE DATABASE ---
         if (window.supabaseClient && window.currentUser) {
-            await window.supabaseClient
-                .from('assignment')
-                .update({ SolveX: currentScore })
-                .eq('userName', window.currentUser);
+            try {
+                // Ensure hour is sent as a String to match your 'txt' column
+                const hourValue = String(window.currentHour || "00"); 
+                
+                await window.supabaseClient
+                    .from('assignment')
+                    .update({ SolveX: currentScore })
+                    .eq('userName', window.currentUser)
+                    .eq('hour', hourValue); // This prevents the 400 Error
+            } catch (err) {
+                console.error("Supabase Sync Error:", err);
+            }
         }
 
         feedback.innerText = msg;
 
-        // 4. Decide Next Step
+        // --- 3. DECIDE NEXT STEP ---
         if (problemsSolved >= problemsNeeded) {
-            // STOP the timer immediately
             window.isCurrentQActive = false;
-
-            // Update UI to show the set is finished
             document.getElementById('q-content').innerHTML = `
                 <div style="text-align:center; padding:50px; animation: fadeIn 0.5s;">
                     <div style="font-size: 50px; margin-bottom: 20px;">✅</div>
@@ -189,20 +185,18 @@ async function checkSolveX() {
                     <p style="font-size: 0.9rem; color: var(--kelly-green);">Loading next activity...</p>
                 </div>
             `;
-
-            // Wait 2 seconds so the student can see their progress, then load next
             setTimeout(() => { 
-                if (typeof window.loadNextQuestion === 'function') {
-                    window.loadNextQuestion(); 
-                } else {
-                    // Fallback if loadNextQuestion isn't defined
-                    console.log("Session complete. No further questions found.");
-                }
+                if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
             }, 2000);
-
         } else {
-            // Set not finished yet, move to the next individual problem
             setTimeout(renderSolveXUI, 1500);
         }
+    } 
+    // --- 4. INCORRECT ANSWER ---
+    else {
+        isFirstAttempt = false; 
+        feedback.style.cssText = `display:block; ${errorStyle} margin-top:20px; padding:10px; border-radius:8px;`;
+        feedback.innerText = "Not quite! Try again.";
     }
+
 }
