@@ -1,3 +1,11 @@
+/**
+ * skill_figuregrowth.js - Multi-Step Logic Game
+ * - Step 1: User identifies the linear rule (y = mx + b).
+ * - Step 2: User predicts a large N value.
+ * - Step 3: User draws a specific figure on a grid.
+ * - Interactive: Click-and-drag drawing grid.
+ */
+
 let currentPattern = {};
 var figureErrorCount = 0; 
 var currentStep = 1;      
@@ -13,11 +21,32 @@ window.addEventListener('mouseup', () => {
 });
 
 window.initFigureGrowthGame = async function() {
+    if (!document.getElementById('q-content')) return;
+
     window.isCurrentQActive = true;
     window.currentQSeconds = 0;
     figureErrorCount = 0;
     currentStep = 1;
     isVisualMode = Math.random() > 0.5;
+
+    // Initialize Mastery State
+    if (!window.userMastery) window.userMastery = {};
+
+    try {
+        if (window.supabaseClient && window.currentUser) {
+            const currentHour = sessionStorage.getItem('target_hour');
+            const { data } = await window.supabaseClient
+                .from('assignment')
+                .select('FigureGrowth')
+                .eq('userName', window.currentUser)
+                .eq('hour', currentHour)
+                .maybeSingle();
+            
+            window.userMastery.FigureGrowth = data?.FigureGrowth || 0;
+        }
+    } catch (e) {
+        console.log("Supabase sync error, using local state");
+    }
 
     // 1. Generate Slope (m): 3 to 10
     let m;
@@ -62,15 +91,16 @@ window.initFigureGrowthGame = async function() {
         step3Num: s3Fig,
         step3Ans: (m * s3Fig) + b
     };
+
     renderFigureUI();
 };
 
 function generateTileHTML(count, m, b, figNum) {
-    const isExpert = (window.userMastery?.['FigureGrowth'] || 0) >= 8;
+    const isExpert = (window.userMastery?.FigureGrowth || 0) >= 8;
     let html = `<div style="display: grid; grid-template-columns: repeat(5, 12px); gap: 1px; width: 65px; line-height: 0; margin: 0 auto;">`;
     for (let i = 0; i < count; i++) {
         let color = '#3b82f6'; 
-        if (!isExpert && i < b) color = '#f97316';
+        if (!isExpert && i < b) color = '#f97316'; // Highlight intercept for beginners
         html += `<div style="width:12px; height:12px; background:${color}; border:0.5px solid white;"></div>`;
     }
     html += `</div>`;
@@ -79,17 +109,19 @@ function generateTileHTML(count, m, b, figNum) {
 
 function renderFigureUI() {
     const qContent = document.getElementById('q-content');
+    if (!qContent) return;
+
     document.getElementById('q-title').innerText = `Figure Growth Analysis`;
 
     let headerHTML = "";
     if (isVisualMode && currentPattern.f2Count <= 30) { 
-        headerHTML = `<div style="display:flex; justify-content:center; align-items:flex-end; gap:30px; margin-bottom:20px; background: white; padding: 15px; border-radius: 8px;">
-                        <div style="text-align:center;"><small>Fig ${currentPattern.f1Num}</small>${generateTileHTML(currentPattern.f1Count, currentPattern.m, currentPattern.b, currentPattern.f1Num)}</div>
-                        <div style="text-align:center;"><small>Fig ${currentPattern.f2Num}</small>${generateTileHTML(currentPattern.f2Count, currentPattern.m, currentPattern.b, currentPattern.f2Num)}</div>
+        headerHTML = `<div style="display:flex; justify-content:center; align-items:flex-end; gap:30px; margin-bottom:20px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div style="text-align:center;"><small style="color:#64748b">Fig ${currentPattern.f1Num}</small>${generateTileHTML(currentPattern.f1Count, currentPattern.m, currentPattern.b, currentPattern.f1Num)}</div>
+                        <div style="text-align:center;"><small style="color:#64748b">Fig ${currentPattern.f2Num}</small>${generateTileHTML(currentPattern.f2Count, currentPattern.m, currentPattern.b, currentPattern.f2Num)}</div>
                     </div>`;
     } else {
         headerHTML = `<div style="background:#f1f5f9; padding:15px; border-radius:12px; margin-bottom:20px; border: 1px solid #cbd5e1; text-align:center;">
-                        <p><strong>Figure ${currentPattern.f1Num}:</strong> ${currentPattern.f1Count} tiles | <strong>Figure ${currentPattern.f2Num}:</strong> ${currentPattern.f2Count} tiles</p>
+                        <p style="color:#1e293b; margin:0;"><strong>Figure ${currentPattern.f1Num}:</strong> ${currentPattern.f1Count} tiles &nbsp;|&nbsp; <strong>Figure ${currentPattern.f2Num}:</strong> ${currentPattern.f2Count} tiles</p>
                     </div>`;
     }
 
@@ -100,36 +132,35 @@ function renderFigureUI() {
 
     let stepHTML = "";
     if (currentStep === 1) {
-        stepHTML = `<p><strong>Step 1:</strong> Find the rule (y = mx + b).</p>
-            <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
-                y = <input type="number" id="input-m" placeholder="m" class="math-input" style="width:85px"> x + 
-                <input type="number" id="input-b" placeholder="b" class="math-input" style="width:85px">
+        stepHTML = `<p style="text-align:center; color:#475569;"><strong>Step 1:</strong> Find the linear rule (y = mx + b).</p>
+            <div style="font-size: 1.5rem; text-align: center; margin: 20px 0; color:#1e293b;">
+                y = <input type="number" id="input-m" placeholder="m" style="width:70px; padding:5px; text-align:center; border:1px solid #94a3b8; border-radius:4px; font-size:1.2rem;"> x + 
+                <input type="number" id="input-b" placeholder="b" style="width:70px; padding:5px; text-align:center; border:1px solid #94a3b8; border-radius:4px; font-size:1.2rem;">
             </div>`;
     } else if (currentStep === 2) {
-        stepHTML = ruleDisplay + `<p><strong>Step 2:</strong> Intermediate Prediction.</p>
-            <p>How many tiles are in <strong>Figure ${currentPattern.step2Num}</strong>?</p>
+        stepHTML = ruleDisplay + `<p style="text-align:center; color:#475569;"><strong>Step 2:</strong> Intermediate Prediction.</p>
+            <p style="text-align:center;">How many tiles are in <strong>Figure ${currentPattern.step2Num}</strong>?</p>
             <div style="font-size: 1.5rem; text-align: center; margin: 20px 0;">
-                Tiles = <input type="number" id="input-step2" placeholder="?" class="math-input" style="width:110px">
+                Tiles = <input type="number" id="input-step2" placeholder="?" style="width:100px; padding:5px; text-align:center; border:1px solid #94a3b8; border-radius:4px; font-size:1.2rem;">
             </div>`;
     } else {
         stepHTML = ruleDisplay + `
-            <p><strong>Step 3:</strong> Draw Figure ${currentPattern.step3Num}.</p>
-            <p>Click and drag on the grid to draw Figure ${currentPattern.step3Num}:</p>
+            <p style="text-align:center; color:#475569;"><strong>Step 3:</strong> Draw Figure ${currentPattern.step3Num}.</p>
+            <p style="text-align:center; font-size:13px; color:#64748b;">Click and drag on the grid to draw exactly ${currentPattern.step3Ans} tiles:</p>
             <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; touch-action: none;"></div>`;
     }
 
     qContent.innerHTML = headerHTML + stepHTML + `
         <div style="text-align:center; margin-top:15px; display: flex; justify-content: center; gap: 10px;">
-            <button onclick="checkFigureAns()" class="primary-btn">Submit Answer</button>
-            <button onclick="showFigureHint()" class="secondary-btn" style="background: #64748b; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;">Get Hint</button>
+            <button onclick="checkFigureAns()" style="background:#1e293b; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Submit Answer</button>
+            <button onclick="showFigureHint()" style="background: #94a3b8; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;">Hint</button>
         </div>
         <div id="feedback-box" style="margin-top:10px; text-align:center; font-weight:bold; min-height:20px;"></div>
-        <div id="hint-display" style="margin-top: 15px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.9rem; color: #92400e;"></div>`;
+        <div id="hint-display" style="margin-top: 15px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.9rem; color: #92400e; text-align:center;"></div>`;
 
     if (currentStep === 3) setupDrawingGrid();
 }
 
-// --- UPDATED DRAWING LOGIC FOR CLICK-AND-DRAG ---
 function setupDrawingGrid() {
     const grid = document.getElementById('drawing-grid');
     if (!grid) return;
@@ -222,7 +253,6 @@ window.checkFigureAns = async function() {
 
     if (isCorrect) {
         if(feedback) {
-            feedback.className = "correct";
             feedback.style.color = "#16a34a"; 
             feedback.innerText = "✅ Correct!";
         }
@@ -239,7 +269,6 @@ window.checkFigureAns = async function() {
     } else {
         figureErrorCount++;
         if(feedback) {
-            feedback.className = "incorrect";
             feedback.style.color = "#dc2626";
             feedback.innerText = "Not quite! Try again.";
         }
@@ -252,47 +281,43 @@ async function finishFigureGame() {
 
     // 2. Consistent Visual Transition (replaces current content)
     document.getElementById('q-content').innerHTML = `
-        <div style="text-align:center; padding:50px; animation: fadeIn 0.5s;">
-            <div style="font-size: 50px; margin-bottom: 20px;">🟦</div>
-            <h2 style="color: var(--black);">Pattern Mastered!</h2>
-            <p style="color: var(--gray-text);">You successfully modeled the growth rule.</p>
-            <p style="font-size: 0.9rem; color: var(--kelly-green); margin-top: 10px;">Loading next activity...</p>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; text-align:center;">
+            <div style="font-size:60px; margin-bottom:10px;">🟦</div>
+            <h2 style="color:#1e293b; margin-bottom:5px;">Pattern Mastered!</h2>
+            <p style="color:#64748b;">You successfully modeled the growth rule.</p>
+            <p style="font-size: 14px; color: #10b981; margin-top: 10px;">Loading next activity...</p>
         </div>
     `;
 
+    // 3. Update Mastery Scores
+    let adjustment = 0;
+    if (figureErrorCount === 0) adjustment = 1;
+    else if (figureErrorCount >= 2) adjustment = -1;
+
+    let currentScore = window.userMastery.FigureGrowth || 0;
+    let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
+    
+    // Update Local
+    window.userMastery.FigureGrowth = newScore;
+
+    // Update Supabase
     if (window.supabaseClient && window.currentUser) {
         try {
-            const { data } = await window.supabaseClient
-                .from('assignment')
-                .select('FigureGrowth')
-                .eq('userName', window.currentUser)
-                .maybeSingle();
-
-            let currentScore = data ? (data.FigureGrowth || 0) : 0;
-            
-            // Standard Logic: 0 errors = +1, 2+ errors = -1
-            let adjustment = 0;
-            if (figureErrorCount === 0) adjustment = 1;
-            else if (figureErrorCount >= 2) adjustment = -1;
-            
-            let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
-
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
             await window.supabaseClient
                 .from('assignment')
                 .update({ FigureGrowth: newScore })
-                .eq('userName', window.currentUser);
-            
+                .eq('userName', window.currentUser)
+                .eq('hour', currentHour);
         } catch(e) { 
             console.error("Database sync failed:", e); 
         }
     }
 
-    // 3. Hand over to Hub after 2 seconds
+    // 4. Hand over to Hub
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
-        } else {
-            location.reload();
         }
     }, 2000);
 }
