@@ -38,7 +38,7 @@
             <div id="progress-indicator"></div>
         </div>
 
-        <div id="q-content">
+        <div id="q-content" class="solve-x-container">
             <p class="loading-text">Preparing your customized lesson...</p>
         </div>
 
@@ -55,7 +55,8 @@
         if (user) document.getElementById('user-display').innerText = user;
         if (lesson) document.getElementById('lesson-display').innerText = "Lesson " + lesson;
         
-        if (!user || !lesson) {
+        // Safety check to ensure we don't loop if already on index
+        if ((!user || !lesson) && !window.location.pathname.endsWith('index.html')) {
             window.location.href = 'index.html';
         }
     });
