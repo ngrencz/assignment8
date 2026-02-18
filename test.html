@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dev Control | v1.7.5</title>
+    <title>Dev Control | v1.7.6</title>
     
     <link rel="stylesheet" href="style.css">
     
@@ -17,55 +17,55 @@
     <script src="skill_boxplot.js"></script>
 
     <style>
-        /* Sidebar specific styling only - does not touch #q-content area */
-        body { margin: 0; padding: 0; background: #f1f5f9; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+        /* Sidebar Layout - Optimized to stay out of the way of style.css */
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f1f5f9; overflow: hidden; }
+        .header-bar { height: 45px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; z-index: 10; }
         
-        .header-bar { height: 50px; background: white; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .master-grid { display: grid; grid-template-columns: 360px 1fr; height: calc(100vh - 45px); }
         
-        /* Two-Column Grid Fix */
-        .master-container { display: grid; grid-template-columns: 380px 1fr; height: calc(100vh - 50px); overflow: hidden; }
+        /* Sidebar / Controls */
+        .sidebar { background: #f8fafc; border-right: 1px solid #cbd5e1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+        .section-tag { color: #0ea5e9; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; }
         
-        .sidebar { background: #f8fafc; border-right: 1px solid #cbd5e1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .main-stage { padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        /* Game Area */
+        .main-stage { background: #fff; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
         
-        .card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .section-tag { color: #0ea5e9; font-size: 11px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; margin-bottom: 10px; display: block; }
+        /* Log Area */
+        .log-box { background: #1a1a1a; color: #4CBB17; padding: 10px; font-family: monospace; border-radius: 6px; height: 180px; overflow-y: auto; font-size: 11px; margin-top: auto; border: 1px solid #333; }
         
-        .log-box { background: #1a1a1a; color: #4CBB17; padding: 12px; font-family: monospace; border-radius: 8px; height: 200px; overflow-y: auto; font-size: 11px; margin-top: auto; }
-        
-        /* Debugger Controls */
-        input[type="range"] { width: 100%; accent-color: #4CBB17; }
-        button { cursor: pointer; font-weight: bold; padding: 12px; border-radius: 8px; border: none; background: #6366f1; color: white; width: 100%; }
-        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 10px; }
-        .slider-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-top: 10px; }
-        details summary { cursor: pointer; font-size: 13px; font-weight: bold; padding: 5px 0; }
+        /* Form Elements */
+        input[type="range"] { width: 100%; accent-color: #4CBB17; margin: 5px 0; }
+        button { cursor: pointer; font-weight: bold; padding: 10px; border-radius: 6px; border: none; background: #6366f1; color: white; width: 100%; margin-top: 5px; }
+        select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; }
+        details summary { cursor: pointer; font-size: 12px; font-weight: bold; margin: 5px 0; }
     </style>
 </head>
 <body>
 
 <div class="header-bar">
-    Module <span style="color:#4CBB17; margin-left:5px;">Troubleshooter</span> <span style="font-weight:normal; font-size:12px; color:#666; margin-left:15px;">Target: test_user | v1.7.5</span>
+    Module <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user v1.7.6
 </div>
 
-<div class="master-container">
+<div class="master-grid">
     <div class="sidebar">
-        
-        <div class="card">
+        <div class="card" style="border-top: 3px solid #0ea5e9;">
             <span class="section-tag">1. Assignment Context</span>
             <select id="lesson-selector" onchange="syncUIWithLesson()">
                 <option value="">-- Choose Lesson --</option>
                 <option value="C6Review">C6Review</option>
             </select>
-            <div id="assign-state-ui" style="display:none; background:#e0f2fe; padding:8px; border-radius:6px;">
-                <label style="font-size:11px;"><b>C6Review Boolean</b> (assignment table):</label>
-                <select id="bool-toggle" onchange="updateAssignmentBool()" style="margin:0;">
-                    <option value="false">False</option>
-                    <option value="true">True</option>
+            <div id="assign-state-ui" style="display:none; margin-top:10px;">
+                <label style="font-size:11px; font-weight:bold;">C6Review Boolean State:</label>
+                <select id="bool-toggle" onchange="updateAssignmentBool()">
+                    <option value="false">False (Unassigned)</option>
+                    <option value="true">True (Assigned)</option>
                 </select>
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="border-top: 3px solid #6366f1;">
             <span class="section-tag">2. Force Launch</span>
             <select id="module-selector">
                 <option value="SolveX">SolveX</option>
@@ -84,7 +84,7 @@
             <div class="slider-label">Linear System <span id="v-LinearSystem">0</span></div><input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')">
             <div class="slider-label">Figure Growth <span id="v-FigureGrowth">0</span></div><input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')">
 
-            <details style="margin-top:10px;">
+            <details>
                 <summary>Box Plot Skills: <span id="agg-BoxPlot">0</span></summary>
                 <input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')">
                 <div class="slider-label" style="font-size:10px;">Median <span id="v-BoxPlotMedian">0</span></div><input type="range" id="s-BoxPlotMedian" min="0" max="10" value="0" oninput="updateVal('BoxPlotMedian')">
@@ -92,7 +92,7 @@
                 <div class="slider-label" style="font-size:10px;">Outliers <span id="v-BoxPlotOutlier">0</span></div><input type="range" id="s-BoxPlotOutlier" min="0" max="10" value="0" oninput="updateVal('BoxPlotOutlier')">
             </details>
 
-            <details style="margin-top:10px;">
+            <details>
                 <summary>Transformations: <span id="agg-C6Transformation">0</span></summary>
                 <input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')">
                 <div class="slider-label" style="font-size:10px;">Translation <span id="v-C6Translation">0</span></div><input type="range" id="s-C6Translation" min="0" max="10" value="0" oninput="updateVal('C6Translation')">
@@ -104,8 +104,7 @@
     </div>
 
     <div class="main-stage">
-        <div id="q-content">
-            </div>
+        <div id="q-content"></div>
     </div>
 </div>
 
@@ -118,17 +117,25 @@
     async function syncUIWithLesson() {
         const lesson = document.getElementById('lesson-selector').value;
         document.getElementById('assign-state-ui').style.display = lesson ? 'block' : 'none';
+        
         try {
-            const { data } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
-            if(!data) return;
-            if(lesson === 'C6Review') { document.getElementById('bool-toggle').value = (data.C6Review === true).toString(); }
+            const { data, error } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
+            if(error || !data) return;
+
+            // Strict Boolean Handling for C6Review
+            if(lesson === 'C6Review') {
+                document.getElementById('bool-toggle').value = (data.C6Review === true).toString();
+            }
+
             ALL_COLS.forEach(c => {
-                const s=document.getElementById('s-'+c), v=document.getElementById('v-'+c), a=document.getElementById('agg-'+c);
-                const val = (data[c] === null || data[c] === undefined) ? 0 : data[c];
-                if(s) s.value = val; if(v) v.innerText = val; if(a) a.innerText = val;
+                const s = document.getElementById('s-'+c), v = document.getElementById('v-'+c), a = document.getElementById('agg-'+c);
+                const dbVal = (data[c] === null || data[c] === undefined) ? 0 : data[c];
+                if(s) s.value = dbVal;
+                if(v) v.innerText = dbVal;
+                if(a) a.innerText = dbVal;
             });
-            log("Database state synced.");
-        } catch(e) { log("Sync Error."); }
+            log(`Synced Context: ${lesson || 'Global'}`);
+        } catch(e) { log("Error: Sync failed."); }
     }
 
     async function updateVal(id) {
@@ -142,13 +149,13 @@
         const lesson = document.getElementById('lesson-selector').value;
         const val = document.getElementById('bool-toggle').value === 'true';
         await window.supabaseClient.from(TABLE).update({ [lesson]: val }).eq('userName', 'test_user').eq('hour', 0);
-        log(`Assignment updated: ${lesson} = ${val}`);
+        log(`DB Update: ${lesson} set to ${val}`);
     }
 
     function forceLoadModule() {
         const mod = document.getElementById('module-selector').value;
-        const qArea = document.getElementById('q-content');
-        qArea.innerHTML = ''; // Full clear before load
+        const qContent = document.getElementById('q-content');
+        qContent.innerHTML = ''; // Clean slate
         window.isCurrentQActive = true;
 
         const map = {
@@ -159,7 +166,11 @@
             'BoxPlot': window.initBoxPlotGame,
             'HubAssignment': window.initHubAssignment
         };
-        if(map[mod]) { log(`🚀 Launching: ${mod}`); map[mod](); }
+
+        if(map[mod]) {
+            log(`🚀 Force Launch: ${mod}`);
+            map[mod](); 
+        }
     }
 
     window.onload = () => { setTimeout(syncUIWithLesson, 1000); };
