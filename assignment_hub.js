@@ -251,7 +251,8 @@ async function loadNextQuestion() {
         { id: 'Similarity', fn: typeof initSimilarityGame !== 'undefined' ? initSimilarityGame : null },
         { id: 'ComplexShapes', fn: typeof initComplexShapesGame !== 'undefined' ? initComplexShapesGame : null },
         { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
-        { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null }
+        { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
+        { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null }
     ].filter(s => s.fn !== null);
 
     if (window.targetLesson === '6.2.4' || window.targetLesson === 'C6Review') {
