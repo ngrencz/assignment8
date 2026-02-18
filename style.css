@@ -114,7 +114,7 @@ input:focus {
 }
 
 /* --- Timer --- */
-#debug-total-time {
+#timer-display {
     font-family: 'Courier New', monospace;
     font-weight: bold;
     font-size: 1.2rem;
@@ -122,6 +122,11 @@ input:focus {
     color: var(--pure-white);
     padding: 5px 15px;
     border-radius: 8px;
+}
+
+#timer-display.idle {
+    color: #ff4d4d;
+    box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
 }
 
 /* --- Feedback States --- */
@@ -173,26 +178,4 @@ canvas {
     margin: 20px auto;
     border-radius: 12px;
     border: 1px solid var(--gray-med);
-}
-
-/* Styles the 'RUNNING', 'PAUSED', or 'PLEASE WAIT' badges */
-.stats-pill, .lesson-pill {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    background: var(--gray-med);
-    color: var(--black);
-}
-
-.lesson-pill {
-    background: #e0f2fe; /* Light blue for the lesson name */
-    color: #0369a1;
-}
-
-/* Add this to catch the 'IDLE' state logic from assignment_hub.js */
-#debug-total-time.idle {
-    color: #ff4d4d;
-    box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
 }
