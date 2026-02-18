@@ -304,18 +304,25 @@ function initCanvas() {
 }
 
 async function finishGame() {
+    // 1. STOP the timer immediately
     window.isCurrentQActive = false;
-    const feedback = document.getElementById('feedback-box');
-    
-    // 1. Calculate Score Adjustment (Game Logic)
-    // 0 errors = +1 (Mastery)
-    // 2+ errors = -1 (Needs Practice)
+
+    // 2. Clear the UI so they know it's done (Consistent with SolveX)
+    document.getElementById('q-content').innerHTML = `
+        <div style="text-align:center; padding:50px; animation: fadeIn 0.5s;">
+            <div style="font-size: 50px; margin-bottom: 20px;">📈</div>
+            <h2 style="color: var(--black);">System Analyzed!</h2>
+            <p style="color: var(--gray-text);">Graphing and Analysis Complete.</p>
+            <p style="font-size: 0.9rem; color: var(--kelly-green); margin-top: 10px;">Loading next activity...</p>
+        </div>
+    `;
+
+    // 3. Calculate Score Adjustment
     let adjustment = 0;
     if (linearErrorCount === 0) adjustment = 1;
     else if (linearErrorCount >= 2) adjustment = -1;
 
-    // 2. Update Database (Specific to this Skill)
-    // We do this here because the Hub might not know this game maps to 'LinearSystem'
+    // 4. Update Database
     if (window.supabaseClient && window.currentUser && adjustment !== 0) {
         try {
             const { data } = await window.supabaseClient
@@ -337,13 +344,12 @@ async function finishGame() {
         }
     }
 
-    // 3. Hand over to Hub (Transition Logic)
+    // 5. Hand over to Hub
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion(); 
         } else {
-            // Fallback if Hub isn't loaded
             location.reload();
         }
-    }, 1500);
+    }, 2000); // Give them 2 seconds to see the success message
 }
