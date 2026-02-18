@@ -224,27 +224,28 @@ async function loadNextQuestion() {
 async function finishAssignment() {
     window.isCurrentQActive = false;
     
-    // 1. Get the hour string ("00", "01", etc.)
+    // 1. Get the current hour string ("00", "01", etc.)
     const currentHour = sessionStorage.getItem('target_hour') || "00";
     
-    // 2. Use the lesson ID directly as the column name
-    // This removes the need for C624_Completed entirely
+    // 2. The column name is now just the targetLesson (e.g., "C6Review")
     const dbColumn = window.targetLesson; 
 
     const updateObj = {};
     updateObj[dbColumn] = true;
 
     try {
+        // 3. Update the specific row matching Name + Hour
         await window.supabaseClient
             .from('assignment')
             .update(updateObj)
             .eq('userName', window.currentUser)
             .eq('hour', currentHour);
 
+        // 4. Update the UI to show completion
         document.getElementById('work-area').innerHTML = `
             <div style="text-align: center; padding: 40px; background: #f8fafc; border-radius: 12px; border: 2px solid #22c55e;">
                 <h1 style="color: #22c55e;">Goal Reached!</h1>
-                <p>Your 12 minutes of practice for <strong>${window.targetLesson}</strong> are logged.</p>
+                <p>Your 12 minutes of practice for <strong>${window.targetLesson}</strong> are logged for Hour ${currentHour}.</p>
                 <button onclick="location.reload()" class="primary-btn">Start New Session</button>
             </div>
         `;
