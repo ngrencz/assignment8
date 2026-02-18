@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dev Control | Restored v1.6.5</title>
+    <title>Dev Control | Restored v1.6.8</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -23,7 +23,7 @@
         .header-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: white; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 100; }
         .grid { display: grid; grid-template-columns: 420px 1fr; gap: 20px; padding: 20px; }
         .card { background: white; border: 1px solid var(--border); padding: 18px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .log-box { background: #1a1a1a; color: var(--kelly-green); padding: 15px; font-family: monospace; border-radius: 8px; height: 350px; overflow-y: auto; font-size: 12px; }
+        .log-box { background: #1a1a1a; color: var(--kelly-green); padding: 15px; font-family: monospace; border-radius: 8px; height: 350px; overflow-y: auto; font-size: 12px; border: 1px solid #333; }
         .slider-group { margin: 10px 0; }
         .slider-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; }
         .section-tag { color: var(--hub-blue); text-transform: uppercase; font-size: 11px; font-weight: bold; display: block; margin-bottom: 10px; border-bottom: 1px solid #eee; }
@@ -32,51 +32,52 @@
         select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; background: #fff; }
         details { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; }
         summary { cursor: pointer; font-weight: bold; font-size: 13px; }
+        #work-area { position: relative; width: 100%; min-height: 500px; background: #fff; border-radius: 8px; overflow: hidden; }
     </style>
 </head>
 <body>
 
 <div class="header-bar">
     <h1 style="margin:0; font-size: 20px;">Module <span style="color:var(--kelly-green)">Troubleshooter</span></h1>
-    <div style="font-size: 13px;">Target: <b>test_user</b> | <b>v1.6.5</b></div>
+    <div style="font-size: 13px;">Target: <b>test_user</b> | <b>v1.6.8</b></div>
 </div>
 
 <div class="grid">
     <div class="control-stack">
         
-        <div class="card" style="border-top: 4px solid var(--indigo);">
-            <span class="section-tag">1. Troubleshooting: Force Load</span>
-            <select id="module-selector">
-                <option value="SolveX">SolveX</option>
-                <option value="C6Transformation">Transformations</option>
-                <option value="LinearSystem">Linear Systems</option>
-                <option value="FigureGrowth">Figure Growth</option>
-                <option value="BoxPlot">Box Plots</option>
-                <option value="HubAssignment">Hub (Combined Lesson)</option>
-            </select>
-            <button onclick="forceLoadModule()" style="background: var(--indigo); color: white;">🚀 Force Launch Module</button>
-        </div>
-
         <div class="card" style="border-top: 4px solid var(--hub-blue);">
-            <span class="section-tag">2. Lesson Context (Assignment State)</span>
+            <span class="section-tag">1. Assignment Context</span>
             <select id="lesson-selector" onchange="syncUIWithLesson()">
-                <option value="">-- Choose Lesson to Debug --</option>
+                <option value="">-- Choose Lesson --</option>
                 <option value="C6Review">C6Review</option>
             </select>
-            <div id="assign-state-ui" style="display:none; background:#e0f2fe; padding:10px; border-radius:8px;">
-                <label style="font-size:12px;"><b>C6Review</b> Bool State:</label>
-                <select id="bool-toggle" onchange="updateAssignmentBool()" style="margin:0;">
+            <div id="assign-state-ui" style="display:none; background:#f0f9ff; padding:10px; border-radius:8px;">
+                <label style="font-size:12px;"><b>Boolean State:</b></label>
+                <select id="bool-toggle" onchange="updateAssignmentBool()">
                     <option value="false">False (Unassigned)</option>
                     <option value="true">True (Assigned)</option>
                 </select>
             </div>
         </div>
 
+        <div class="card" style="border-top: 4px solid var(--indigo);">
+            <span class="section-tag">2. Troubleshooting: Force Load</span>
+            <select id="module-selector">
+                <option value="SolveX">SolveX</option>
+                <option value="C6Transformation">Transformations</option>
+                <option value="LinearSystem">Linear Systems</option>
+                <option value="FigureGrowth">Figure Growth</option>
+                <option value="BoxPlot">Box Plots</option>
+                <option value="HubAssignment">Hub Assignment</option>
+            </select>
+            <button onclick="forceLoadModule()" style="background: var(--indigo); color: white;">🚀 Force Launch Module</button>
+        </div>
+
         <div class="card">
             <span class="section-tag">3. Skill/Aggregate Control</span>
             <div class="slider-group"><div class="slider-label">SolveX <span id="v-SolveX">0</span></div><input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')"></div>
             <div class="slider-group"><div class="slider-label">Linear System <span id="v-LinearSystem">0</span></div><input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')"></div>
-            <div class="slider-group"><div class="slider-label">Figure Growth <span id="v-FigureGrowth">0</span></div><input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')"></div>
+            <div class="slider-group"><div class="slider-label">Figure Growth <span id="v-FigureGrowth">0</span></div><input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="inputUpdate('FigureGrowth')"></div>
 
             <details open>
                 <summary>Box Plot Mastery: <span id="agg-BoxPlot">0</span></summary>
@@ -102,12 +103,11 @@
                 </div>
             </details>
         </div>
-        <button onclick="resetData()" style="background:var(--danger); color:white;">Clear test_user Data</button>
     </div>
 
     <div class="main-stack">
-        <div class="card"><span class="section-tag">System Log</span><div id="log" class="log-box">Ready...</div></div>
-        <div class="card" style="min-height:500px;"><div id="work-area"><div id="q-content"></div></div></div>
+        <div class="card"><span class="section-tag">System Log</span><div id="log" class="log-box">Awaiting sync...</div></div>
+        <div class="card"><div id="work-area"></div></div>
     </div>
 </div>
 
@@ -121,8 +121,8 @@
         const lesson = document.getElementById('lesson-selector').value;
         document.getElementById('assign-state-ui').style.display = lesson ? 'block' : 'none';
         
-        const { data } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
-        if(!data) return;
+        const { data, error } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
+        if(error || !data) { log("Error fetching user data."); return; }
 
         if(lesson) document.getElementById('bool-toggle').value = data[lesson]?.toString() || 'false';
         
@@ -133,7 +133,7 @@
             if(v) v.innerText = val;
             if(a) a.innerText = val;
         });
-        log(`Synced UI for ${lesson || 'Global State'}`);
+        log(`Context Synced: ${lesson || 'Global State'}`);
     }
 
     async function updateVal(id) {
@@ -141,18 +141,24 @@
         document.getElementById('v-'+id).innerText = val;
         if(document.getElementById('agg-'+id)) document.getElementById('agg-'+id).innerText = val;
         await window.supabaseClient.from(TABLE).update({ [id]: val }).eq('userName', 'test_user').eq('hour', 0);
-        log(`Update: ${id} -> ${val}`);
+        log(`DB Update: ${id} -> ${val}`);
     }
 
     async function updateAssignmentBool() {
         const lesson = document.getElementById('lesson-selector').value;
         const val = document.getElementById('bool-toggle').value === 'true';
         await window.supabaseClient.from(TABLE).update({ [lesson]: val }).eq('userName', 'test_user').eq('hour', 0);
-        log(`Boolean Update: ${lesson} -> ${val}`);
+        log(`Assignment Update: ${lesson} -> ${val}`);
     }
 
     function forceLoadModule() {
         const mod = document.getElementById('module-selector').value;
+        const workArea = document.getElementById('work-area');
+        
+        // RESTORED: Reset the DOM exactly how the scripts expect it
+        workArea.innerHTML = '<div id="q-content"></div>';
+        window.isCurrentQActive = true;
+
         const map = {
             'C6Transformation': window.initTransformationGame,
             'LinearSystem': window.initLinearSystemGame,
@@ -161,10 +167,24 @@
             'BoxPlot': window.initBoxPlotGame,
             'HubAssignment': window.initHubAssignment
         };
-        if(map[mod]) { window.isCurrentQActive = true; map[mod](); log(`🚀 Forced Loading: ${mod}`); }
+
+        if(map[mod]) {
+            log(`🚀 Force Launching: ${mod}...`);
+            map[mod](); 
+        } else {
+            log(`❌ Error: Module ${mod} not found.`, true);
+        }
     }
 
-    window.onload = () => { setTimeout(syncUIWithLesson, 1000); };
+    window.onload = () => {
+        // Ensure supabase is ready
+        let checkSupabase = setInterval(() => {
+            if (window.supabaseClient) {
+                clearInterval(checkSupabase);
+                syncUIWithLesson();
+            }
+        }, 500);
+    };
 </script>
 </body>
 </html>
