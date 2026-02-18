@@ -305,19 +305,45 @@ function initCanvas() {
 
 async function finishGame() {
     window.isCurrentQActive = false;
-    // ... (Database sync logic same as before) ...
-    // Placeholder for sync logic for brevity
-    if (window.supabaseClient && window.currentUser) {
+    const feedback = document.getElementById('feedback-box');
+    
+    // 1. Calculate Score Adjustment (Game Logic)
+    // 0 errors = +1 (Mastery)
+    // 2+ errors = -1 (Needs Practice)
+    let adjustment = 0;
+    if (linearErrorCount === 0) adjustment = 1;
+    else if (linearErrorCount >= 2) adjustment = -1;
+
+    // 2. Update Database (Specific to this Skill)
+    // We do this here because the Hub might not know this game maps to 'LinearSystem'
+    if (window.supabaseClient && window.currentUser && adjustment !== 0) {
         try {
-            const { data } = await window.supabaseClient.from('assignment').select('LinearSystem').eq('userName', window.currentUser).maybeSingle();
+            const { data } = await window.supabaseClient
+                .from('assignment')
+                .select('LinearSystem')
+                .eq('userName', window.currentUser)
+                .maybeSingle();
+
             let currentScore = data ? (data.LinearSystem || 0) : 0;
-            let adjustment = (linearErrorCount === 0) ? 1 : (linearErrorCount >= 2 ? -1 : 0);
             let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
-            await window.supabaseClient.from('assignment').update({ LinearSystem: newScore }).eq('userName', window.currentUser);
-        } catch(e) {}
+
+            await window.supabaseClient
+                .from('assignment')
+                .update({ LinearSystem: newScore })
+                .eq('userName', window.currentUser);
+                
+        } catch(e) {
+            console.error("Score update failed:", e);
+        }
     }
+
+    // 3. Hand over to Hub (Transition Logic)
     setTimeout(() => { 
-        if (typeof loadNextQuestion === 'function') loadNextQuestion(); 
-        else location.reload();
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion(); 
+        } else {
+            // Fallback if Hub isn't loaded
+            location.reload();
+        }
     }, 1500);
 }
