@@ -3,102 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | Math Portal</title>
+    <title>Math Portal | Login</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-   
+    <style>
+        /* Basic centering for the login bubble */
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background-color: #f0f2f5; 
+        }
+        .login-bubble {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 320px;
+        }
+        .field-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        input, select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { 
+            width: 100%; 
+            padding: 10px; 
+            background-color: #4CAF50; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+        }
+    </style>
 </head>
 <body>
 
-<div class="login-card">
-    <h2>Student Login</h2>
+<div class="login-bubble">
+    <h2 style="text-align: center; margin-top: 0;">Student Login</h2>
     
-    <div class="form-group">
-        <label>Username</label>
-        <input type="text" id="username-input" placeholder="Enter your name..." oninput="checkStatus()">
+    <div class="field-group">
+        <label for="username-input">Name</label>
+        <input type="text" id="username-input" placeholder="Enter your name">
     </div>
 
-    <div class="form-group">
-        <label>Class Period (Hour)</label>
+    <div class="field-group">
+        <label for="hour-select">Class Period</label>
         <select id="hour-select">
-            <option value="0">Hour 0 (Dev/Test)</option>
+            <option value="0">Hour 0 (Test)</option>
             <option value="1">1st Period</option>
             <option value="2">2nd Period</option>
             <option value="3">3rd Period</option>
         </select>
     </div>
 
-    <div class="form-group">
-        <label>Target Lesson</label>
-        <select id="lesson-select" onchange="checkStatus()">
-            <option value="6.2.4">6.2.4 Transformations</option>
+    <div class="field-group">
+        <label for="lesson-select">Assignment</label>
+        <select id="lesson-select">
             <option value="C6Review">Chapter 6 Review</option>
+            <option value="6.2.4">6.2.4 Transformations</option>
         </select>
     </div>
 
-    <button onclick="handleLogin()">Enter Assignment</button>
-    <div id="status-msg"></div>
+    <button onclick="handleLogin()">Start Practice</button>
 </div>
 
 <script>
-    // --- Supabase Config ---
-    const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
-    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
-
-    /**
-     * Optional: Checks if user has already finished the lesson 
-     * to show a warning before they click Login.
-     */
-    async function checkStatus() {
-        const user = document.getElementById('username-input').value.trim();
-        const lesson = document.getElementById('lesson-select').value;
-        const msgDiv = document.getElementById('status-msg');
-
-        if (user.length < 2) {
-            msgDiv.innerText = "";
-            return;
-        }
-
-        const { data } = await supabaseClient
-            .from('assignment')
-            .select('*')
-            .eq('userName', user)
-            .eq('hour', 0)
-            .maybeSingle();
-
-        if (data && data[lesson] === true) {
-            msgDiv.style.color = "#f59e0b";
-            msgDiv.innerText = `⚠️ ${lesson} is already marked complete for this user.`;
-        } else if (data) {
-            msgDiv.style.color = "#22c55e";
-            msgDiv.innerText = "✓ Record found. Progress will be updated.";
-        } else {
-            msgDiv.style.color = "#64748b";
-            msgDiv.innerText = "New user detected. Entry will be created.";
-        }
-    }
-
-    /**
-     * Logic to pass data to assignment.html
-     */
     function handleLogin() {
-        const user = document.getElementById('username-input').value.trim();
+        // 1. Grab values from the UI
+        const name = document.getElementById('username-input').value.trim();
         const hour = document.getElementById('hour-select').value;
         const lesson = document.getElementById('lesson-select').value;
 
-        if (!user) {
-            alert("Please enter a username.");
+        // 2. Validate
+        if (!name) {
+            alert("Please enter your name to continue.");
             return;
         }
 
-        // Save selection to session so the Hub can read it
-        sessionStorage.setItem('current_user', user);
+        // 3. Store in Session (This allows assignment.html to know who is playing)
+        sessionStorage.setItem('current_user', name);
         sessionStorage.setItem('target_hour', hour);
         sessionStorage.setItem('target_lesson', lesson);
-        sessionStorage.setItem('total_work_time', 0); // Reset timer for new session
+        
+        // Reset the timer for a fresh session
+        sessionStorage.setItem('total_work_time', 0);
 
-        // Redirect to the portal page
+        // 4. Redirect to the main portal file
         window.location.href = 'assignment.html';
     }
 </script>
