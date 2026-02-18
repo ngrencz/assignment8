@@ -3,229 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>6.2.4 System Debugger</title>
+    <title>Dev Control | v1.7.8</title>
     
-    <script>
-        const APP_VERSION = "1.0.6"; 
-        const LAST_UPDATED = "2026-02-16 16:55"; 
-    </script>
-
+    <link rel="stylesheet" href="style.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <script src="assignment_hub.js"></script>
     <script src="skill_transformation.js"></script>
     <script src="skill_linearsystem.js"></script>
     <script src="skill_figuregrowth.js"></script>
     <script src="skill_solveX.js"></script>
     <script src="skill_boxplot.js"></script>
 
-    <link rel="stylesheet" href="style.css">
-
     <style>
-        :root { --panel-bg: #f8fafc; --border: #e2e8f0; }
-        body { padding: 20px; font-family: sans-serif; background-color: #f1f5f9; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { background: white; border: 1px solid var(--border); padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f1f5f9; overflow: hidden; }
+        .header-bar { height: 40px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; z-index: 10; }
         
-        .version-tag {
-            background: #1e293b;
-            color: #38bdf8;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-family: monospace;
-            font-size: 11px;
-            display: inline-block;
-            margin-bottom: 10px;
-        }
+        /* THE TWO COLUMN LAYOUT */
+        .master-grid { display: grid; grid-template-columns: 350px 1fr; height: calc(100vh - 40px); }
+        
+        /* COLUMN 1: SIDEBAR */
+        .sidebar { background: #f8fafc; border-right: 1px solid #cbd5e1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        
+        /* COLUMN 2: MAIN STAGE (Log on top, Game below) */
+        .main-stage { display: flex; flex-direction: column; background: #fff; overflow: hidden; }
+        
+        .log-container { height: 200px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; overflow: hidden; display: flex; flex-direction: column; }
+        .log-box { flex-grow: 1; color: #4CBB17; font-family: monospace; font-size: 11px; overflow-y: auto; }
+        
+        .game-area { flex-grow: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
 
-        .timer-tester {
-            background: #fff7ed;
-            border: 1px solid #ffedd5;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-        
-        .log-box { background: #1a1a1a; color: #4CBB17; padding: 15px; font-family: monospace; border-radius: 8px; height: 250px; overflow-y: auto; font-size: 13px; margin-top: 10px; }
-        input[type="range"] { width: 100%; accent-color: #4CBB17; cursor: pointer; }
-        button { cursor: pointer; transition: opacity 0.2s; font-weight: bold; }
-        button:hover { opacity: 0.8; }
-        .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+        /* Sidebar UI Elements */
+        .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .section-tag { color: #0ea5e9; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; border-bottom: 1px solid #f1f5f9; }
+        input[type="range"] { width: 100%; accent-color: #4CBB17; margin: 5px 0; cursor: pointer; }
+        button { cursor: pointer; font-weight: bold; padding: 10px; border-radius: 6px; border: none; background: #6366f1; color: white; width: 100%; margin-top: 5px; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; }
+        details summary { cursor: pointer; font-size: 12px; font-weight: bold; margin: 5px 0; color: #444; }
     </style>
 </head>
 <body>
 
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-        <div>
-            <h1>Dev <span class="accent-text">Control Panel</span></h1>
-            <div class="version-tag">Build: <script>document.write(APP_VERSION)</script> | Updated: <script>document.write(LAST_UPDATED)</script></div>
-        </div>
-        <div class="card" style="padding: 10px 20px; text-align: right; margin: 0;">
-            <label style="color: #64748b; font-size: 12px;">Active Session:</label><br>
-            <strong id="session-user-display">test_user</strong>
-        </div>
-    </div>
+<div class="header-bar">
+    DEBUGGER: <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user | v1.7.8
+</div>
 
-    <div class="grid">
-        <div class="card-stack">
-            <div class="card">
-                <h3>1. User & DB Management</h3>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button onclick="ensureTestUser()" style="flex: 2; background: #4CBB17; color: white; border: none; padding: 12px; border-radius: 8px;">Sync 'test_user'</button>
-                    <button onclick="resetSession()" style="flex: 1; background:#ef4444; color:#fff; border: none; padding: 12px; border-radius: 8px;">Wipe Data</button>
-                </div>
-
-                <div class="timer-tester">
-                    <h3>2. Timer Engine (12-Min Test)</h3>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="warpTime(715)" style="background:#f59e0b; color:white; border:none; padding:8px 12px; border-radius:6px; flex: 1;">Jump to 11:55</button>
-                        <button onclick="warpTime(0)" style="background:#64748b; color:white; border:none; padding:8px 12px; border-radius:6px; flex: 1;">Reset Clock</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>3. Skill Score Overrides</h3>
-                <p><small style="color:#64748b;">Adjust and click Apply to force specific routing.</small></p>
-                
-                <div style="display: grid; gap: 12px; margin-top: 15px;">
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">SolveX <span id="v-SolveX">0</span></label>
-                        <input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')">
-                    </div>
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">BoxPlot <span id="v-BoxPlot">0</span></label>
-                        <input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')">
-                    </div>
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">LinearSystem <span id="v-LinearSystem">0</span></label>
-                        <input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')">
-                    </div>
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">FigureGrowth <span id="v-FigureGrowth">0</span></label>
-                        <input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')">
-                    </div>
-                    <div>
-                        <label style="display:flex; justify-content:space-between; font-size: 13px;">Transformations <span id="v-C6Transformation">0</span></label>
-                        <input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')">
-                    </div>
-                </div>
-                <button onclick="applyScoresAndRoute()" style="width:100%; margin-top:20px; background:#000; color:#fff; padding: 15px; border-radius: 8px; border: none;">Apply Scores & Launch Game</button>
+<div class="master-grid">
+    <div class="sidebar">
+        <div class="card" style="border-top: 3px solid #0ea5e9;">
+            <span class="section-tag">1. Assignment Context</span>
+            <select id="lesson-selector" onchange="syncUIWithLesson()">
+                <option value="">-- Choose Lesson --</option>
+                <option value="C6Review">C6Review</option>
+            </select>
+            <div id="assign-state-ui" style="display:none; margin-top:8px;">
+                <label style="font-size:10px; font-weight:bold;">Bool State (DB):</label>
+                <select id="bool-toggle" onchange="updateAssignmentBool()">
+                    <option value="false">False</option>
+                    <option value="true">True</option>
+                </select>
             </div>
         </div>
 
-        <div class="output-stack">
-            <div class="card" style="background: #0f172a; color: white; border: none;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin:0; color: #38bdf8; font-size: 0.9rem;">🕒 Timer Engine Status</h3>
-                    <span id="timer-state-pill" class="status-pill" style="background: #ef4444; color: white;">PAUSED</span>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                        <label style="color: #94a3b8; font-size: 0.7rem; display: block; margin-bottom: 4px;">TOTAL WORK</label>
-                        <div id="debug-total-time" style="font-size: 1.2rem; font-family: monospace; color: #38bdf8;">00:00 / 12:00</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                        <label style="color: #94a3b8; font-size: 0.7rem; display: block; margin-bottom: 4px;">CURRENT Q</label>
-                        <div id="debug-q-time" style="font-size: 1.2rem; font-family: monospace; color: #fbbf24;">0s</div>
-                    </div>
-                </div>
-            </div>
+        <div class="card" style="border-top: 3px solid #6366f1;">
+            <span class="section-tag">2. Force Launch</span>
+            <select id="module-selector">
+                <option value="SolveX">SolveX</option>
+                <option value="C6Transformation">Transformations</option>
+                <option value="LinearSystem">Linear Systems</option>
+                <option value="FigureGrowth">Figure Growth</option>
+                <option value="BoxPlot">Box Plots</option>
+                <option value="HubAssignment">Hub Assignment</option>
+            </select>
+            <button onclick="forceLoadModule()">🚀 Launch Module</button>
+        </div>
 
-            <div class="card">
-                <h3 style="margin-top: 0;">Live System Logs</h3>
-                <div id="log" class="log-box">System Initialized...</div>
-                
-                <div id="work-area" style="margin-top:20px; border-top: 2px solid #f1f5f9; padding-top:20px;">
-                    <h2 id="q-title" style="font-size: 1.1rem; color: #1e293b;">Question Preview:</h2>
-                    <div id="q-content" style="min-height: 100px;"><em>The selected math game will render here.</em></div>
-                    <div id="feedback-box" style="display:none; margin-top:15px; padding:15px; border-radius:8px;"></div>
-                </div>
-            </div>
+        <div class="card">
+            <span class="section-tag">3. Mastery Controls</span>
+            <div class="slider-label">SolveX <span id="v-SolveX">0</span></div><input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')">
+            <div class="slider-label">Linear System <span id="v-LinearSystem">0</span></div><input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')">
+            <div class="slider-label">Figure Growth <span id="v-FigureGrowth">0</span></div><input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')">
+
+            <details>
+                <summary>Box Plot Skills: <span id="agg-BoxPlot">0</span></summary>
+                <input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')">
+                <div class="slider-label" style="font-size:10px;">Median <span id="v-BoxPlotMedian">0</span></div><input type="range" id="s-BoxPlotMedian" min="0" max="10" value="0" oninput="updateVal('BoxPlotMedian')">
+                <div class="slider-label" style="font-size:10px;">IQR <span id="v-BoxPlotIQR">0</span></div><input type="range" id="s-BoxPlotIQR" min="0" max="10" value="0" oninput="updateVal('BoxPlotIQR')">
+                <div class="slider-label" style="font-size:10px;">Outliers <span id="v-BoxPlotOutlier">0</span></div><input type="range" id="s-BoxPlotOutlier" min="0" max="10" value="0" oninput="updateVal('BoxPlotOutlier')">
+            </details>
+
+            <details>
+                <summary>Transformations: <span id="agg-C6Transformation">0</span></summary>
+                <input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')">
+                <div class="slider-label" style="font-size:10px;">Translation <span id="v-C6Translation">0</span></div><input type="range" id="s-C6Translation" min="0" max="10" value="0" oninput="updateVal('C6Translation')">
+                <div class="slider-label" style="font-size:10px;">Rotation <span id="v-C6Rotation">0</span></div><input type="range" id="s-C6Rotation" min="0" max="10" value="0" oninput="updateVal('C6Rotation')">
+            </details>
         </div>
     </div>
 
-    <script src="assignment_hub.js"></script>
+    <div class="main-stage">
+        <div class="log-container">
+            <div style="font-size: 10px; color: #888; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">System Log</div>
+            <div class="log-box" id="log">Ready for module launch...</div>
+        </div>
+        <div class="game-area">
+            <div id="q-content"></div>
+        </div>
+    </div>
+</div>
 
-    <script>
-        window.currentUser = 'test_user';
-        window.targetLesson = '6.2.4';
+<script>
+    const TABLE = 'assignment';
+    const ALL_COLS = ['SolveX','LinearSystem','FigureGrowth','BoxPlot','BoxPlotMedian','BoxPlotIQR','BoxPlotOutlier','C6Transformation','C6Translation','C6ReflectionX','C6ReflectionY','C6Rotation','C6Dilation','C6Review'];
+
+    function log(m) { const l=document.getElementById('log'); l.innerHTML+=`<br>[${new Date().toLocaleTimeString()}] ${m}`; l.scrollTop=l.scrollHeight; }
+
+    async function syncUIWithLesson() {
+        const lesson = document.getElementById('lesson-selector').value;
+        document.getElementById('assign-state-ui').style.display = lesson ? 'block' : 'none';
         
-        function log(msg) {
-            const l = document.getElementById('log');
-            l.innerHTML += `<br><span style="color:#888;">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
-            l.scrollTop = l.scrollHeight;
-        }
+        try {
+            const { data } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
+            if(!data) return;
 
-        function updateVal(id) {
-            document.getElementById('v-' + id).innerText = document.getElementById('s-' + id).value;
-        }
-
-        function resetSliders() {
-            const skills = ['SolveX', 'BoxPlot', 'LinearSystem', 'FigureGrowth', 'C6Transformation'];
-            skills.forEach(s => {
-                const slider = document.getElementById('s-' + s);
-                if (slider) { slider.value = 0; updateVal(s); }
-            });
-        }
-
-        function warpTime(seconds) {
-            window.totalSecondsWorked = seconds;
-            sessionStorage.setItem('total_work_time', seconds);
-            log(`Time warped to ${seconds} seconds.`);
-        }
-
-        function resetSession() {
-            sessionStorage.clear();
-            log("Session wiped. Reloading...");
-            setTimeout(() => location.reload(), 500);
-        }
-
-        async function ensureTestUser() {
-            log("Connecting to Supabase...");
-            const { data, error } = await supabaseClient.from('assignment').select('*').eq('userName', 'test_user').maybeSingle();
-            
-            if (error) { log("Fetch Error: " + error.message); return; }
-
-            if (!data) {
-                log("test_user not found. Creating row...");
-                const { error: insErr } = await supabaseClient.from('assignment').insert({ userName: 'test_user' });
-                if (insErr) log("Insert failed: " + insErr.message);
-                else { log("Success! Created test_user."); resetSliders(); }
-            } else {
-                log("test_user found. Syncing sliders...");
-                syncSliders(data);
+            if(lesson === 'C6Review') {
+                document.getElementById('bool-toggle').value = (data.C6Review === true).toString();
             }
-        }
 
-        function syncSliders(data) {
-            const skills = ['SolveX', 'BoxPlot', 'LinearSystem', 'FigureGrowth', 'C6Transformation'];
-            skills.forEach(s => {
-                const slider = document.getElementById('s-' + s);
-                if (slider) { slider.value = data[s] || 0; updateVal(s); }
+            ALL_COLS.forEach(c => {
+                const s = document.getElementById('s-'+c), v = document.getElementById('v-'+c), a = document.getElementById('agg-'+c);
+                const dbVal = data[c] ?? 0;
+                if(s) s.value = dbVal;
+                if(v) v.innerText = dbVal;
+                if(a) a.innerText = dbVal;
             });
+            log(`Sync Complete: ${lesson || 'Global'}`);
+        } catch(e) { log("Sync Error."); }
+    }
+
+    async function updateVal(id) {
+        const val = parseInt(document.getElementById('s-'+id).value);
+        document.getElementById('v-'+id).innerText = val;
+        if(document.getElementById('agg-'+id)) document.getElementById('agg-'+id).innerText = val;
+        await window.supabaseClient.from(TABLE).update({ [id]: val }).eq('userName', 'test_user').eq('hour', 0);
+    }
+
+    async function updateAssignmentBool() {
+        const lesson = document.getElementById('lesson-selector').value;
+        const val = document.getElementById('bool-toggle').value === 'true';
+        await window.supabaseClient.from(TABLE).update({ [lesson]: val }).eq('userName', 'test_user').eq('hour', 0);
+        log(`Assignment: ${lesson} -> ${val}`);
+    }
+
+    function forceLoadModule() {
+        const mod = document.getElementById('module-selector').value;
+        document.getElementById('q-content').innerHTML = '';
+        window.isCurrentQActive = true;
+
+        const map = {
+            'C6Transformation': window.initTransformationGame,
+            'LinearSystem': window.initLinearSystemGame,
+            'FigureGrowth': window.initFigureGrowthGame,
+            'SolveX': window.initSolveXGame,
+            'BoxPlot': window.initBoxPlotGame,
+            'HubAssignment': window.initHubAssignment
+        };
+
+        if(map[mod]) {
+            log(`🚀 Force Launch: ${mod}`);
+            map[mod](); 
         }
+    }
 
-        async function applyScoresAndRoute() {
-            log("Saving custom scores to DB...");
-            const updates = {
-                SolveX: parseInt(document.getElementById('s-SolveX').value),
-                BoxPlot: parseInt(document.getElementById('s-BoxPlot').value),
-                LinearSystem: parseInt(document.getElementById('s-LinearSystem').value),
-                FigureGrowth: parseInt(document.getElementById('s-FigureGrowth').value),
-                C6Transformation: parseInt(document.getElementById('s-C6Transformation').value)
-            };
-
-            const { error } = await supabaseClient.from('assignment').update(updates).eq('userName', 'test_user');
-            
-            if (error) log("DB Error: " + error.message);
-            else {
-                log("Scores saved! Triggering loadNextQuestion()...");
-                loadNextQuestion(); 
-            }
-        }
-
-        // Auto-run on load
-        ensureTestUser();
-    </script>
+    window.onload = () => { setTimeout(syncUIWithLesson, 1000); };
+</script>
 </body>
 </html>
