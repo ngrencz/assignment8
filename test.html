@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dev Control | v2.0 Layout</title>
+    <title>Dev Control | v2.1 Layout</title>
     
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -34,7 +34,7 @@
             gap: 20px;
         }
         
-        /* 1. HEADER BUBBLE */
+        /* HEADER BUBBLE */
         .header-card { 
             background: white; 
             border: 1px solid #e2e8f0; 
@@ -48,22 +48,22 @@
             flex-shrink: 0;
         }
 
-        /* MAIN GRID LAYOUT */
+        /* MASTER GRID */
         .master-grid { 
             display: grid; 
             grid-template-columns: 350px 1fr; 
             gap: 20px; 
             flex-grow: 1;
-            min-height: 0; /* Important for scrolling */
+            min-height: 0;
         }
         
-        /* COLUMN 1: CONTROLS (Scrollable) */
+        /* COLUMN 1: CONTROLS */
         .control-column { 
             display: flex; 
             flex-direction: column; 
             gap: 15px; 
             overflow-y: auto; 
-            padding-right: 5px; /* Space for scrollbar */
+            padding-right: 5px;
         }
         
         /* COLUMN 2: LOG & STAGE */
@@ -84,12 +84,12 @@
             flex-shrink: 0; 
         }
 
-        /* LOG CARD */
+        /* LOG & GAME AREA */
         .log-card { 
             background: #1a1a1a; 
             border-radius: 12px; 
             padding: 15px; 
-            height: 150px; /* Fixed height for log */
+            height: 150px; 
             display: flex; 
             flex-direction: column; 
             border: 1px solid #333;
@@ -97,7 +97,6 @@
         }
         .log-box { flex-grow: 1; color: #4CBB17; font-family: monospace; font-size: 11px; overflow-y: auto; }
 
-        /* WORK SPACE CARD */
         .game-card { 
             background: white; 
             border: 1px solid #e2e8f0; 
@@ -113,19 +112,54 @@
         }
 
         /* UI ELEMENTS */
-        .section-tag { color: #0ea5e9; font-size: 11px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; margin-bottom: 12px; display: block; }
-        input[type="range"] { width: 100%; accent-color: #4CBB17; margin: 8px 0; cursor: pointer; }
-        button { cursor: pointer; font-weight: bold; padding: 12px; border-radius: 8px; border: none; background: #6366f1; color: white; width: 100%; margin-top: 10px; transition: 0.2s; }
-        button:hover { background: #4f46e5; }
-        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; margin-bottom: 5px; }
-        .slider-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #475569; }
+        .section-tag { color: #0ea5e9; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; }
         
+        /* Selectors & Inputs */
+        select { 
+            padding: 8px; 
+            border-radius: 6px; 
+            border: 1px solid #cbd5e1; 
+            background: #fff; 
+            font-size: 13px;
+        }
+        
+        input[type="range"] { width: 100%; accent-color: #4CBB17; margin: 8px 0; cursor: pointer; }
+        
+        /* Buttons */
+        .launch-btn {
+            background-color: #4CBB17; /* Kelly Green */
+            color: white;
+            font-weight: bold;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .launch-btn:hover { background-color: #3da012; }
+
+        /* Helpers */
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .full-width { width: 100%; }
+        .right-align { display: flex; justify-content: flex-end; margin-top: 10px; }
+        
+        /* Status Box */
+        .status-box {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+        .status-box select { border: none; background: transparent; padding: 8px; font-weight: bold; }
+
         details { margin-top: 5px; border-top: 1px solid #f1f5f9; padding-top: 8px; }
         details summary { cursor: pointer; font-size: 13px; font-weight: bold; margin: 4px 0; outline: none; color: #334155; }
-        
-        #q-content { width: 100%; max-width: 800px; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #475569; }
 
-        /* Custom Scrollbar */
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -138,7 +172,7 @@
         <h1 style="margin:0; font-size: 18px;">Module <span style="color:#4CBB17">Troubleshooter</span></h1>
     </div>
     <div style="color:#64748b; font-size: 12px; font-weight:500;">
-        Target: <span style="color:#0f172a; font-weight:bold;">test_user</span> | v2.0
+        Target: <span style="color:#0f172a; font-weight:bold;">test_user</span> | v2.1
     </div>
 </div>
 
@@ -148,22 +182,25 @@
         
         <div class="card" style="border-top: 4px solid #0ea5e9;">
             <span class="section-tag">1. Context Control</span>
-            <select id="lesson-selector" onchange="syncUIWithLesson()">
-                <option value="">-- Choose Lesson --</option>
-                <option value="C6Review">C6Review</option>
-            </select>
-            <div id="assign-state-ui" style="display:none; margin-top:10px;">
-                <label style="font-size:11px; font-weight:bold;">Complete?</label>
-                <select id="bool-toggle" onchange="updateAssignmentBool()">
-                    <option value="false">False</option>
-                    <option value="true">True</option>
+            <div class="flex-row">
+                <select id="lesson-selector" onchange="syncUIWithLesson()" style="flex-grow: 1;">
+                    <option value="">-- Choose Lesson --</option>
+                    <option value="C6Review">C6Review</option>
                 </select>
+                
+                <div class="status-box" id="assign-state-ui" style="display:none;">
+                    <select id="bool-toggle" onchange="updateAssignmentBool()">
+                        <option value="false">FALSE</option>
+                        <option value="true">TRUE</option>
+                    </select>
+                </div>
             </div>
         </div>
 
-        <div class="card" style="border-top: 4px solid #6366f1;">
+        <div class="card" style="border-top: 4px solid #4CBB17;">
             <span class="section-tag">2. Force Launch</span>
-            <select id="module-selector">
+            
+            <select id="module-selector" class="full-width">
                 <option value="C6Transformation">Transformations</option>
                 <option value="SolveX">SolveX</option>
                 <option value="LinearSystem">Linear Systems</option>
@@ -176,7 +213,10 @@
                 <option value="DiamondMath">Diamond Math</option>
                 <option value="HubAssignment">Hub Assignment</option>
             </select>
-            <button onclick="forceLoadModule()">🚀 Launch Module</button>
+            
+            <div class="right-align">
+                <button onclick="forceLoadModule()" class="launch-btn">Launch Module 🚀</button>
+            </div>
         </div>
 
         <div class="card">
@@ -276,7 +316,10 @@
 
     async function syncUIWithLesson() {
         const lesson = document.getElementById('lesson-selector').value;
-        document.getElementById('assign-state-ui').style.display = lesson ? 'block' : 'none';
+        const statusBox = document.getElementById('assign-state-ui');
+        
+        statusBox.style.display = lesson ? 'flex' : 'none'; // Use flex to match box style
+        
         try {
             const { data } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
             if(!data) { log("No user data found."); return; }
