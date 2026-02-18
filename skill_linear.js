@@ -2,17 +2,18 @@
  * skill_linear.js
  * - Generates a 4-part Linear Word Problem (Equation, Graph, Intercept, Solve).
  * - Handles Positive (Growth) and Negative (Decay) slopes.
- * - Tracks errors across the 4 parts to determine final score increment (+2 or -1).
+ * - Tracks errors across the 4 parts to determine final score increment.
  * - Updates sub-skills immediately after each part.
  */
 
 var linearData = {
-    scenario: {},     // Stores the text, m, b, units
-    stage: 'a',       // 'a', 'b', 'c', 'd', 'summary'
-    errors: 0,        // Total errors in this full problem set
+    scenario: {},      // Stores the text, m, b, units
+    stage: 'a',        // 'a', 'b', 'c', 'd', 'summary'
+    errors: 0,         // Total errors in this full problem set
     pointsClicked: [], // For graph stage
-    scale: 1,         // Grid scale
-    subScores: {}     // Local cache of sub-scores
+    scale: 20,         // Pixels per grid unit (20x20 grid on 400px canvas)
+    targetSolveX: 0,
+    targetSolveY: 0
 };
 
 window.initLinearMastery = async function() {
@@ -23,25 +24,30 @@ window.initLinearMastery = async function() {
     linearData.errors = 0;
     linearData.pointsClicked = [];
     
-    // Load current scores
-    if (!window.userProgress) window.userProgress = {};
+    // Initialize Mastery State
+    if (!window.userMastery) window.userMastery = {};
+
     try {
         if (window.supabaseClient && window.currentUser) {
+            const currentHour = sessionStorage.getItem('target_hour');
             const { data } = await window.supabaseClient
                 .from('assignment')
                 .select('LinearMastery, LinearEq, LinearGraph, LinearInt, LinearSolve')
                 .eq('userName', window.currentUser)
+                .eq('hour', currentHour)
                 .maybeSingle();
             
             if (data) {
-                window.userProgress.LinearMastery = data.LinearMastery || 0;
-                window.userProgress.LinearEq = data.LinearEq || 0;
-                window.userProgress.LinearGraph = data.LinearGraph || 0;
-                window.userProgress.LinearInt = data.LinearInt || 0;
-                window.userProgress.LinearSolve = data.LinearSolve || 0;
+                window.userMastery.LinearMastery = data.LinearMastery || 0;
+                window.userMastery.LinearEq = data.LinearEq || 0;
+                window.userMastery.LinearGraph = data.LinearGraph || 0;
+                window.userMastery.LinearInt = data.LinearInt || 0;
+                window.userMastery.LinearSolve = data.LinearSolve || 0;
             }
         }
-    } catch (e) { console.log("Sync error", e); }
+    } catch (e) { 
+        console.log("Sync error", e); 
+    }
 
     generateLinearScenario();
     renderLinearStage();
@@ -132,15 +138,12 @@ function renderLinearStage() {
         `;
     }
     else if (stage === 'd') {
-        // Calculate a target that results in an integer if possible, else just random
+        // Calculate a target that results in an integer if possible
         let targetX = Math.floor(Math.random() * 5) + 3; 
         let targetY = s.m * targetX + s.b;
         
-        // If solving for X given Y (Reverse) or Y given X? 
-        // The prompt example asks "When will the plant be 65 inches?" (Find X given Y)
-        
         // Ensure valid positive Y for the question
-        if (targetY < 0) targetY = 0; // Don't ask for negative height
+        if (targetY < 0) targetY = 0; 
 
         linearData.targetSolveX = targetX;
         linearData.targetSolveY = targetY;
@@ -166,30 +169,35 @@ function renderLinearStage() {
 }
 
 // --- PART A: EQUATION ---
-function checkLinearA() {
-    const userVal = document.getElementById('inp-eq').value.replace(/\s/g, '').toLowerCase();
+async function checkLinearA() {
+    let userVal = document.getElementById('inp-eq').value.replace(/\s/g, '').toLowerCase();
     const m = linearData.scenario.m;
     const b = linearData.scenario.b;
     
-    // Expected formats: y=mx+b, mx+b, b+mx
-    // Examples: "2x+5", "5+2x", "-3x+10"
+    // Normalize user input to handle "1x" as "x" if they typed it explicitly
+    // This regex looks for '1x' and replaces it with 'x', but is careful about '11x'
+    // For this specific level (slope max 3), simple replacement is safe enough or we check variations.
     
     let isCorrect = false;
     
-    // Simple parsing logic
-    // We check if it contains the m*x part and the b part
+    // Construct valid variations
     let mPart = (m === 1 ? "x" : (m === -1 ? "-x" : m + "x"));
-    let bPart = (b > 0 ? "+" + b : b); // +5 or -5
+    let mPartExplicit = (m === 1 ? "1x" : (m === -1 ? "-1x" : m + "x")); // Allow "1x"
+    let bPart = (b > 0 ? "+" + b : b); 
     
-    // Check variation 1: mx + b
+    // 1. mx + b format
     if (userVal === (mPart + bPart) || userVal === ("y=" + mPart + bPart)) isCorrect = true;
+    if (userVal === (mPartExplicit + bPart) || userVal === ("y=" + mPartExplicit + bPart)) isCorrect = true;
     
-    // Check variation 2: b + mx
+    // 2. b + mx format
     let mPartSigned = (m > 0 ? "+" + mPart : mPart);
+    let mPartSignedExplicit = (m > 0 ? "+" + mPartExplicit : mPartExplicit);
+    
     if (userVal === (b + mPartSigned) || userVal === ("y=" + b + mPartSigned)) isCorrect = true;
+    if (userVal === (b + mPartSignedExplicit) || userVal === ("y=" + b + mPartSignedExplicit)) isCorrect = true;
 
     if (isCorrect) {
-        handleSubSuccess('LinearEq');
+        await handleSubSuccess('LinearEq');
         document.getElementById('lin-feedback').innerHTML = `<span style="color:green">Correct! Equation is y = ${m}x + ${b}</span>`;
         setTimeout(() => { linearData.stage = 'b'; renderLinearStage(); }, 1500);
     } else {
@@ -201,13 +209,10 @@ function checkLinearA() {
 // --- PART B: GRAPHING ---
 function setupLinearGraph() {
     const canvas = document.getElementById('linCanvas');
-    const ctx = canvas.getContext('2d');
+    if(!canvas) return;
     
-    // Configure Grid
-    // Max Y is likely around 20-30. Let's make the grid 20x20 units.
-    // Canvas 400px -> 20px per unit.
-    const scale = 20; 
-    linearData.scale = scale;
+    const ctx = canvas.getContext('2d');
+    const scale = linearData.scale; 
 
     const draw = () => {
         ctx.clearRect(0,0,400,400);
@@ -224,7 +229,7 @@ function setupLinearGraph() {
         ctx.strokeStyle = "#000";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(2,0); ctx.lineTo(2,400); ctx.lineTo(400,400); // Y and X axis (bottom-left origin visual)
+        ctx.moveTo(2,0); ctx.lineTo(2,400); ctx.lineTo(400,400); 
         ctx.stroke();
 
         // Labels (Every 5 units)
@@ -284,7 +289,7 @@ function setupLinearGraph() {
     };
 }
 
-function checkLinearGraph() {
+async function checkLinearGraph() {
     // Validate Points
     // Every point must satisfy y = mx + b
     const { m, b } = linearData.scenario;
@@ -292,11 +297,12 @@ function checkLinearGraph() {
 
     linearData.pointsClicked.forEach(p => {
         let expectedY = (m * p.x) + b;
+        // Since slope is integer in this skill, exact match should work
         if (p.y !== expectedY) allCorrect = false;
     });
 
     if (allCorrect && linearData.pointsClicked.length >= 3) {
-        handleSubSuccess('LinearGraph');
+        await handleSubSuccess('LinearGraph');
         document.getElementById('lin-feedback').innerHTML = `<span style="color:green">Perfect Graph!</span>`;
         setTimeout(() => { linearData.stage = 'c'; renderLinearStage(); }, 1500);
     } else {
@@ -311,7 +317,7 @@ window.resetGraph = function() {
 };
 
 // --- PART C: INTERCEPT ---
-function checkLinearC() {
+async function checkLinearC() {
     const val = parseFloat(document.getElementById('inp-int-val').value);
     const desc = document.getElementById('inp-int-desc').value;
     
@@ -319,7 +325,7 @@ function checkLinearC() {
     // Meaning: It is the 'start' value
     
     if (val === correctVal && desc === 'start') {
-        handleSubSuccess('LinearInt');
+        await handleSubSuccess('LinearInt');
         document.getElementById('lin-feedback').innerHTML = `<span style="color:green">Correct!</span>`;
         setTimeout(() => { linearData.stage = 'd'; renderLinearStage(); }, 1500);
     } else {
@@ -331,12 +337,11 @@ function checkLinearC() {
 // --- PART D: SOLVE ---
 async function checkLinearD() {
     const val = parseFloat(document.getElementById('inp-solve').value);
-    // Solving for X: (y - b) / m
-    const correctX = linearData.targetSolveX; // We pre-calculated this integer
+    const correctX = linearData.targetSolveX; 
     
     if (Math.abs(val - correctX) < 0.1) {
         // --- FINAL SUCCESS ---
-        handleSubSuccess('LinearSolve');
+        await handleSubSuccess('LinearSolve');
         
         // Main Mastery Update Logic
         let mainIncrement = 0;
@@ -355,14 +360,14 @@ async function checkLinearD() {
 // --- HELPERS ---
 
 async function handleSubSuccess(colName) {
-    // Only +1 max per question
+    // Only +1 max per sub-skill question
     await updateSkill(colName, 1);
 }
 
 async function updateSkill(colName, amount) {
-    let current = window.userProgress[colName] || 0;
+    let current = window.userMastery[colName] || 0;
     let next = Math.max(0, Math.min(10, current + amount)); // Clamp 0-10
-    window.userProgress[colName] = next;
+    window.userMastery[colName] = next;
 
     if (window.supabaseClient && window.currentUser) {
         const h = sessionStorage.getItem('target_hour') || "00";
@@ -392,7 +397,7 @@ function showFinalLinearMessage(inc) {
     }, 3000);
 }
 
-// CSS injection for button if needed
+// CSS injection
 const style = document.createElement('style');
 style.innerHTML = `
     .btn-primary { background:#3b82f6; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-size:16px; transition:0.2s; }
