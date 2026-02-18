@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Dev Control | v1.2.0</title>
+    <title>System Debugger | int8 Edition</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -22,87 +22,68 @@
             --danger: #ef4444;
             --indigo: #6366f1;
         }
-        body { padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; color: #1e293b; line-height: 1.5; }
-        .grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; align-items: start; }
+        body { padding: 20px; font-family: 'Segoe UI', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .grid { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
         .card { background: white; border: 1px solid var(--border); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px; }
-        .version-tag { background: #1e293b; color: #38bdf8; padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 11px; }
-        .log-box { background: #1a1a1a; color: var(--kelly-green); padding: 15px; font-family: 'Courier New', monospace; border-radius: 8px; height: 300px; overflow-y: auto; font-size: 13px; margin-top: 10px; border: 1px solid #333; }
-        
-        /* Sliders & Hierarchy */
-        details { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; }
-        summary { cursor: pointer; font-weight: bold; color: #334155; list-style: none; display: flex; justify-content: space-between; align-items: center; }
-        
-        .slider-group { margin: 15px 0; }
-        .slider-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+        .log-box { background: #1a1a1a; color: var(--kelly-green); padding: 15px; font-family: monospace; border-radius: 8px; height: 350px; overflow-y: auto; font-size: 12px; margin-top: 10px; border: 1px solid #333; }
+        .slider-group { margin: 12px 0; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
         input[type="range"] { width: 100%; accent-color: var(--kelly-green); cursor: pointer; }
-        
-        button { cursor: pointer; transition: all 0.2s; font-weight: bold; padding: 10px; border-radius: 8px; border: none; font-size: 13px; }
+        button { cursor: pointer; transition: all 0.2s; font-weight: bold; padding: 10px; border-radius: 8px; border: none; font-size: 13px; width: 100%; }
         button:hover { filter: brightness(90%); }
-        
-        select, input[type="text"] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; background: #fff; font-size: 13px; box-sizing: border-box; }
-        
+        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 10px; background: #fff; }
+        details { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; }
+        summary { cursor: pointer; font-weight: bold; font-size: 13px; color: #334155; }
         .accent-text { color: var(--kelly-green); }
-        hr { border: 0; border-top: 1px solid var(--border); margin: 15px 0; }
     </style>
 </head>
 <body>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-        <div>
-            <h1 style="margin:0;">System <span class="accent-text">Debugger</span></h1>
-            <span class="version-tag">Build: 1.2.0-C6Review</span>
-        </div>
-        <div class="card" style="padding: 10px 20px; text-align: right; margin: 0; border-left: 5px solid var(--indigo);">
-            <label style="color: #64748b; font-size: 11px; text-transform: uppercase;">Current Session</label><br>
-            <strong id="session-user-display" style="font-family: monospace;">test_user_00</strong>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin:0;">Dev <span class="accent-text">Control</span></h1>
+        <div class="card" style="padding: 10px 20px; margin: 0; border-right: 4px solid var(--kelly-green);">
+            <small style="color:#64748b;">Target:</small> <strong>test_user</strong> | <small>Hour:</small> <strong>00</strong>
         </div>
     </div>
 
     <div class="grid">
         <div class="control-stack">
             <div class="card">
-                <h3 style="margin-top:0;">1. Assignment Target</h3>
-                <label style="font-size: 11px; color: #64748b;">Supabase Table:</label>
+                <h3 style="margin-top:0;">1. DB Config</h3>
+                <label style="font-size: 11px;">Table Name (Case Sensitive):</label>
                 <select id="table-selector" onchange="ensureTestUser()">
-                    <option value="C6Review">C6Review (Current)</option>
-                    <option value="C7Review">C7Review</option>
-                    <option value="assignment">Default Assignment</option>
+                    <option value="C6Review">C6Review</option>
+                    <option value="assignment">assignment</option>
                 </select>
-                
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <button onclick="ensureTestUser()" style="background: var(--kelly-green); color: white;">Sync Data</button>
-                    <button onclick="resetSession()" style="background: var(--danger); color: white;">Full Wipe</button>
+                    <button onclick="ensureTestUser()" style="background: var(--kelly-green); color: white;">Sync/Join</button>
+                    <button onclick="resetSession()" style="background: var(--danger); color: white;">Wipe Data</button>
                 </div>
             </div>
 
             <div class="card">
-                <h3>2. Module Launcher</h3>
+                <h3 style="margin-top:0;">2. Force Run</h3>
                 <select id="module-selector">
-                    <option value="SolveX">SolveX (Algebra)</option>
-                    <option value="C6Transformation">Transformations (Geometry)</option>
+                    <option value="SolveX">SolveX</option>
+                    <option value="C6Transformation">Transformations</option>
                     <option value="LinearSystem">Linear Systems</option>
                     <option value="FigureGrowth">Figure Growth</option>
                     <option value="BoxPlot">Box Plots</option>
                 </select>
-                <button onclick="forceLoadModule()" style="width: 100%; background: var(--indigo); color: white; padding: 12px;">🚀 Force Launch Module</button>
+                <button onclick="forceLoadModule()" style="background: var(--indigo); color: white;">🚀 Launch</button>
             </div>
 
             <div class="card">
-                <h3 style="margin-top:0;">3. Skill Scores</h3>
+                <h3 style="margin-top:0;">3. Skill Sliders</h3>
                 
-                <div class="slider-group">
-                    <div class="slider-label">SolveX <span id="v-SolveX" class="accent-text">0</span></div>
-                    <input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')">
-                </div>
-                
-                <div class="slider-group">
-                    <div class="slider-label">Linear System <span id="v-LinearSystem" class="accent-text">0</span></div>
-                    <input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')">
-                </div>
+                <div class="slider-group"><div class="slider-label">SolveX <span id="v-SolveX">0</span></div><input type="range" id="s-SolveX" min="0" max="10" value="0" oninput="updateVal('SolveX')"></div>
+                <div class="slider-group"><div class="slider-label">Linear System <span id="v-LinearSystem">0</span></div><input type="range" id="s-LinearSystem" min="0" max="10" value="0" oninput="updateVal('LinearSystem')"></div>
+                <div class="slider-group"><div class="slider-label">Figure Growth <span id="v-FigureGrowth">0</span></div><input type="range" id="s-FigureGrowth" min="0" max="10" value="0" oninput="updateVal('FigureGrowth')"></div>
+                <div class="slider-group"><div class="slider-label">Box Plot <span id="v-BoxPlot">0</span></div><input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')"></div>
 
                 <details>
-                    <summary>Transformations (C6) <span id="v-C6Transformation" class="accent-text">0</span></summary>
-                    <div style="padding-top: 15px; display: grid; gap: 15px;">
+                    <summary>Transformation Sub-skills <span id="v-C6Transformation" style="float:right;">0</span></summary>
+                    <div style="padding-top: 10px; display: grid; gap: 8px;">
                         <input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')">
                         <div><div class="slider-label" style="font-size:11px;">Translation <span id="v-C6Translation">0</span></div><input type="range" id="s-C6Translation" min="0" max="10" value="0" oninput="updateVal('C6Translation')"></div>
                         <div><div class="slider-label" style="font-size:11px;">Reflect X <span id="v-C6ReflectionX">0</span></div><input type="range" id="s-C6ReflectionX" min="0" max="10" value="0" oninput="updateVal('C6ReflectionX')"></div>
@@ -116,22 +97,20 @@
 
         <div class="main-stack">
             <div class="card">
-                <h3 style="margin-top: 0;">System Logs</h3>
-                <div id="log" class="log-box">Initialized. Ready for test_user_00...</div>
+                <h3 style="margin-top: 0;">System Log</h3>
+                <div id="log" class="log-box">Waiting for initialization...</div>
             </div>
-
-            <div class="card">
-                <h3>Live Workspace</h3>
-                <div id="work-area" style="background: #fff; border: 2px dashed var(--border); border-radius: 12px; min-height: 400px; padding: 20px;">
-                    <div id="q-content"></div>
-                </div>
+            <div class="card" style="min-height: 450px;">
+                <div id="work-area"><div id="q-content"></div></div>
             </div>
         </div>
     </div>
 
     <script>
-        window.currentUser = 'test_user_00';
-        
+        // CONFIG FOR int8 HOUR
+        window.currentUser = 'test_user';
+        window.currentHour = 0; // The int8 representation of "00"
+
         const ALL_COLUMNS = [
             'SolveX', 'LinearSystem', 'FigureGrowth', 'BoxPlot', 
             'C6Transformation', 'C6Translation', 'C6ReflectionX', 
@@ -140,10 +119,9 @@
 
         function getTable() { return document.getElementById('table-selector').value; }
 
-        function log(msg, type = 'info') {
+        function log(msg, isError = false) {
             const l = document.getElementById('log');
-            const color = type === 'error' ? '#ff4d4d' : (type === 'success' ? '#4CBB17' : '#888');
-            l.innerHTML += `<br><span style="color:${color};">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+            l.innerHTML += `<br><span style="color:${isError ? '#ff4d4d' : 'inherit'};">[${new Date().toLocaleTimeString()}]</span> ${msg}`;
             l.scrollTop = l.scrollHeight;
         }
 
@@ -153,61 +131,77 @@
                 return;
             }
             window.supabaseClient = supabaseClient;
-            
             const table = getTable();
-            log(`Syncing from Table: <strong>${table}</strong>...`);
+            log(`Checking table <strong>${table}</strong>...`);
 
             try {
-                const { data, error } = await window.supabaseClient
+                // 1. Fetch user (int8 hour = 0)
+                let { data, error } = await window.supabaseClient
                     .from(table)
                     .select('*')
                     .eq('userName', window.currentUser)
+                    .eq('hour', window.currentHour)
                     .maybeSingle();
 
-                if (data) {
-                    ALL_COLUMNS.forEach(col => {
-                        const slider = document.getElementById('s-' + col);
-                        if (slider && data[col] !== undefined) {
-                            slider.value = data[col];
-                            document.getElementById('v-' + col).innerText = data[col];
-                        }
-                    });
-                    log(`✅ ${window.currentUser} synced successfully.`, "success");
-                } else {
-                    log(`⚠️ No record found for ${window.currentUser} in ${table}.`, "error");
+                if (error) throw error;
+
+                // 2. Create if missing
+                if (!data) {
+                    log("ℹ️ test_user row missing. Provisioning fresh entry...");
+                    const newRow = { userName: window.currentUser, hour: window.currentHour };
+                    ALL_COLUMNS.forEach(col => newRow[col] = 0);
+                    
+                    const { data: created, error: iErr } = await window.supabaseClient
+                        .from(table)
+                        .insert([newRow])
+                        .select()
+                        .single();
+
+                    if (iErr) throw iErr;
+                    data = created;
+                    log("✅ New test record created in DB.", true);
                 }
+
+                // 3. Populate Sliders
+                ALL_COLUMNS.forEach(col => {
+                    const slider = document.getElementById('s-' + col);
+                    if (slider && data[col] !== undefined) {
+                        slider.value = data[col];
+                        document.getElementById('v-' + col).innerText = data[col];
+                    }
+                });
+                log("✅ Local UI synced with Supabase.");
+
             } catch (err) {
-                log("❌ Sync failed: " + err.message, "error");
+                log(`❌ Error: ${err.message}`, true);
+                log("Tip: Check if table name capitalization is exactly right.", false);
             }
         }
 
         async function updateVal(id) {
             const val = document.getElementById('s-' + id).value;
             document.getElementById('v-' + id).innerText = val;
-            
             if (window.supabaseClient) {
-                const { error } = await window.supabaseClient
+                await window.supabaseClient
                     .from(getTable())
                     .update({ [id]: parseInt(val) })
-                    .eq('userName', window.currentUser);
-                if(!error) log(`📡 Updated ${id} to ${val}`);
+                    .eq('userName', window.currentUser)
+                    .eq('hour', window.currentHour);
+                log(`📡 Syncing ${id} -> ${val}`);
             }
         }
 
         async function resetSession() {
-            if (!confirm("Clear ALL values for test_user_00?")) return;
-            const resetData = {};
-            ALL_COLUMNS.forEach(col => resetData[col] = 0);
-
-            const { error } = await window.supabaseClient
+            if (!confirm("Wipe data?")) return;
+            const resetObj = {};
+            ALL_COLUMNS.forEach(c => resetObj[c] = 0);
+            await window.supabaseClient
                 .from(getTable())
-                .update(resetData)
-                .eq('userName', window.currentUser);
-
-            if (!error) {
-                log("✅ Database reset successful.", "success");
-                setTimeout(() => location.reload(), 800);
-            }
+                .update(resetObj)
+                .eq('userName', window.currentUser)
+                .eq('hour', window.currentHour);
+            log("🗑️ Database wiped.");
+            location.reload();
         }
 
         function forceLoadModule() {
@@ -219,10 +213,10 @@
                 'SolveX': window.initSolveXGame,
                 'BoxPlot': window.initBoxPlotGame
             };
-            log(`🛠️ Launching ${targetId}...`);
             if (forceMap[targetId]) {
                 window.isCurrentQActive = true;
                 forceMap[targetId]();
+                log(`🚀 Launching ${targetId}...`);
             }
         }
 
