@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dev Control | v1.7.6</title>
+    <title>Dev Control | v1.7.8</title>
     
     <link rel="stylesheet" href="style.css">
     
@@ -17,35 +17,38 @@
     <script src="skill_boxplot.js"></script>
 
     <style>
-        /* Sidebar Layout - Optimized to stay out of the way of style.css */
-        body { margin: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f1f5f9; overflow: hidden; }
-        .header-bar { height: 45px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; z-index: 10; }
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; font-family: sans-serif; background: #f1f5f9; overflow: hidden; }
+        .header-bar { height: 40px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; z-index: 10; }
         
-        .master-grid { display: grid; grid-template-columns: 360px 1fr; height: calc(100vh - 45px); }
+        /* THE TWO COLUMN LAYOUT */
+        .master-grid { display: grid; grid-template-columns: 350px 1fr; height: calc(100vh - 40px); }
         
-        /* Sidebar / Controls */
+        /* COLUMN 1: SIDEBAR */
         .sidebar { background: #f8fafc; border-right: 1px solid #cbd5e1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
-        .section-tag { color: #0ea5e9; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; }
         
-        /* Game Area */
-        .main-stage { background: #fff; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        /* COLUMN 2: MAIN STAGE (Log on top, Game below) */
+        .main-stage { display: flex; flex-direction: column; background: #fff; overflow: hidden; }
         
-        /* Log Area */
-        .log-box { background: #1a1a1a; color: #4CBB17; padding: 10px; font-family: monospace; border-radius: 6px; height: 180px; overflow-y: auto; font-size: 11px; margin-top: auto; border: 1px solid #333; }
+        .log-container { height: 200px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; overflow: hidden; display: flex; flex-direction: column; }
+        .log-box { flex-grow: 1; color: #4CBB17; font-family: monospace; font-size: 11px; overflow-y: auto; }
         
-        /* Form Elements */
-        input[type="range"] { width: 100%; accent-color: #4CBB17; margin: 5px 0; }
-        button { cursor: pointer; font-weight: bold; padding: 10px; border-radius: 6px; border: none; background: #6366f1; color: white; width: 100%; margin-top: 5px; }
+        .game-area { flex-grow: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+
+        /* Sidebar UI Elements */
+        .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .section-tag { color: #0ea5e9; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; border-bottom: 1px solid #f1f5f9; }
+        input[type="range"] { width: 100%; accent-color: #4CBB17; margin: 5px 0; cursor: pointer; }
+        button { cursor: pointer; font-weight: bold; padding: 10px; border-radius: 6px; border: none; background: #6366f1; color: white; width: 100%; margin-top: 5px; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
         select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; }
-        .slider-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; }
-        details summary { cursor: pointer; font-size: 12px; font-weight: bold; margin: 5px 0; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; }
+        details summary { cursor: pointer; font-size: 12px; font-weight: bold; margin: 5px 0; color: #444; }
     </style>
 </head>
 <body>
 
 <div class="header-bar">
-    Module <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user v1.7.6
+    DEBUGGER: <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user | v1.7.8
 </div>
 
 <div class="master-grid">
@@ -56,11 +59,11 @@
                 <option value="">-- Choose Lesson --</option>
                 <option value="C6Review">C6Review</option>
             </select>
-            <div id="assign-state-ui" style="display:none; margin-top:10px;">
-                <label style="font-size:11px; font-weight:bold;">C6Review Boolean State:</label>
+            <div id="assign-state-ui" style="display:none; margin-top:8px;">
+                <label style="font-size:10px; font-weight:bold;">Bool State (DB):</label>
                 <select id="bool-toggle" onchange="updateAssignmentBool()">
-                    <option value="false">False (Unassigned)</option>
-                    <option value="true">True (Assigned)</option>
+                    <option value="false">False</option>
+                    <option value="true">True</option>
                 </select>
             </div>
         </div>
@@ -99,12 +102,16 @@
                 <div class="slider-label" style="font-size:10px;">Rotation <span id="v-C6Rotation">0</span></div><input type="range" id="s-C6Rotation" min="0" max="10" value="0" oninput="updateVal('C6Rotation')">
             </details>
         </div>
-
-        <div class="log-box" id="log">--- System Ready ---</div>
     </div>
 
     <div class="main-stage">
-        <div id="q-content"></div>
+        <div class="log-container">
+            <div style="font-size: 10px; color: #888; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">System Log</div>
+            <div class="log-box" id="log">Ready for module launch...</div>
+        </div>
+        <div class="game-area">
+            <div id="q-content"></div>
+        </div>
     </div>
 </div>
 
@@ -119,23 +126,22 @@
         document.getElementById('assign-state-ui').style.display = lesson ? 'block' : 'none';
         
         try {
-            const { data, error } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
-            if(error || !data) return;
+            const { data } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
+            if(!data) return;
 
-            // Strict Boolean Handling for C6Review
             if(lesson === 'C6Review') {
                 document.getElementById('bool-toggle').value = (data.C6Review === true).toString();
             }
 
             ALL_COLS.forEach(c => {
                 const s = document.getElementById('s-'+c), v = document.getElementById('v-'+c), a = document.getElementById('agg-'+c);
-                const dbVal = (data[c] === null || data[c] === undefined) ? 0 : data[c];
+                const dbVal = data[c] ?? 0;
                 if(s) s.value = dbVal;
                 if(v) v.innerText = dbVal;
                 if(a) a.innerText = dbVal;
             });
-            log(`Synced Context: ${lesson || 'Global'}`);
-        } catch(e) { log("Error: Sync failed."); }
+            log(`Sync Complete: ${lesson || 'Global'}`);
+        } catch(e) { log("Sync Error."); }
     }
 
     async function updateVal(id) {
@@ -149,13 +155,12 @@
         const lesson = document.getElementById('lesson-selector').value;
         const val = document.getElementById('bool-toggle').value === 'true';
         await window.supabaseClient.from(TABLE).update({ [lesson]: val }).eq('userName', 'test_user').eq('hour', 0);
-        log(`DB Update: ${lesson} set to ${val}`);
+        log(`Assignment: ${lesson} -> ${val}`);
     }
 
     function forceLoadModule() {
         const mod = document.getElementById('module-selector').value;
-        const qContent = document.getElementById('q-content');
-        qContent.innerHTML = ''; // Clean slate
+        document.getElementById('q-content').innerHTML = '';
         window.isCurrentQActive = true;
 
         const map = {
