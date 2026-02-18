@@ -3,7 +3,10 @@ const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
 const isAssignmentPage = window.location.pathname.includes('assignment.html');
 
-window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+// FIX: Use window.supabaseClient to avoid redeclaration errors in global scope
+if (!window.supabaseClient) {
+    window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+}
 
 // Global State
 window.totalSecondsWorked = parseInt(sessionStorage.getItem('total_work_time')) || 0;
@@ -21,16 +24,14 @@ window.isWindowLargeEnough = true;
 
 // --- Window Size Checker Function ---
 function checkWindowSize() {
-    // Only run the strict sizing check on the real assignment page
     if (!isAssignmentPage) {
         window.isWindowLargeEnough = true;
         return;
     }
-
-    const screenWidth = window.screen.availWidth;
-    const screenHeight = window.screen.availHeight;
     const winWidth = window.outerWidth;
     const winHeight = window.outerHeight;
+    const screenWidth = window.screen.availWidth;
+    const screenHeight = window.screen.availHeight;
     const overlay = document.getElementById('size-overlay');
 
     if (winWidth < (screenWidth * 0.9) || winHeight < (screenHeight * 0.9)) {
@@ -46,28 +47,18 @@ function checkWindowSize() {
 window.onblur = () => {
     window.canCount = false;
     clearTimeout(window.resumeTimeout);
-    if (typeof log === "function") log("⏸️ Window Lost Focus: Timer stopped.");
 };
-
 window.onfocus = () => {
-    if (typeof log === "function") log("⏱️ Window Regained.");
-    
     clearTimeout(window.resumeTimeout);
-
     if (isAssignmentPage) {
-        // Apply the 15s penalty only to students
-        if (typeof log === "function") log("Penalty applied: 15s cooldown...");
-        window.resumeTimeout = setTimeout(() => {
-            window.canCount = true;
-        }, 15000);
+        window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 15000);
     } else {
-        // Dev mode: No penalty, instant resume
         window.canCount = true;
     }
 };
 
 window.addEventListener('resize', checkWindowSize);
-checkWindowSize(); // Initial check
+checkWindowSize();
 
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
@@ -76,7 +67,6 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Initial startup countdown
 if (!isAssignmentPage) {
     window.canCount = true; 
 } else {
@@ -85,27 +75,23 @@ if (!isAssignmentPage) {
 
 // --- The Master Timer Loop ---
 setInterval(() => {
-    // If we are NOT on the assignment page, don't run the timer logic at all
     if (!isAssignmentPage) return;
 
     const statePill = document.getElementById('timer-state-pill');
     const totalDisplay = document.getElementById('debug-total-time');
     const qTimeDisplay = document.getElementById('debug-q-time');
     
-    // Inactivity check
     const secondsSinceLastActivity = (Date.now() - window.lastActivity) / 1000;
     if (secondsSinceLastActivity > 30) window.isIdle = true;
 
     const qContent = document.getElementById('q-content');
     const hasQuestion = qContent && qContent.innerHTML.length > 50 && !qContent.innerText.includes("Wait...");
 
-    // SINGLE Condition for ticking
     if (window.isCurrentQActive && window.canCount && hasQuestion && !window.isIdle && window.isWindowLargeEnough) {
         window.totalSecondsWorked++;
         window.currentQSeconds++;
         sessionStorage.setItem('total_work_time', window.totalSecondsWorked);
 
-        // UI Updates
         let mins = Math.floor(window.totalSecondsWorked / 60);
         let secs = window.totalSecondsWorked % 60;
         if (totalDisplay) totalDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs} / 12:00`;
@@ -118,7 +104,6 @@ setInterval(() => {
         
         if (window.totalSecondsWorked >= 720) finishAssignment();
     } else {
-        // Handle PAUSED states for students
         if (statePill) {
             if (!window.isWindowLargeEnough) {
                 statePill.innerText = "RESTORE WINDOW SIZE";
@@ -140,7 +125,7 @@ setInterval(() => {
     }
 }, 1000);
 
-// --- Adaptive Routing & Finish logic remains the same ---
+// --- Adaptive Routing & NEW DB Check/Create Logic ---
 async function loadNextQuestion() {
     if (window.isCurrentQActive) return;
     window.currentQSeconds = 0; 
@@ -152,6 +137,40 @@ async function loadNextQuestion() {
     
     window.scrollTo(0,0);
 
+    // 1. DYNAMIC DATABASE CHECK/CREATE/WARN LOGIC
+    try {
+        let { data, error } = await window.supabaseClient
+            .from('assignment')
+            .select('*')
+            .eq('userName', window.currentUser)
+            .eq('hour', 0)
+            .maybeSingle();
+
+        // Create record if missing (Warn in console)
+        if (!data && !error) {
+            console.warn(`User ${window.currentUser} not found. Creating new record...`);
+            await window.supabaseClient
+                .from('assignment')
+                .insert([{ userName: window.currentUser, hour: 0, [window.targetLesson]: false }]);
+            
+            const { data: refreshed } = await window.supabaseClient
+                .from('assignment')
+                .select('*')
+                .eq('userName', window.currentUser)
+                .eq('hour', 0)
+                .maybeSingle();
+            data = refreshed;
+        }
+
+        // Warning if the SPECIFIC selected lesson is already completed
+        if (data && data[window.targetLesson] === true) {
+            alert(`Attention: The lesson "${window.targetLesson}" is already marked as completed in the database.`);
+        }
+    } catch (err) {
+        console.error("DB Initialization Error:", err);
+    }
+
+    // --- Original Skill Loading Logic ---
     const skillMap = [
         { id: 'C6Transformation', fn: typeof initTransformationGame !== 'undefined' ? initTransformationGame : null },
         { id: 'LinearSystem', fn: typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null },
@@ -160,7 +179,6 @@ async function loadNextQuestion() {
         { id: 'BoxPlot', fn: typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null }
     ].filter(s => s.fn !== null);
 
-    // CHANGE 1: Accept BOTH the old lesson and the new Review lesson
     if (window.targetLesson === '6.2.4' || window.targetLesson === 'C6Review') {
         
         if (!window.hasDonePrimaryLesson) {
@@ -169,15 +187,12 @@ async function loadNextQuestion() {
             return initTransformationGame();
         }
 
-        const { data, error } = await window.supabaseClient
+        const { data } = await window.supabaseClient
             .from('assignment')
             .select('*')
             .eq('userName', window.currentUser)
+            .eq('hour', 0)
             .maybeSingle(); 
-
-        if (error || !data) {
-            return skillMap[Math.floor(Math.random() * skillMap.length)].fn();
-        }
 
         let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
         if (availableSkills.length === 0) {
@@ -198,15 +213,8 @@ async function loadNextQuestion() {
 
 async function finishAssignment() {
     window.isCurrentQActive = false;
+    let dbColumn = window.targetLesson === 'C6Review' ? 'C6Review' : 'C624_Completed';
 
-    // Determine the database column based on the lesson
-    let dbColumn = 'C624_Completed'; // Default for the old lesson
-    
-    if (window.targetLesson === 'C6Review') {
-        dbColumn = 'C6Review'; // <--- Changed to your new column name
-    }
-
-    // Prepare the update object
     const updateObj = {};
     updateObj[dbColumn] = true;
 
@@ -214,7 +222,8 @@ async function finishAssignment() {
         await window.supabaseClient
             .from('assignment')
             .update(updateObj)
-            .eq('userName', window.currentUser);
+            .eq('userName', window.currentUser)
+            .eq('hour', 0);
 
         document.getElementById('work-area').innerHTML = `
             <div style="text-align: center; padding: 40px; background: #f8fafc; border-radius: 12px; border: 2px solid #22c55e;">
