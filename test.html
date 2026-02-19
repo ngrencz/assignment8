@@ -19,7 +19,6 @@
     <script src="skill_linear.js"></script>
 
     <style>
-        /* DEADLINE FIX: Internal CSS to override GitHub Cache */
         * { box-sizing: border-box; }
 
         body { 
@@ -35,7 +34,7 @@
 
         .master-grid { 
             display: grid; 
-            grid-template-columns: 420px 1fr; /* Locked width */
+            grid-template-columns: 420px 1fr; 
             height: calc(100vh - 40px); 
             width: 100vw;
         }
@@ -76,45 +75,26 @@
 
         .log-container { height: 200px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; }
         .log-box { flex-grow: 1; color: #4CBB17; font-family: monospace; font-size: 11px; overflow-y: auto; }
+        
         .game-area { flex-grow: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        #q-content { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 15px; }
+        
         details summary { cursor: pointer; font-size: 12px; font-weight: bold; margin: 5px 0; color: #444; }
-        /* Specific layout fix for the SolveX module container */
-#q-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    width: 100%;
-}
 
-/* Ensure the equation box is on its own line */
-.equation-container {
-    display: block;
-    margin-bottom: 15px;
-    text-align: center;
-}
-
-/* Force the X = [box] to be a single row */
-.input-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-/* Force the Check button to the bottom */
-.game-area button {
-    display: block;
-    width: 200px;
-    margin: 0 auto;
-}
+        .equation-container { display: block; margin-bottom: 15px; text-align: center; }
+        .input-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
+<div style="display:none;">
+    <span id="score">0</span>
+    <span id="level">1</span>
+    <div id="feedback"></div>
+</div>
+
 <div class="header-bar">
-    DEBUGGER: <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user | v1.7.1
+    DEBUGGER: <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user | v1.7.10
 </div>
 
 <div class="master-grid">
@@ -177,7 +157,9 @@
     const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
 
-    window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    if (typeof supabase !== 'undefined') {
+        window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    }
 
     const TABLE = 'assignment';
     const ALL_COLS = ['SolveX','LinearSystem','FigureGrowth','BoxPlot','BoxPlotMedian','Similarity','ComplexShapes','Graphing','DiamondMath','LinearMastery'];
@@ -185,19 +167,22 @@
     function log(m) { const l=document.getElementById('log'); l.innerHTML+=`<br>[${new Date().toLocaleTimeString()}] ${m}`; l.scrollTop=l.scrollHeight; }
 
     async function syncUIWithLesson() {
+        if (!window.supabaseClient) { log("Client Error"); return; }
         try {
-            const { data } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
-            if(!data) return;
+            const { data, error } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
+            if(error) throw error;
+            if(!data) { log("No data found for test_user."); return; }
             ALL_COLS.forEach(c => {
                 const s = document.getElementById('s-'+c), v = document.getElementById('v-'+c);
                 if(s) s.value = data[c] ?? 0;
                 if(v) v.innerText = data[c] ?? 0;
             });
-            log(`Sync Complete.`);
-        } catch(e) { log("Sync Error."); }
+            log(`Sync Complete for test_user.`);
+        } catch(e) { log("Sync Error."); console.error(e); }
     }
 
     async function updateVal(id) {
+        if (!window.supabaseClient) return;
         const val = parseInt(document.getElementById('s-'+id).value);
         document.getElementById('v-'+id).innerText = val;
         await window.supabaseClient.from(TABLE).update({ [id]: val }).eq('userName', 'test_user').eq('hour', 0);
