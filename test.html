@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dev Control | v1.7.10</title>
+    <title>Dev Control | v1.7.11</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -167,26 +167,44 @@
     function log(m) { const l=document.getElementById('log'); l.innerHTML+=`<br>[${new Date().toLocaleTimeString()}] ${m}`; l.scrollTop=l.scrollHeight; }
 
     async function syncUIWithLesson() {
-        if (!window.supabaseClient) { log("Client Error"); return; }
-        try {
-            const { data, error } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
-            if(error) throw error;
-            if(!data) { log("No data found for test_user."); return; }
-            ALL_COLS.forEach(c => {
-                const s = document.getElementById('s-'+c), v = document.getElementById('v-'+c);
-                if(s) s.value = data[c] ?? 0;
-                if(v) v.innerText = data[c] ?? 0;
-            });
-            log(`Sync Complete for test_user.`);
-        } catch(e) { log("Sync Error."); console.error(e); }
-    }
+    if (!window.supabaseClient) { log("Client Error"); return; }
+    try {
+        // Change .eq('hour', 0) to .eq('hour', "00")
+        const { data, error } = await window.supabaseClient
+            .from(TABLE)
+            .select('*')
+            .eq('userName', 'test_user')
+            .eq('hour', "00") 
+            .maybeSingle();
+            
+        if(error) throw error;
+        
+        if(!data) { 
+            log("No data found for test_user with hour '00'. Check database values."); 
+            return; 
+        }
+
+        ALL_COLS.forEach(c => {
+            const s = document.getElementById('s-'+c), v = document.getElementById('v-'+c);
+            if(s) s.value = data[c] ?? 0;
+            if(v) v.innerText = data[c] ?? 0;
+        });
+        log(`Sync Complete for test_user (Hour 00).`);
+    } catch(e) { log("Sync Error."); console.error(e); }
+}
 
     async function updateVal(id) {
-        if (!window.supabaseClient) return;
-        const val = parseInt(document.getElementById('s-'+id).value);
-        document.getElementById('v-'+id).innerText = val;
-        await window.supabaseClient.from(TABLE).update({ [id]: val }).eq('userName', 'test_user').eq('hour', 0);
-    }
+    if (!window.supabaseClient) return;
+    const val = parseInt(document.getElementById('s-'+id).value);
+    document.getElementById('v-'+id).innerText = val;
+    
+    // Change .eq('hour', 0) to .eq('hour', "00")
+    await window.supabaseClient
+        .from(TABLE)
+        .update({ [id]: val })
+        .eq('userName', 'test_user')
+        .eq('hour', "00");
+}
 
     function forceLoadModule() {
         const mod = document.getElementById('module-selector').value;
