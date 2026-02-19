@@ -83,7 +83,7 @@
 <body>
 
 <div class="header-bar">
-    DEBUGGER: <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user | v1.7.10
+    DEBUGGER: <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user | v1.7.1
 </div>
 
 <div class="master-grid">
@@ -143,6 +143,11 @@
 </div>
 
 <script>
+    const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
+
+    window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
     const TABLE = 'assignment';
     const ALL_COLS = ['SolveX','LinearSystem','FigureGrowth','BoxPlot','BoxPlotMedian','Similarity','ComplexShapes','Graphing','DiamondMath','LinearMastery'];
 
