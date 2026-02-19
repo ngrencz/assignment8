@@ -1,13 +1,13 @@
 /**
- * skill_linear.js - Restored Production Version
- * Contains full DB logic, Hub control, grid-perfect math, contextual questions, 
- * decay bounds checking, and full pedagogical hints. 
+ * skill_linear.js - v2.5.0
+ * Restored Production Version with Enhanced Pedagogical Hints
+ * Contains full DB logic, Hub control, and context-aware feedback.
  */
 
-console.log("%c [LinearMath] - Fully Restored Build ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
+console.log("%c [LinearMath] - Pedagogical Build Loaded ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
 
 var linearData = {
-    version: "2.4.0",
+    version: "2.5.0",
     scenario: {},      
     stage: 'variables', 
     errors: 0,         
@@ -20,14 +20,12 @@ var linearData = {
 window.initLinearMastery = async function() {
     if (!document.getElementById('q-content')) return;
 
-    // Reset State
     linearData.stage = 'variables';
     linearData.errors = 0;
     linearData.pointsClicked = [];
     
     if (!window.userMastery) window.userMastery = {};
 
-    // Restore Original DB Sync Logic
     try {
         if (window.supabaseClient && window.currentUser) {
             const currentHour = sessionStorage.getItem('target_hour');
@@ -67,15 +65,14 @@ function generateLinearScenario() {
 
     let b = (Math.floor(Math.random() * 5) + 1) * scale; 
     let m = (Math.floor(Math.random() * 2) + 1) * scale;
-    let tx = 6; // Base prediction time
+    let tx = 6; 
 
     if (t.type === 'decay') {
         b = maxLimit - (Math.floor(Math.random() * 2) * scale);
         m = -m;
-        // Subterranean Fix: Ensure result doesn't drop below zero
         while (b + (m * tx) < 0 && tx > 2) {
-            if (Math.abs(m) > scale) { m += scale; } // decrease slope steepness
-            else { tx -= 1; } // shorten the prediction time
+            if (Math.abs(m) > scale) { m += scale; } 
+            else { tx -= 1; } 
         }
     } else {
         while (b + (m * tx) > maxLimit) { m = Math.max(scale, m - scale); }
@@ -87,7 +84,7 @@ function generateLinearScenario() {
 
     linearData.scenario = {
         fullText: t.prompt + " " + t.text.replace("{B}", b).replace("{M}", Math.abs(m)),
-        b: b, m: m, unitX: t.unitX, unitY: t.unitY, labelX: t.labelX, labelY: t.labelY
+        b: b, m: m, unitX: t.unitX, unitY: t.unitY, labelX: t.labelX, labelY: t.labelY, type: t.type
     };
 }
 
@@ -106,8 +103,8 @@ function renderLinearStage() {
     if (stage === 'variables') {
         html += `<h4>Part 1: Variables</h4>
                  <div class="step-input">x = <select id="inp-x"><option value="">--</option><option value="correct">${s.unitX}</option><option value="wrong">${s.unitY}</option></select></div>
-                 <div class="step-input">y = <select id="inp-y"><option value="">--</option><option value="wrong">${s.unitX}</option><option value="correct">${s.unitY}</option></select></div>
-                 <button onclick="checkLinearVars()" class="btn-primary">Next Step</button>`;
+                 <div class="step-input" style="margin-top:10px;">y = <select id="inp-y"><option value="">--</option><option value="wrong">${s.unitX}</option><option value="correct">${s.unitY}</option></select></div>
+                 <button onclick="checkLinearVars()" class="btn-primary" style="margin-top:15px;">Next Step</button>`;
     }
     else if (stage === 'slope') {
         html += `<h4>Part 2: Slope</h4><p>What is the <b>slope (m)</b>?</p>
@@ -119,7 +116,7 @@ function renderLinearStage() {
     }
     else if (stage === 'eq') {
         html += `<h4>Part 4: Equation</h4><div style="font-size:22px;">y = <input type="text" id="inp-eq" placeholder="mx + b" style="width:160px;"></div>
-                 <button onclick="checkLinearEq()" class="btn-primary" style="margin-top:10px;">Check Equation</button>`;
+                 <button onclick="checkLinearEq()" class="btn-primary" style="margin-top:15px;">Check Equation</button>`;
     }
     else if (stage === 'graph') {
         html += `<h4>Part 5: Graphing</h4><div class="eq-highlight">Equation: ${displayEq}</div>
@@ -134,43 +131,60 @@ function renderLinearStage() {
                  <input type="number" id="inp-solve" class="math-input"> ${s.unitY} <button onclick="checkLinearD()" class="btn-primary">Submit</button>`;
     }
 
-    html += `<div id="lin-feedback" style="margin-top:15px; min-height:30px; font-weight:bold;"></div></div>`;
+    html += `<div id="lin-feedback" style="margin-top:15px; min-height:30px; font-weight:bold;"></div>
+             <div id="lin-hint" style="margin-top: 10px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.95rem; color: #92400e;"></div></div>`;
     qContent.innerHTML = html;
 
     if (stage === 'graph') setupLinearGraph();
 }
 
 window.checkLinearVars = function() {
+    const hintBox = document.getElementById('lin-hint');
     if (document.getElementById('inp-x').value === 'correct' && document.getElementById('inp-y').value === 'correct') {
         linearData.stage = 'slope'; renderLinearStage();
     } else {
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Hint: x is your independent variable (time), y is the result.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Not quite.</span>`;
+        hintBox.style.display = "block";
+        hintBox.innerHTML = `<strong>Hint:</strong> <b>x</b> is your independent variable (usually time), and <b>y</b> is the result or total being measured.`;
     }
 };
 
 window.checkLinearM = function() {
-    if (parseFloat(document.getElementById('inp-m').value) === linearData.scenario.m) {
+    const val = parseFloat(document.getElementById('inp-m').value);
+    const hintBox = document.getElementById('lin-hint');
+    const s = linearData.scenario;
+
+    if (val === s.m) {
         linearData.stage = 'intercept'; renderLinearStage();
     } else {
         linearData.errors++;
-        // Hint restored
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect. Slope is the rate of change (how much it changes per ${linearData.scenario.unitX}).</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect.</span>`;
+        hintBox.style.display = "block";
+        let direction = s.type === 'decay' ? "decreasing (negative)" : "increasing (positive)";
+        hintBox.innerHTML = `<strong>Hint:</strong> Slope (m) is the rate of change. How much is the ${s.labelY} changing every 1 ${s.unitX}? Since it is ${direction}, check your sign!`;
     }
 };
 
 window.checkLinearB = function() {
-    if (parseFloat(document.getElementById('inp-b').value) === linearData.scenario.b) {
+    const val = parseFloat(document.getElementById('inp-b').value);
+    const hintBox = document.getElementById('lin-hint');
+    const s = linearData.scenario;
+
+    if (val === s.b) {
         linearData.stage = 'eq'; renderLinearStage();
     } else {
         linearData.errors++;
-        // Hint restored
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect. The y-intercept is the starting value or starting height.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect.</span>`;
+        hintBox.style.display = "block";
+        hintBox.innerHTML = `<strong>Hint:</strong> The y-intercept (b) is the <b>starting value</b>. What was the ${s.labelY} before any ${s.unitX} passed?`;
     }
 };
 
 window.checkLinearEq = async function() {
     let userVal = document.getElementById('inp-eq').value.replace(/\s/g, '').toLowerCase();
     const { m, b } = linearData.scenario;
+    const hintBox = document.getElementById('lin-hint');
+
     let mPart = (m === 1 ? "x" : (m === -1 ? "-x" : m + "x"));
     let bPart = (b === 0 ? "" : (b > 0 ? "+" + b : b));
     let correct = mPart + bPart;
@@ -180,8 +194,9 @@ window.checkLinearEq = async function() {
         linearData.stage = 'graph'; renderLinearStage();
     } else {
         linearData.errors++;
-        // Hint restored
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Remember: The equation follows y = mx + b where m is slope and b is intercept.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Check your formatting.</span>`;
+        hintBox.style.display = "block";
+        hintBox.innerHTML = `<strong>Hint:</strong> Use the form <b>y = mx + b</b>. You found m = ${m} and b = ${b}. Combine them into one equation.`;
     }
 };
 
@@ -244,6 +259,10 @@ function setupLinearGraph() {
 
 window.checkLinearD = async function() {
     let val = parseFloat(document.getElementById('inp-solve').value);
+    const hintBox = document.getElementById('lin-hint');
+    const s = linearData.scenario;
+    const tx = linearData.targetSolveX;
+
     if (Math.abs(val - linearData.targetSolveY) < 0.1) {
         await handleSubSuccess('LinearSolve');
         let inc = linearData.errors <= 1 ? 2 : (linearData.errors >= 4 ? -1 : 0);
@@ -251,7 +270,9 @@ window.checkLinearD = async function() {
         showFinalLinearMessage(inc);
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect. Calculate using your equation.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Try again.</span>`;
+        hintBox.style.display = "block";
+        hintBox.innerHTML = `<strong>Hint:</strong> Use your equation! Plug <b>${tx}</b> into <b>x</b>:<br>y = ${s.m}(${tx}) + ${s.b}`;
     }
 };
 
@@ -269,8 +290,6 @@ async function updateSkill(col, amt) {
 
 function showFinalLinearMessage(inc) {
     const color = inc > 0 ? "green" : (inc < 0 ? "red" : "gray");
-    
-    // Show the success screen
     document.getElementById('q-content').innerHTML = `
         <div style="text-align:center; padding:40px;">
             <h2>Challenge Complete</h2>
@@ -278,17 +297,13 @@ function showFinalLinearMessage(inc) {
             <p style="color:#64748b; margin-top:15px;"><em>Loading next question...</em></p>
         </div>`;
 
-    // Automatically trigger the hub's next step after 1.5 seconds
     setTimeout(() => {
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
-        } else if (typeof window.showMasteryCompletion === 'function') {
-            window.showMasteryCompletion(inc);
         }
     }, 1500);
 }
 
-// CSS appended safely
 const styleId = 'linear-math-styles';
 if (!document.getElementById(styleId)) {
     const style = document.createElement('style');
@@ -296,7 +311,7 @@ if (!document.getElementById(styleId)) {
     style.innerHTML = `
         .scenario-box { background:#f8fafc; padding:15px; border-radius:8px; border-left:5px solid #3b82f6; margin-bottom:15px; }
         .eq-highlight { background:#eff6ff; padding:8px; border-radius:4px; margin-bottom:10px; font-weight:bold; color:#1d4ed8; border:1px solid #bfdbfe; }
-        .btn-primary { background:#3b82f6; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; }
+        .btn-primary { background:#1e293b; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold; }
         .math-input { font-size:18px; width:80px; padding:4px; }
         #lin-feedback { margin-top:10px; font-weight:bold; }
     `;
