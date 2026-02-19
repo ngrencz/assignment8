@@ -268,18 +268,24 @@ async function updateSkill(col, amt) {
 }
 
 function showFinalLinearMessage(inc) {
-    // Restored original Hub flow logic
-    if (typeof window.showMasteryCompletion === 'function') {
-        window.showMasteryCompletion(inc);
-    } else {
-        const color = inc > 0 ? "green" : (inc < 0 ? "red" : "gray");
-        document.getElementById('q-content').innerHTML = `
-            <div style="text-align:center; padding:40px;">
-                <h2>Challenge Complete</h2>
-                <p style="font-size:24px; color:${color}; font-weight:bold;">${inc > 0 ? '+2 Mastery Points' : 'Completed'}</p>
-                <button onclick="initLinearMastery()" class="btn-primary">Continue</button>
-            </div>`;
-    }
+    const color = inc > 0 ? "green" : (inc < 0 ? "red" : "gray");
+    
+    // Show the success screen
+    document.getElementById('q-content').innerHTML = `
+        <div style="text-align:center; padding:40px;">
+            <h2>Challenge Complete</h2>
+            <p style="font-size:24px; color:${color}; font-weight:bold;">${inc > 0 ? '+2 Mastery Points' : 'Completed'}</p>
+            <p style="color:#64748b; margin-top:15px;"><em>Loading next question...</em></p>
+        </div>`;
+
+    // Automatically trigger the hub's next step after 1.5 seconds
+    setTimeout(() => {
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion();
+        } else if (typeof window.showMasteryCompletion === 'function') {
+            window.showMasteryCompletion(inc);
+        }
+    }, 1500);
 }
 
 // CSS appended safely
