@@ -133,6 +133,7 @@
     // Initialize Supabase & Bridge for external scripts
     window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
     window.currentUser = 'test_user';
+    sessionStorage.setItem('target_hour', "00");
 
     // SAFETY PROXY: Prevents "innerText of null" crashes
     const _get = document.getElementById;
