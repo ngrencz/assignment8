@@ -1,9 +1,10 @@
 /**
  * skill_similarity.js
- * - Based on the 292-line stable version.
- * - MODIFICATION: Inputs lengthened.
- * - MODIFICATION: Check button moved to bottom row.
- * - MODIFICATION: Labels forced outside via vector normal.
+ * - Stable 292-line logic base.
+ * - MODIFICATION: Inputs lengthened via CSS width.
+ * - MODIFICATION: Submit button moved to its own row.
+ * - MODIFICATION: Labels forced outside lines using nx/ny * 22px.
+ * - DEBUG: Added live-check console log.
  */
 
 var similarityData = {
@@ -19,6 +20,9 @@ var similarityData = {
 };
 
 window.initSimilarityGame = async function() {
+    // Live-check log for debugger
+    console.log("%c Similarity Game: Layout & Label Update Live ", "background: #1e293b; color: #38bdf8; font-weight: bold;");
+
     if (!document.getElementById('q-content')) return;
 
     similarityData.round = 1;
@@ -128,7 +132,6 @@ function drawSimilarShapes() {
     const totalRequiredUnits = Math.max(...d.baseSides) + Math.max(...d.scaledSides) + 15;
     const maxUnitsHeight = Math.max(...d.baseSides, ...d.scaledSides);
     
-    // Scale based on the larger shape to fit the display area
     const dynamicScale = Math.min(600 / totalRequiredUnits, 240 / maxUnitsHeight, 20); 
 
     ctx.lineWidth = 2;
@@ -176,14 +179,13 @@ function drawSimilarShapes() {
 
             if (!isScaled) {
                 if (i === idx.y) { displayVal = "y"; ctx.fillStyle = "#ef4444"; }
-                else if (i !== idx.known && i !== 1) return; // Keep reference side
+                else if (i !== idx.known && i !== 1) return;
             } else {
                 if (i === idx.x) { displayVal = "x"; ctx.fillStyle = "#2563eb"; }
-                else if (i !== idx.known) return; // Match known side
+                else if (i !== idx.known) return;
             }
 
             ctx.textAlign = "center";
-            // Pushed to 22px outside the line
             ctx.fillText(displayVal, midX + nx*22, midY + ny*22 + 5);
         });
     }
