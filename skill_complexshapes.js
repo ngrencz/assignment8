@@ -1,9 +1,9 @@
 /**
  * skill_complexshapes.js
  * - 7th/8th Grade Deductive Reasoning Version.
- * - FIXED: All labels use Vector Offsets to prevent overlapping.
- * - FIXED: Slants and Arcs pushed outward; internal dimensions (h, r) stay inward.
- * - FEATURE: Interactive Hint Bubble (Click shape for formulas).
+ * - FIXED: All slant/diagonal lengths are explicitly provided as labels.
+ * - FIXED: Labels are offset to prevent overlap.
+ * - FEATURE: Deductive logic for horizontal/vertical edges.
  */
 
 var complexData = {
@@ -51,12 +51,13 @@ function generateComplexProblem() {
     let baseW = Math.floor(Math.random() * 30) + 50;
     let baseH = Math.floor(Math.random() * 30) + 40;
     
+    // Foundation Rectangle
     complexData.components.push({
         type: 'rectangle',
         w: baseW, h: baseH, x: 80, y: 100,
         area: baseW * baseH,
-        hintA: `Rectangle Area = width × height (${baseW} × ${baseH})`,
-        hintP: `Deduction: If the top is ${baseW}, the bottom must also be ${baseW}.`
+        hintA: `Rectangle Area = ${baseW} × ${baseH}`,
+        hintP: `The bottom edge is the same as the top (${baseW} ${complexData.unit}).`
     });
 
     let typePool = ['triangle', 'semicircle', 'trapezoid'];
@@ -65,47 +66,48 @@ function generateComplexProblem() {
 
     if (type === 'triangle') {
         let triH = Math.floor(Math.random() * 25) + 25;
-        let slant = Math.sqrt(Math.pow(baseH/2, 2) + Math.pow(triH, 2));
+        // Calculation for the slant which MUST be shown to the student
+        let slantValue = Math.sqrt(Math.pow(baseH/2, 2) + Math.pow(triH, 2)).toFixed(1);
         
         complexData.components.push({
             type: 'triangle', base: baseH, height: triH, x: attachX, y: 100,
-            slant: slant.toFixed(1),
+            slantLabel: slantValue,
             area: 0.5 * baseH * triH,
             hintA: `Triangle Area = ½ × base × height`,
-            hintP: `The two exterior slants are both ${slant.toFixed(1)} ${complexData.unit}.`
+            hintP: `The two exterior slants are both ${slantValue} ${complexData.unit}.`
         });
         complexData.totalArea = (baseW * baseH) + (0.5 * baseH * triH);
-        complexData.totalPerimeter = (baseW * 2) + (slant * 2);
+        complexData.totalPerimeter = (baseW * 2) + (parseFloat(slantValue) * 2);
 
     } else if (type === 'semicircle') {
         let r = baseH / 2;
-        let arc = Math.PI * r;
+        let arcValue = (Math.PI * r).toFixed(1);
         
         complexData.components.push({
             type: 'semicircle', r: r, x: attachX, y: 100 + r,
-            arc: arc.toFixed(1),
+            arcLabel: arcValue,
             area: (Math.PI * Math.pow(r, 2)) / 2,
             hintA: `Semicircle Area = (π × r²) / 2`,
-            hintP: `The curved boundary is ${arc.toFixed(1)} ${complexData.unit}.`
+            hintP: `The curved boundary is ${arcValue} ${complexData.unit}.`
         });
         complexData.totalArea = (baseW * baseH) + ((Math.PI * Math.pow(r, 2)) / 2);
-        complexData.totalPerimeter = (baseW * 2) + baseH + arc;
+        complexData.totalPerimeter = (baseW * 2) + baseH + parseFloat(arcValue);
 
     } else if (type === 'trapezoid') {
         let topB = Math.floor(baseH * 0.6);
         let trapW = Math.floor(Math.random() * 20) + 20;
         let diff = baseH - topB;
-        let slant = Math.sqrt(Math.pow(trapW, 2) + Math.pow(diff, 2));
+        let slantValue = Math.sqrt(Math.pow(trapW, 2) + Math.pow(diff, 2)).toFixed(1);
 
         complexData.components.push({
             type: 'trapezoid', b1: baseH, b2: topB, h: trapW, x: attachX, y: 100,
-            slant: slant.toFixed(1),
+            slantLabel: slantValue,
             area: 0.5 * (baseH + topB) * trapW,
-            hintA: `Trapezoid Area = ½(b1 + b2) × h`,
-            hintP: `Exterior sides: Top (${trapW}), Right (${topB}), and Slant (${slant.toFixed(1)}).`
+            hintA: `Trapezoid Area = ½(base1 + base2) × height`,
+            hintP: `Exterior sides: Top (${trapW}), Right (${topB}), and Slant (${slantValue}).`
         });
         complexData.totalArea = (baseW * baseH) + (0.5 * (baseH + topB) * trapW);
-        complexData.totalPerimeter = (baseW * 2) + topB + trapW + slant;
+        complexData.totalPerimeter = (baseW * 2) + topB + trapW + parseFloat(slantValue);
     }
 }
 
@@ -149,7 +151,7 @@ function renderComplexUI() {
                     </div>
                 </div>
 
-                <div style="grid-column: span 2; text-align: center;">
+                <div style="grid-column: span 2; text-align: center; margin-top:5px;">
                     <button onclick="checkComplexWin()" class="comp-btn">Submit Final Answers</button>
                 </div>
             </div>
@@ -171,9 +173,9 @@ function drawComplex() {
     ctx.font = "bold 13px Arial";
 
     function drawLabel(text, x, y, color = "#1e293b") {
-        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
         let w = ctx.measureText(text).width;
-        ctx.fillRect(x - w/2 - 2, y - 10, w + 4, 14); // Text background for overlap safety
+        ctx.fillRect(x - w/2 - 4, y - 11, w + 8, 15); 
         ctx.fillStyle = color;
         ctx.textAlign = "center";
         ctx.fillText(text, x, y);
@@ -186,21 +188,23 @@ function drawComplex() {
             ctx.rect(p.x, p.y, p.w, p.h);
             ctx.fill(); ctx.stroke();
             drawLabel(`${p.w} ${u}`, p.x + p.w/2, p.y - 12); 
-            drawLabel(`${p.h} ${u}`, p.x - 35, p.y + p.h/2 + 5); 
+            drawLabel(`${p.h} ${u}`, p.x - 40, p.y + p.h/2 + 5); 
         } else if (p.type === 'triangle') {
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p.x + p.height, p.y + p.base/2);
             ctx.lineTo(p.x, p.y + p.base);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            drawLabel(`${p.slant} ${u}`, p.x + p.height/2 + 35, p.y + p.base/4 - 5); 
-            drawLabel(`${p.slant} ${u}`, p.x + p.height/2 + 35, p.y + (p.base*0.75) + 15);
+            // Explicitly show both slants
+            drawLabel(`${p.slantLabel} ${u}`, p.x + p.height/2 + 45, p.y + p.base/4 - 5); 
+            drawLabel(`${p.slantLabel} ${u}`, p.x + p.height/2 + 45, p.y + (p.base*0.75) + 15);
+            // Height label (Internal)
             drawLabel(`${p.height} ${u}`, p.x + 25, p.y + p.base/2 + 5, "#64748b");
         } else if (p.type === 'semicircle') {
             ctx.arc(p.x, p.y, p.r, -Math.PI/2, Math.PI/2);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            drawLabel(`${p.arc} ${u}`, p.x + p.r + 40, p.y + 5);
+            drawLabel(`${p.arcLabel} ${u}`, p.x + p.r + 45, p.y + 5);
             drawLabel(`r: ${p.r} ${u}`, p.x + p.r/2, p.y + 5, "#64748b");
         } else if (p.type === 'trapezoid') {
             ctx.moveTo(p.x, p.y);
@@ -210,8 +214,9 @@ function drawComplex() {
             ctx.closePath();
             ctx.fill(); ctx.stroke();
             drawLabel(`${p.h} ${u}`, p.x + p.h/2, p.y - 12); 
-            drawLabel(`${p.b2} ${u}`, p.x + p.h + 35, p.y + p.b2/2 + 5); 
-            drawLabel(`${p.slant} ${u}`, p.x + p.h/2 - 25, p.y + p.b1 + 22);
+            drawLabel(`${p.b2} ${u}`, p.x + p.h + 40, p.y + p.b2/2 + 5); 
+            // The diagonal label MUST be here
+            drawLabel(`${p.slantLabel} ${u}`, p.x + p.h/2 - 30, p.y + p.b1 + 25);
         }
     });
 
@@ -220,10 +225,9 @@ function drawComplex() {
         const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
         const my = (e.clientY - rect.top) * (canvas.height / rect.height);
         const bubble = document.getElementById('hint-bubble');
-        
-        let part = complexData.components.find(p => mx > p.x - 20 && mx < p.x + 150 && my > p.y - 20 && my < p.y + 150);
+        let part = complexData.components.find(p => mx > p.x - 20 && mx < p.x + 180 && my > p.y - 20 && my < p.y + 180);
         if (part) {
-            bubble.innerHTML = `<strong>Hints:</strong><br>${part.hintA}<br>${part.hintP}`;
+            bubble.innerHTML = `<strong>Formula Help:</strong><br>${part.hintA}<br>${part.hintP}`;
             bubble.style.left = `${mx + 10}px`;
             bubble.style.top = `${my - 40}px`;
             bubble.style.display = 'block';
@@ -238,6 +242,11 @@ window.checkComplexWin = async function() {
     const pVal = parseFloat(document.getElementById('ans-perim-val').value);
     const pUnit = document.getElementById('ans-perim-unit').value;
 
+    if (isNaN(aVal) || isNaN(pVal)) {
+        showFlash("Please enter numbers.", "error");
+        return;
+    }
+
     const areaOK = (Math.abs(aVal - complexData.totalArea) < 2.5) && (aUnit === 'square');
     const perimOK = (Math.abs(pVal - complexData.totalPerimeter) < 2.5) && (pUnit === 'linear');
 
@@ -248,16 +257,18 @@ window.checkComplexWin = async function() {
             const h = sessionStorage.getItem('target_hour') || "00";
             await window.supabaseClient.from('assignment').update({ ComplexShapes: newVal }).eq('userName', window.currentUser).eq('hour', h);
         }
-        showFlash("✅ Correct!", "success");
-        setTimeout(() => finishComplex(), 1500);
+        showFlash("✅ Excellent Work!", "success");
+        setTimeout(() => finishComplex(), 1800);
     } else {
-        let msg = !areaOK ? "Check Area calculation or units." : "Check Perimeter calculation or units.";
+        let msg = !areaOK ? "Area calculation is incorrect." : "Perimeter calculation is incorrect.";
+        if (aUnit !== 'square' && !areaOK) msg = "Area must be in SQUARE units!";
+        if (pUnit !== 'linear' && !perimOK) msg = "Perimeter must be in LINEAR units!";
         showFlash(msg, "error");
     }
 };
 
 function finishComplex() {
-    document.getElementById('q-content').innerHTML = `<div style="text-align:center; padding:50px;"><h2>Composite Shape Mastered!</h2></div>`;
+    document.getElementById('q-content').innerHTML = `<div style="text-align:center; padding:50px;"><h2>Composite Figure Mastered!</h2></div>`;
     setTimeout(() => { if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); }, 2000);
 }
 
@@ -271,9 +282,9 @@ function showFlash(msg, type) {
 
 const compStyles = document.createElement('style');
 compStyles.innerHTML = `
-    .comp-label { font-weight:bold; font-size:10px; letter-spacing:1px; display:block; }
-    .comp-input { flex:2; height:36px; border-radius:6px; border:1px solid #cbd5e1; text-align:center; font-size:16px; }
-    .comp-select { flex:1.2; height:36px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; }
-    .comp-btn { width:220px; height:44px; background:#1e293b; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size: 15px; }
+    .comp-label { font-weight:bold; font-size:10px; letter-spacing:1px; margin-bottom: 2px; display:block; }
+    .comp-input { flex:2; height:38px; border-radius:6px; border:1px solid #cbd5e1; text-align:center; font-size:16px; outline:none; }
+    .comp-select { flex:1.2; height:38px; border-radius:6px; border:1px solid #cbd5e1; font-size:12px; }
+    .comp-btn { width:220px; height:46px; background:#1e293b; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size: 15px; }
 `;
 document.head.appendChild(compStyles);
