@@ -1,0 +1,142 @@
+/* style_test.css - Layout Lock for Debugger */
+
+* { 
+    box-sizing: border-box; 
+}
+
+body { 
+    margin: 0; 
+    padding: 0; 
+    display: flex; 
+    flex-direction: column; 
+    height: 100vh; 
+    font-family: sans-serif; 
+    background: #f1f5f9; 
+    overflow: hidden; 
+}
+
+.header-bar { 
+    height: 40px; 
+    background: #fff; 
+    border-bottom: 1px solid #ddd; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-weight: bold; 
+    font-size: 13px; 
+    z-index: 10; 
+}
+
+/* Widen to 450px to prevent the 'squish' on GitHub */
+.master-grid { 
+    display: grid; 
+    grid-template-columns: 450px 1fr; 
+    height: calc(100vh - 40px); 
+    width: 100vw;
+}
+
+.sidebar { 
+    background: #f8fafc; 
+    border-right: 1px solid #cbd5e1; 
+    padding: 15px; 
+    overflow-y: auto; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+}
+
+.main-stage { 
+    display: flex; 
+    flex-direction: column; 
+    background: #fff; 
+    overflow: hidden; 
+}
+
+.card { 
+    background: white; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 8px; 
+    padding: 15px; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    width: 100%;
+}
+
+.section-tag { 
+    color: #0ea5e9; 
+    font-size: 10px; 
+    font-weight: bold; 
+    text-transform: uppercase; 
+    margin-bottom: 8px; 
+    display: block; 
+    border-bottom: 1px solid #f1f5f9; 
+}
+
+.slider-label { 
+    display: flex; 
+    justify-content: space-between; 
+    font-size: 11px; 
+    font-weight: 600; 
+    white-space: nowrap; 
+    margin-top: 10px;
+}
+
+input[type="range"] { 
+    width: 100%; 
+    accent-color: #4CBB17; 
+    margin: 5px 0; 
+    cursor: pointer; 
+}
+
+select { 
+    width: 100%; 
+    padding: 8px; 
+    border-radius: 6px; 
+    border: 1px solid #cbd5e1; 
+    background: #fff; 
+}
+
+button { 
+    cursor: pointer; 
+    font-weight: bold; 
+    padding: 12px; 
+    border-radius: 6px; 
+    border: none; 
+    background: #6366f1; 
+    color: white; 
+    width: 100%; 
+    margin-top: 5px; 
+}
+
+.log-container { 
+    height: 200px; 
+    background: #1a1a1a; 
+    border-bottom: 2px solid #333; 
+    padding: 10px; 
+    display: flex; 
+    flex-direction: column; 
+}
+
+.log-box { 
+    flex-grow: 1; 
+    color: #4CBB17; 
+    font-family: monospace; 
+    font-size: 11px; 
+    overflow-y: auto; 
+}
+
+.game-area { 
+    flex-grow: 1; 
+    padding: 30px; 
+    overflow-y: auto; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+}
+
+details summary { 
+    cursor: pointer; 
+    font-size: 12px; 
+    font-weight: bold; 
+    margin: 5px 0; 
+    color: #444; 
+}
