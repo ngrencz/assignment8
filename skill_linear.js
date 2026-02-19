@@ -1,12 +1,13 @@
 /**
- * skill_linear.js - Full Production Version
- * Only modifications: Goal-oriented scenario text and scaleStep math fix.
+ * skill_linear.js - v2.2.5
+ * Full Production Version - Strictly preserving all database and CSS hooks.
+ * Fixes: Randomization, Hint Timing, and Slope Validation.
  */
 
-console.log("%c [LinearMath] v2.2.3 - Full Restored Version ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
+console.log("%c [LinearMath] v2.2.5 Full Build ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
 
 var linearData = {
-    version: "2.2.3",
+    version: "2.2.5",
     scenario: {},      
     stage: 'variables', 
     errors: 0,         
@@ -51,25 +52,26 @@ window.initLinearMastery = async function() {
 };
 
 function generateLinearScenario() {
-    const scenarios = [
-        { type: 'growth', prompt: "You want to predict the height of a redwood tree.", text: "The tree is {B} feet tall and grows {M} feet per year. How tall will it be in the future?", unitX: "years", unitY: "feet", labelY: "Height", big: false },
-        { type: 'growth', prompt: "You are saving for a car.", text: "You have ${B} and deposit ${M} every month. What will your balance be over time?", unitX: "months", unitY: "dollars", labelY: "Balance", big: true },
-        { type: 'decay',  prompt: "You are tracking a candle's life.", text: "The candle is {B} cm tall and burns down {M} cm per hour. When will it be gone?", unitX: "hours", unitY: "cm", labelY: "Height", big: false },
-        { type: 'decay',  prompt: "A tank is being emptied.", text: "It holds {B} gallons and drains at {M} gallons per minute. How much water is left at any time?", unitX: "minutes", unitY: "gallons", labelY: "Volume", big: true }
+    const templates = [
+        { type: 'growth', prompt: "A botanist is tracking a sunflower's growth.", text: "The sunflower is {B} cm tall and grows {M} cm per day. How tall will it be after several days?", unitX: "days", unitY: "cm", labelY: "Height", big: false },
+        { type: 'growth', prompt: "A contractor is charging for a job.", text: "There is a base fee of ${B} plus ${M} per hour of labor. What is the total cost?", unitX: "hours", unitY: "dollars", labelY: "Total Cost", big: true },
+        { type: 'decay',  prompt: "A pilot is descending for landing.", text: "The plane is at {B} thousand feet and descends {M} thousand feet per minute. When will it land?", unitX: "minutes", unitY: "feet", labelY: "Altitude", big: true },
+        { type: 'decay',  prompt: "A phone battery is losing charge.", text: "The battery is at {B}% and drops {M}% every hour. What is the remaining charge?", unitX: "hours", unitY: "percent", labelY: "Charge", big: false },
+        { type: 'growth', prompt: "A swimming pool is being filled.", text: "It already has {B} gallons and is filling at {M} gallons per minute. What is the total volume?", unitX: "minutes", unitY: "gallons", labelY: "Volume", big: true }
     ];
 
-    const t = scenarios[Math.floor(Math.random() * scenarios.length)];
+    const t = templates[Math.floor(Math.random() * templates.length)];
     let b, m;
 
     if (t.big) {
-        b = (Math.floor(Math.random() * 5) + 4) * 10; 
-        m = (Math.floor(Math.random() * 3) + 1) * 5;
+        b = (Math.floor(Math.random() * 8) + 2) * 10; // 20 - 90
+        m = (Math.floor(Math.random() * 4) + 1) * 5;  // 5, 10, 15, 20
     } else {
-        b = Math.floor(Math.random() * 8) + 2; 
-        m = Math.floor(Math.random() * 3) + 1;
+        b = Math.floor(Math.random() * 10) + 2; 
+        m = Math.floor(Math.random() * 4) + 1;
     }
 
-    if (t.type === 'decay') m *= -1;
+    if (t.type === 'decay') m = -Math.abs(m);
 
     let maxVal = Math.max(Math.abs(b), Math.abs(b + (m * 10)));
     linearData.gridConfig.maxVal = Math.ceil(maxVal / 10) * 10;
@@ -92,41 +94,42 @@ function renderLinearStage() {
              </div>`;
 
     if (stage === 'variables') {
-        html += `<h4>Part 1: Define Variables</h4>
-                 <div class="step-input">x (Independent/Time) = <select id="inp-x"><option value="">--select--</option><option value="correct">${s.unitX}</option><option value="wrong">${s.unitY}</option></select></div>
-                 <div class="step-input">y (Dependent/Result) = <select id="inp-y"><option value="">--select--</option><option value="wrong">${s.unitX}</option><option value="correct">${s.unitY}</option></select></div>
+        html += `<h4>Part 1: Variables</h4>
+                 <p>Identify the independent and dependent variables for this goal.</p>
+                 <div class="step-input">x = <select id="inp-x"><option value="">--select--</option><option value="correct">${s.unitX}</option><option value="wrong">${s.unitY}</option></select></div>
+                 <div class="step-input">y = <select id="inp-y"><option value="">--select--</option><option value="wrong">${s.unitX}</option><option value="correct">${s.unitY}</option></select></div>
                  <button onclick="checkLinearVars()" class="btn-primary">Next Step</button>`;
     }
     else if (stage === 'slope') {
         html += `<h4>Part 2: Rate of Change</h4>
-                 <p>What is the <b>slope (m)</b> for this equation?</p>
+                 <p>What is the <b>slope (m)</b> for this scenario?</p>
                  <input type="number" id="inp-m" class="math-input">
                  <button onclick="checkLinearM()" class="btn-primary">Check Slope</button>`;
     }
     else if (stage === 'intercept') {
         html += `<h4>Part 3: Starting Value</h4>
-                 <p>What is the <b>y-intercept (b)</b> for this equation?</p>
+                 <p>What is the <b>y-intercept (b)</b> for this scenario?</p>
                  <input type="number" id="inp-b" class="math-input">
                  <button onclick="checkLinearB()" class="btn-primary">Check Intercept</button>`;
     }
     else if (stage === 'eq') {
         html += `<h4>Part 4: The Equation</h4>
-                 <p>Write the full equation in y = mx + b form.</p>
+                 <p>Write the equation in y = mx + b form.</p>
                  <div style="font-size:22px;">y = <input type="text" id="inp-eq" placeholder="mx + b" style="width:160px;"></div>
                  <button onclick="checkLinearEq()" class="btn-primary" style="margin-top:10px;">Check Equation</button>`;
     }
     else if (stage === 'graph') {
         html += `<h4>Part 5: Graphing</h4>
-                 <p>Plot at least <b>3 points</b>. Click the grid to plot.</p>
+                 <p>Plot 3 points on the grid to graph your line.</p>
                  <canvas id="linCanvas" width="400" height="400" style="background:white; border:1px solid #000; cursor:crosshair;"></canvas>
-                 <p style="font-size:12px; color:#64748b;">Grid units: Each line = ${linearData.gridConfig.scaleStep}</p>`;
+                 <p style="font-size:12px; color:#64748b;">The vertical axis is counting by ${linearData.gridConfig.scaleStep}s.</p>`;
     }
     else if (stage === 'solve') {
         let tx = 8; 
         linearData.targetSolveX = tx;
         linearData.targetSolveY = s.m * tx + s.b;
         html += `<h4>Part 6: Predict</h4>
-                 <p>Using <b>y = ${s.m}x + ${s.b}</b>, what will y be after <b>${tx} ${s.unitX}</b>?</p>
+                 <p>Using <b>y = ${s.m}x + ${s.b}</b>, what is the value of y when x = ${tx}?</p>
                  <input type="number" id="inp-solve" class="math-input"> ${s.unitY}
                  <button onclick="checkLinearD()" class="btn-primary">Submit Answer</button>`;
     }
@@ -141,7 +144,7 @@ window.checkLinearVars = function() {
     if (document.getElementById('inp-x').value === 'correct' && document.getElementById('inp-y').value === 'correct') {
         linearData.stage = 'slope'; renderLinearStage();
     } else {
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Think: x is your time or input, y is your total or result.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Think: x is the input (time), and y is the result (total).</span>`;
     }
 }
 
@@ -151,7 +154,7 @@ window.checkLinearM = function() {
         linearData.stage = 'intercept'; renderLinearStage();
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Slope is the <b>rate of change</b>.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Slope is the <b>rate of change</b>. Check if the value is increasing (+) or decreasing (-).</span>`;
     }
 }
 
@@ -161,7 +164,7 @@ window.checkLinearB = function() {
         linearData.stage = 'eq'; renderLinearStage();
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">The y-intercept is the <b>starting value</b>.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">The y-intercept is the <b>starting value</b> at time zero.</span>`;
     }
 }
 
@@ -177,7 +180,7 @@ async function checkLinearEq() {
         linearData.stage = 'graph'; renderLinearStage();
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Use your values: y = ${m}x + ${b}</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Use y = mx + b. Using your variables: y = ${m}x + ${b}</span>`;
     }
 }
 
@@ -213,7 +216,6 @@ function setupLinearGraph() {
             const y0 = 400 - ((linearData.scenario.b / cfg.maxVal) * 400);
             const yFinal = 400 - (((linearData.scenario.m * 10 + linearData.scenario.b) / cfg.maxVal) * 400);
             ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(400, yFinal); ctx.stroke();
-            
             setTimeout(async () => {
                 await handleSubSuccess('LinearGraph');
                 linearData.stage = 'solve'; renderLinearStage();
@@ -227,16 +229,15 @@ function setupLinearGraph() {
         const rect = canvas.getBoundingClientRect();
         const gx = Math.round((e.clientX - rect.left) / pixelStep);
         const gy = Math.round((400 - (e.clientY - rect.top)) / pixelStep);
-        
         let valX = gx; 
-        let valY = gy * cfg.scaleStep; // FIXED: Map grid units back to actual values using scale
+        let valY = gy * cfg.scaleStep;
 
         if (Math.abs(valY - (linearData.scenario.m * valX + linearData.scenario.b)) < 0.01) {
             linearData.pointsClicked.push({cx: gx * pixelStep, cy: 400 - (gy * pixelStep)});
             draw();
         } else {
             linearData.errors++;
-            document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Point (${valX}, ${valY}) is not on the line!</span>`;
+            document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Point (${valX}, ${valY}) is not correct!</span>`;
         }
     };
 }
@@ -250,7 +251,7 @@ async function checkLinearD() {
         showFinalLinearMessage(inc);
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Check your math. Plug x=${linearData.targetSolveX} into your equation.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Check your algebra. y = ${linearData.scenario.m}(${linearData.targetSolveX}) + ${linearData.scenario.b}</span>`;
     }
 }
 
@@ -276,7 +277,7 @@ function showFinalLinearMessage(inc) {
     const msg = inc > 0 ? "+2 Mastery Points!" : (inc < 0 ? "-1 Mastery Point." : "Complete.");
     document.getElementById('q-content').innerHTML = `
         <div style="text-align:center; padding:40px;">
-            <h2>Goal Achieved</h2>
+            <h2>Challenge Complete</h2>
             <p style="font-size:24px; color:${color}; font-weight:bold;">${msg}</p>
             <button onclick="initLinearMastery()" class="btn-primary">Next Scenario</button>
         </div>`;
