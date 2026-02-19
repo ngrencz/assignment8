@@ -4,6 +4,7 @@
  * - Covers ALL missing variable combinations.
  * - Supports Integers, Negatives, Decimals, and Fractions.
  * - Order independent checking for factoring cases.
+ * - UPDATED: Uses classic framed diamond design and perfectly aligned pattern key.
  */
 
 var diamondData = {
@@ -12,7 +13,7 @@ var diamondData = {
     top: 0,          // Product
     bottom: 0,       // Sum
     missing: [],     // Array of keys ['A', 'B', 'top', 'bottom'] that are hidden
-    level: 0        
+    level: 0         
 };
 
 var diamondRound = 1;
@@ -120,52 +121,54 @@ function renderDiamondUI() {
         }
         // Format display value to avoid long decimals
         let displayVal = Number.isInteger(val) ? val : parseFloat(val.toFixed(2));
-        return `<span style="font-size:24px; font-weight:bold; color:#1e293b;">${displayVal}</span>`;
+        return `<span style="font-size:26px; font-weight:bold; color:#1e293b;">${displayVal}</span>`;
     };
 
     document.getElementById('q-title').innerText = `Diamond Problems (Round ${diamondRound}/${totalDiamondRounds})`;
 
     qContent.innerHTML = `
-        <div style="display: flex; gap: 40px; flex-wrap: wrap; justify-content:center; align-items:flex-start;">
+        <div style="display: flex; gap: 40px; flex-wrap: wrap; justify-content:center; align-items:center; min-height: 350px;">
             
             <div style="position:relative; width:300px; height:300px;">
                 <svg width="300" height="300" style="position:absolute; top:0; left:0; z-index:0;">
-                    <line x1="50" y1="50" x2="250" y2="250" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" />
-                    <line x1="250" y1="50" x2="50" y2="250" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" />
-                    <rect x="148" y="2" width="4" height="296" fill="none" /> 
+                    <polygon points="150,20 280,150 150,280 20,150" fill="#ffffff" stroke="#1e293b" stroke-width="6" stroke-linejoin="round" />
+                    <line x1="20" y1="150" x2="280" y2="150" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+                    <line x1="150" y1="20" x2="150" y2="280" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
                 </svg>
 
-                <div style="position:absolute; top:10px; left:50%; transform:translateX(-50%); width:80px; text-align:center;">
+                <div style="position:absolute; top:85px; left:150px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
                     ${renderField('top', diamondData.top)}
                 </div>
 
-                <div style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:80px; text-align:center;">
+                <div style="position:absolute; top:215px; left:150px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
                     ${renderField('bottom', diamondData.bottom)}
                 </div>
 
-                <div style="position:absolute; top:50%; left:10px; transform:translateY(-50%); width:80px; text-align:center;">
+                <div style="position:absolute; top:150px; left:85px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
                     ${renderField('A', diamondData.A)}
                 </div>
 
-                <div style="position:absolute; top:50%; right:10px; transform:translateY(-50%); width:80px; text-align:center;">
+                <div style="position:absolute; top:150px; left:215px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
                     ${renderField('B', diamondData.B)}
                 </div>
             </div>
 
-            <div style="flex:1; min-width:220px; max-width:300px; background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0;">
+            <div style="flex:1; min-width:220px; max-width:300px; background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0; text-align:center;">
                 <h3 style="margin-top:0; color:#475569; font-size:14px; text-transform:uppercase; letter-spacing:1px;">Pattern Key</h3>
-                <div style="display:flex; justify-content:center; margin-bottom:15px;">
-                     <div style="position:relative; width:100px; height:100px;">
-                        <svg width="100" height="100" style="position:absolute;">
-                            <line x1="10" y1="10" x2="90" y2="90" stroke="#94a3b8" stroke-width="3" />
-                            <line x1="90" y1="10" x2="10" y2="90" stroke="#94a3b8" stroke-width="3" />
-                        </svg>
-                        <div style="position:absolute; top:-5px; width:100%; text-align:center; font-size:11px; font-weight:bold; color:#ef4444;">PRODUCT (xy)</div>
-                        <div style="position:absolute; bottom:-5px; width:100%; text-align:center; font-size:11px; font-weight:bold; color:#3b82f6;">SUM (x+y)</div>
-                        <div style="position:absolute; top:42px; left:-10px; font-size:11px; font-weight:bold; color:#64748b;">x</div>
-                        <div style="position:absolute; top:42px; right:-10px; font-size:11px; font-weight:bold; color:#64748b;">y</div>
-                     </div>
+                
+                <div style="display:flex; justify-content:center; margin-bottom:15px; position:relative;">
+                    <svg width="140" height="140">
+                        <polygon points="70,10 130,70 70,130 10,70" fill="white" stroke="#94a3b8" stroke-width="4" stroke-linejoin="round" />
+                        <line x1="10" y1="70" x2="130" y2="70" stroke="#94a3b8" stroke-width="4" />
+                        <line x1="70" y1="10" x2="70" y2="130" stroke="#94a3b8" stroke-width="4" />
+                        
+                        <text x="70" y="45" font-family="sans-serif" font-size="12" font-weight="bold" fill="#ef4444" text-anchor="middle" dominant-baseline="middle">Product (x·y)</text>
+                        <text x="70" y="95" font-family="sans-serif" font-size="12" font-weight="bold" fill="#3b82f6" text-anchor="middle" dominant-baseline="middle">Sum (x+y)</text>
+                        <text x="40" y="70" font-family="sans-serif" font-size="14" font-weight="bold" fill="#64748b" text-anchor="middle" dominant-baseline="middle">x</text>
+                        <text x="100" y="70" font-family="sans-serif" font-size="14" font-weight="bold" fill="#64748b" text-anchor="middle" dominant-baseline="middle">y</text>
+                    </svg>
                 </div>
+                
                 <button onclick="checkDiamondWin()" style="width:100%; margin-top:10px; height:45px; background:#1e293b; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">CHECK ANSWER</button>
             </div>
         </div>
