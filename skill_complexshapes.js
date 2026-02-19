@@ -176,35 +176,48 @@ function drawComplex() {
     ctx.strokeStyle = "#334155";
     ctx.font = "bold 13px Arial";
 
+    // Helper to draw text with a background for readability if needed
+    function drawLabel(text, x, y, color = "#1e293b") {
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.fillText(text, x, y);
+    }
+
     complexData.components.forEach(p => {
         ctx.fillStyle = "#f1f5f9";
         ctx.beginPath();
+        
         if (p.type === 'rectangle') {
             ctx.rect(p.x, p.y, p.w, p.h);
             ctx.fill(); ctx.stroke();
-            ctx.fillStyle = "#1e293b";
-            ctx.fillText(`${p.w} ${u}`, p.x + p.w/2 - 20, p.y - 10); // Top
-            ctx.fillText(`${p.h} ${u}`, p.x - 55, p.y + p.h/2 + 5); // Left
-            // Deduction: Bottom side is NOT labeled.
+            // Labels for Rectangle
+            drawLabel(`${p.w} ${u}`, p.x + p.w/2, p.y - 12); // Top
+            drawLabel(`${p.h} ${u}`, p.x - 35, p.y + p.h/2 + 5); // Left side (moved closer)
+            
         } else if (p.type === 'triangle') {
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p.x + p.height, p.y + p.base/2);
             ctx.lineTo(p.x, p.y + p.base);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            ctx.fillStyle = "#1e293b";
-            ctx.fillText(`${p.slant} ${u}`, p.x + p.height/2 + 5, p.y + p.base/4); // Upper slant
-            ctx.fillText(`${p.slant} ${u}`, p.x + p.height/2 + 5, p.y + (p.base*0.75) + 10); // Lower slant
-            ctx.fillStyle = "#64748b";
-            ctx.fillText(`(h: ${p.height} ${u})`, p.x + 5, p.y + p.base/2 + 5);
+            
+            // Slant Labels - Pushed outward further (Offset by 30px)
+            drawLabel(`${p.slant} ${u}`, p.x + p.height/2 + 25, p.y + p.base/4 - 10); 
+            drawLabel(`${p.slant} ${u}`, p.x + p.height/2 + 25, p.y + (p.base*0.75) + 20);
+            
+            // Height Label - Pushed inside the triangle to avoid slant overlap
+            drawLabel(`${p.height} ${u}`, p.x + 25, p.y + p.base/2 + 5, "#64748b");
+
         } else if (p.type === 'semicircle') {
             ctx.arc(p.x, p.y, p.r, -Math.PI/2, Math.PI/2);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            ctx.fillStyle = "#1e293b";
-            ctx.fillText(`arc: ${p.arc} ${u}`, p.x + p.r + 5, p.y + 5);
-            ctx.fillStyle = "#64748b";
-            ctx.fillText(`(r: ${p.r} ${u})`, p.x + 5, p.y + 5);
+            
+            // Arc Label - Centered on the curve
+            drawLabel(`${p.arc} ${u}`, p.x + p.r + 35, p.y + 5);
+            // Radius Label - Inside
+            drawLabel(`r: ${p.r} ${u}`, p.x + p.r/2, p.y + 5, "#64748b");
+
         } else if (p.type === 'trapezoid') {
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p.x + p.h, p.y);
@@ -212,30 +225,16 @@ function drawComplex() {
             ctx.lineTo(p.x, p.y + p.b1);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            ctx.fillStyle = "#1e293b";
-            ctx.fillText(`${p.h} ${u}`, p.x + p.h/2 - 20, p.y - 10); // Top edge
-            ctx.fillText(`${p.b2} ${u}`, p.x + p.h + 5, p.y + p.b2/2 + 5); // Right edge
-            ctx.fillText(`${p.slant} ${u}`, p.x + p.h/2 - 25, p.y + p.b1 + 15); // Slant labeled!
+            
+            // Top and Right edges
+            drawLabel(`${p.h} ${u}`, p.x + p.h/2, p.y - 12); 
+            drawLabel(`${p.b2} ${u}`, p.x + p.h + 35, p.y + p.b2/2 + 5); 
+            
+            // Slant Edge - Pushed down and left to avoid clumping
+            drawLabel(`${p.slant} ${u}`, p.x + p.h/2 - 20, p.y + p.b1 + 20);
         }
     });
-
-    canvas.onclick = (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
-        const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-        const bubble = document.getElementById('hint-bubble');
-        
-        let part = complexData.components.find(p => mx > p.x - 20 && mx < p.x + p.w + 50 && my > p.y - 20 && my < p.y + p.h + 50);
-        if (part) {
-            bubble.innerHTML = `<strong>Deduction Hints:</strong><br>${part.hintA}<br>${part.hintP}`;
-            bubble.style.left = `${mx + 10}px`;
-            bubble.style.top = `${my - 40}px`;
-            bubble.style.display = 'block';
-            setTimeout(() => { bubble.style.display = 'none'; }, 4000);
-        }
-    };
 }
-
 window.checkComplexWin = async function() {
     const aVal = parseFloat(document.getElementById('ans-area-val').value);
     const aUnit = document.getElementById('ans-area-unit').value;
