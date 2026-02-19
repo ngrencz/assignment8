@@ -1,9 +1,6 @@
 /**
  * skill_figuregrowth.js - Multi-Step Logic Game
- * - Step 1: User identifies the linear rule (y = mx + b).
- * - Step 2: User predicts a large N value.
- * - Step 3: User draws a specific figure on a grid.
- * - Interactive: Click-and-drag drawing grid.
+ * RESTORED & UPDATED: Automatic hints on error, step-specific logic, and hub control.
  */
 
 let currentPattern = {};
@@ -15,7 +12,6 @@ let lastM = null;
 // --- DRAG STATE VARIABLES ---
 let isDrawing = false;
 
-// Global listener to catch mouseup anywhere (stops painting if you drag off-screen)
 window.addEventListener('mouseup', () => {
     isDrawing = false;
 });
@@ -29,7 +25,6 @@ window.initFigureGrowthGame = async function() {
     currentStep = 1;
     isVisualMode = Math.random() > 0.5;
 
-    // Initialize Mastery State
     if (!window.userMastery) window.userMastery = {};
 
     try {
@@ -48,31 +43,23 @@ window.initFigureGrowthGame = async function() {
         console.log("Supabase sync error, using local state");
     }
 
-    // 1. Generate Slope (m): 3 to 10
     let m;
     do { m = Math.floor(Math.random() * 8) + 3; } while (m === lastM); 
     lastM = m;
 
-    // 2. Generate Intercept (b): 1 to 10
     const b = Math.floor(Math.random() * 10) + 1; 
     
-    // 3. Prompt Figures (The "Examples")
     const f1 = Math.floor(Math.random() * 2) + 1; 
     const gap = Math.floor(Math.random() * 3) + 2; 
     const f2 = f1 + gap;
     
-    // 4. Step 2 Figure: Any number up to 99 (not f1 or f2)
     let s2Fig;
     do { s2Fig = Math.floor(Math.random() * 98) + 1; } while (s2Fig === f1 || s2Fig === f2);
 
-    // 5. Step 3 Figure: Drawing (Calculated to stay under 50 tiles)
-    // Ensure Step 3 figure is NOT the same as f1, f2, or the step 2 prediction
     let s3Fig;
     let safeLoops = 0;
     do {
         s3Fig = Math.floor(Math.random() * 4) + 1; 
-        
-        // If random generated a big one that doesn't fit, reduce it
         while ((m * s3Fig) + b > 48 && s3Fig > 1) {
             s3Fig--;
         }
@@ -100,7 +87,7 @@ function generateTileHTML(count, m, b, figNum) {
     let html = `<div style="display: grid; grid-template-columns: repeat(5, 12px); gap: 1px; width: 65px; line-height: 0; margin: 0 auto;">`;
     for (let i = 0; i < count; i++) {
         let color = '#3b82f6'; 
-        if (!isExpert && i < b) color = '#f97316'; // Highlight intercept for beginners
+        if (!isExpert && i < b) color = '#f97316'; 
         html += `<div style="width:12px; height:12px; background:${color}; border:0.5px solid white;"></div>`;
     }
     html += `</div>`;
@@ -146,17 +133,16 @@ function renderFigureUI() {
     } else {
         stepHTML = ruleDisplay + `
             <p style="text-align:center; color:#475569;"><strong>Step 3:</strong> Draw Figure ${currentPattern.step3Num}.</p>
-            <p style="text-align:center; font-size:13px; color:#64748b;">Click and drag on the grid to draw exactly ${currentPattern.step3Ans} tiles:</p>
+            <p style="text-align:center; font-size:14px; color:#1e293b;">Click and drag on the grid to draw the shape:</p>
             <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; touch-action: none;"></div>`;
     }
 
     qContent.innerHTML = headerHTML + stepHTML + `
         <div style="text-align:center; margin-top:15px; display: flex; justify-content: center; gap: 10px;">
             <button onclick="checkFigureAns()" style="background:#1e293b; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Submit Answer</button>
-            <button onclick="showFigureHint()" style="background: #94a3b8; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer;">Hint</button>
         </div>
         <div id="feedback-box" style="margin-top:10px; text-align:center; font-weight:bold; min-height:20px;"></div>
-        <div id="hint-display" style="margin-top: 15px; padding: 10px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.9rem; color: #92400e; text-align:center;"></div>`;
+        <div id="hint-display" style="margin-top: 15px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.95rem; color: #92400e; text-align:center; line-height:1.4;"></div>`;
 
     if (currentStep === 3) setupDrawingGrid();
 }
@@ -165,18 +151,14 @@ function setupDrawingGrid() {
     const grid = document.getElementById('drawing-grid');
     if (!grid) return;
     grid.innerHTML = ""; 
-    
-    // Prevent default drag/select behavior on the grid container
     grid.ondragstart = () => false;
-
-    let paintMode = true; // Determines if we are Painting (true) or Erasing (false)
+    let paintMode = true;
 
     for (let i = 0; i < 50; i++) {
         const tile = document.createElement('div');
         tile.className = 'drawing-tile';
         tile.style = "width:30px; height:30px; border:1px solid #cbd5e1; background:white; cursor:pointer; border-radius: 4px; user-select: none;";
         
-        // Helper to set visual state
         const setTileState = (isActive) => {
             if (isActive) {
                 tile.classList.add('active');
@@ -189,23 +171,15 @@ function setupDrawingGrid() {
             }
         };
 
-        // 1. Mouse Down: Start the drag and determine intent (Paint vs Erase)
         tile.onmousedown = function(e) {
-            e.preventDefault(); // Stop text selection
+            e.preventDefault();
             isDrawing = true;
-            
-            // If the tile we clicked is already active, we want to ERASE.
-            // If it's empty, we want to PAINT.
             paintMode = !tile.classList.contains('active');
-            
             setTileState(paintMode);
         };
 
-        // 2. Mouse Enter: If dragging, apply the current paint mode
         tile.onmouseenter = function() {
-            if (isDrawing) {
-                setTileState(paintMode);
-            }
+            if (isDrawing) setTileState(paintMode);
         };
 
         grid.appendChild(tile);
@@ -214,37 +188,34 @@ function setupDrawingGrid() {
 
 window.showFigureHint = function() {
     const hintBox = document.getElementById('hint-display');
-    if(hintBox) hintBox.style.display = "block";
+    if(!hintBox) return;
+    hintBox.style.display = "block";
     
     let message = "";
     if (currentStep === 1) {
-        message = `Compare the figures! The growth (m) is the change in tiles divided by the change in figure numbers.`;
+        message = `<strong>How to find the rule:</strong><br>
+                   1. Subtract the tiles: (${currentPattern.f2Count} - ${currentPattern.f1Count}) = <b>${currentPattern.f2Count - currentPattern.f1Count}</b>.<br>
+                   2. Divide by the change in figure numbers to find <b>m</b>.<br>
+                   3. Use your <b>m</b> to figure out the starting value (<b>b</b>).`;
     } else if (currentStep === 2) {
-        message = `Plug ${currentPattern.step2Num} into your rule: (${currentPattern.m} × ${currentPattern.step2Num}) + ${currentPattern.b}`;
+        message = `Plug Figure ${currentPattern.step2Num} into your rule: (${currentPattern.m} × ${currentPattern.step2Num}) + ${currentPattern.b}`;
     } else {
-        message = `Apply your rule (y = mx + b) using Figure ${currentPattern.step3Num} as 'x' to find how many tiles to draw.`;
+        message = `<strong>Reminder:</strong> Put the figure number into the x of your rule (y = ${currentPattern.m}x + ${currentPattern.b}) and draw that many tiles.`;
     }
-    if(hintBox) hintBox.innerHTML = message;
+    hintBox.innerHTML = message;
 };
     
 window.checkFigureAns = async function() {
     let isCorrect = false;
     const feedback = document.getElementById('feedback-box');
-    if (feedback) feedback.style.display = "block";
+    const hintBox = document.getElementById('hint-display');
 
-    // Gather inputs
     if (currentStep === 1) {
-        const mInput = document.getElementById('input-m');
-        const bInput = document.getElementById('input-b');
-        if(!mInput || !bInput) return; 
-        
-        const uM = parseInt(mInput.value);
-        const uB = parseInt(bInput.value);
+        const uM = parseInt(document.getElementById('input-m').value);
+        const uB = parseInt(document.getElementById('input-b').value);
         isCorrect = (uM === currentPattern.m && uB === currentPattern.b);
     } else if (currentStep === 2) {
-        const step2Input = document.getElementById('input-step2');
-        if(!step2Input) return;
-        const uAns = parseInt(step2Input.value);
+        const uAns = parseInt(document.getElementById('input-step2').value);
         isCorrect = (uAns === currentPattern.step2Ans);
     } else {
         const activeTiles = document.querySelectorAll('.drawing-tile.active').length;
@@ -256,11 +227,12 @@ window.checkFigureAns = async function() {
             feedback.style.color = "#16a34a"; 
             feedback.innerText = "✅ Correct!";
         }
+        if(hintBox) hintBox.style.display = "none";
         
         if (currentStep < 3) {
             currentStep++;
             setTimeout(() => { 
-                if(feedback) feedback.style.display = "none"; 
+                if(feedback) feedback.innerText = ""; 
                 renderFigureUI(); 
             }, 1000);
         } else {
@@ -272,14 +244,13 @@ window.checkFigureAns = async function() {
             feedback.style.color = "#dc2626";
             feedback.innerText = "Not quite! Try again.";
         }
+        showFigureHint();
     }
 };
 
 async function finishFigureGame() {
-    // 1. STOP the timer immediately
     window.isCurrentQActive = false;
 
-    // 2. Consistent Visual Transition (replaces current content)
     document.getElementById('q-content').innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; text-align:center;">
             <div style="font-size:60px; margin-bottom:10px;">🟦</div>
@@ -289,18 +260,14 @@ async function finishFigureGame() {
         </div>
     `;
 
-    // 3. Update Mastery Scores
     let adjustment = 0;
     if (figureErrorCount === 0) adjustment = 1;
     else if (figureErrorCount >= 2) adjustment = -1;
 
     let currentScore = window.userMastery.FigureGrowth || 0;
     let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
-    
-    // Update Local
     window.userMastery.FigureGrowth = newScore;
 
-    // Update Supabase
     if (window.supabaseClient && window.currentUser) {
         try {
             const currentHour = sessionStorage.getItem('target_hour') || "00";
@@ -309,12 +276,9 @@ async function finishFigureGame() {
                 .update({ FigureGrowth: newScore })
                 .eq('userName', window.currentUser)
                 .eq('hour', currentHour);
-        } catch(e) { 
-            console.error("Database sync failed:", e); 
-        }
+        } catch(e) { console.error("Database sync failed:", e); }
     }
 
-    // 4. Hand over to Hub
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
