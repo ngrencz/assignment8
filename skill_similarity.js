@@ -1,9 +1,9 @@
 /**
- * skill_similarity.js - Fully Restored Logic & Instructions
- * - FIX: Re-added decimal instructions and specific hints.
- * - FIX: Guaranteed solvable side pairing (known matches x/y).
- * - FIX: Labels forced 22px outside using perpendicular vectors.
- * - LAYOUT: Horizontal inputs + Row-based submit button.
+ * skill_similarity.js
+ * - Based on the 292-line stable version.
+ * - MODIFICATION: Inputs lengthened.
+ * - MODIFICATION: Check button moved to bottom row.
+ * - MODIFICATION: Labels forced outside via vector normal.
  */
 
 var similarityData = {
@@ -15,28 +15,30 @@ var similarityData = {
     baseSides: [],
     scaledSides: [],
     solution: { k: 0, x: 0, y: 0 },
-    indices: { known: 0, x: 1, y: 2 } // Fixed pairing indices
+    indices: { known: 0, x: 0, y: 0 }
 };
 
 window.initSimilarityGame = async function() {
-    const qContent = document.getElementById('q-content');
-    if (!qContent) return;
+    if (!document.getElementById('q-content')) return;
 
     similarityData.round = 1;
     if (!window.userMastery) window.userMastery = {};
 
     try {
-        const h = sessionStorage.getItem('target_hour') || "00";
         if (window.supabaseClient && window.currentUser) {
-            const { data, error } = await window.supabaseClient
+            const h = sessionStorage.getItem('target_hour') || "00";
+            const { data } = await window.supabaseClient
                 .from('assignment')
                 .select('Similarity')
                 .eq('userName', window.currentUser)
                 .eq('hour', h)
                 .maybeSingle();
+            
             if (data) window.userMastery.Similarity = data.Similarity || 0;
         }
-    } catch (e) { console.error("Sync failed", e); }
+    } catch (e) { 
+        console.log("Sync error", e); 
+    }
 
     generateSimilarityProblem();
     renderSimilarityUI();
@@ -60,13 +62,13 @@ function generateSimilarityProblem() {
     similarityData.baseSides = [...template.sides];
     similarityData.scaledSides = similarityData.baseSides.map(s => s * similarityData.scaleFactor);
     
-    // Core Logic: Ensure solvable pairs
-    // known side (index 0) exists on both. x (index 1) is scaled side. y (index 2) is original side.
-    similarityData.solution = {
-        k: similarityData.scaleFactor,
-        x: similarityData.scaledSides[1],
-        y: similarityData.baseSides[2]
-    };
+    similarityData.indices.known = 0;
+    similarityData.indices.x = 1;
+    similarityData.indices.y = 2;
+    
+    similarityData.solution.k = similarityData.scaleFactor;
+    similarityData.solution.x = similarityData.scaledSides[similarityData.indices.x];
+    similarityData.solution.y = similarityData.baseSides[similarityData.indices.y];
 }
 
 function renderSimilarityUI() {
@@ -74,37 +76,41 @@ function renderSimilarityUI() {
     if (!qContent) return;
 
     qContent.innerHTML = `
-        <div style="max-width:700px; margin:0 auto; animation: fadeIn 0.4s ease-out;">
-            <div style="text-align:center; margin-bottom:10px; color:#475569; font-weight:600;">
+        <div style="max-width:650px; margin:0 auto; animation: fadeIn 0.5s;">
+            <div style="text-align:center; margin-bottom:10px; color:#64748b; font-weight:bold;">
                 Round ${similarityData.round} of ${similarityData.maxRounds} • ${similarityData.shapeName}
             </div>
 
-            <div style="background:white; border:1px solid #cbd5e1; border-radius:12px; padding:10px; margin-bottom:15px; text-align:center;">
-                <canvas id="simCanvas" width="680" height="320" style="max-width:100%; height:auto; display:block; margin:0 auto;"></canvas>
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:10px; margin-bottom:20px; text-align:center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
+                <canvas id="simCanvas" width="600" height="320" style="max-width:100%; height:auto;"></canvas>
             </div>
 
-            <div style="background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0; display:flex; flex-direction:column; align-items:center; gap:15px;">
-                <p style="margin:0; font-size:14px; color:#64748b;">Find the scale factor (k), then solve for x and y. <b>Use decimal format.</b></p>
+            <div style="background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0; display: flex; flex-direction: column; gap: 20px;">
+                <p style="font-size: 0.9rem; color: #475569; margin: 0; text-align:center;">
+                    Enter answers in <b>decimal format</b>.
+                </p>
                 
-                <div style="display:flex; gap:15px; justify-content:center; width:100%; flex-wrap: wrap;">
-                    <div class="sim-input-wrapper">
-                        <span class="sim-tag">k</span>
-                        <input type="number" id="inp-k" class="sim-mini-input" step="0.01" placeholder="Scale">
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px;">
+                    <div>
+                        <label class="sim-label">Scale Factor (k)</label>
+                        <input type="number" id="inp-k" class="sim-input" step="0.01" placeholder="Decimal">
                     </div>
-                    <div class="sim-input-wrapper">
-                        <span class="sim-tag" style="color:#ef4444;">y</span>
-                        <input type="number" id="inp-y" class="sim-mini-input" step="0.01" placeholder="Original">
+                    <div>
+                        <label class="sim-label" style="color:#ef4444;">Solve y (Orig)</label>
+                        <input type="number" id="inp-y" class="sim-input" step="0.01" placeholder="Decimal">
                     </div>
-                    <div class="sim-input-wrapper">
-                        <span class="sim-tag" style="color:#2563eb;">x</span>
-                        <input type="number" id="inp-x" class="sim-mini-input" step="0.01" placeholder="Scaled">
+                    <div>
+                        <label class="sim-label" style="color:#2563eb;">Solve x (Scaled)</label>
+                        <input type="number" id="inp-x" class="sim-input" step="0.01" placeholder="Decimal">
                     </div>
                 </div>
+
+                <div id="sim-feedback" style="text-align:center; min-height:45px; font-weight:bold; font-size:14px; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center;"></div>
                 
-                <button onclick="checkSimilarityAnswer()" class="sim-submit-btn">Check Answers</button>
+                <div style="text-align: center;">
+                    <button onclick="checkSimilarityAnswer()" class="sim-btn">Submit Answers</button>
+                </div>
             </div>
-            
-            <div id="sim-feedback" style="text-align:center; min-height:40px; margin-top:10px; font-weight:bold; font-size:14px; display:flex; align-items:center; justify-content:center; border-radius:8px;"></div>
         </div>
     `;
     setTimeout(drawSimilarShapes, 50);
@@ -117,130 +123,175 @@ function drawSimilarShapes() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const d = similarityData;
-    const maxUnitsWidth = Math.max(...d.baseSides) + Math.max(...d.scaledSides) + 15;
-    const maxUnitsHeight = Math.max(...d.baseSides, ...d.scaledSides);
-    const drawScale = Math.min((canvas.width - 180) / maxUnitsWidth, (canvas.height - 100) / maxUnitsHeight, 28);
+    const idx = d.indices;
 
-    function getPoints(type, sides, s) {
-        if (type === 'tri') return [{x:0, y:sides[1]*s}, {x:sides[0]*s, y:sides[1]*s}, {x:0, y:0}];
-        if (type === 'rect') return [{x:0, y:0}, {x:sides[1]*s, y:0}, {x:sides[1]*s, y:sides[0]*s}, {x:0, y:sides[0]*s}];
-        if (type === 'trap') return [{x:1.5*s, y:0}, {x:(sides[0]+1.5)*s, y:0}, {x:sides[2]*s, y:sides[1]*s}, {x:0, y:sides[1]*s}];
+    const totalRequiredUnits = Math.max(...d.baseSides) + Math.max(...d.scaledSides) + 15;
+    const maxUnitsHeight = Math.max(...d.baseSides, ...d.scaledSides);
+    
+    // Scale based on the larger shape to fit the display area
+    const dynamicScale = Math.min(600 / totalRequiredUnits, 240 / maxUnitsHeight, 20); 
+
+    ctx.lineWidth = 2;
+    ctx.font = "bold 15px Arial";
+
+    function getPolygon(type, sides, scale) {
+        let pts = [];
+        if (type === 'tri') {
+            pts = [{x:0, y:sides[1]}, {x:sides[0], y:sides[1]}, {x:0, y:0}];
+        } else if (type === 'rect') {
+            pts = [{x:0, y:0}, {x:sides[1], y:0}, {x:sides[1], y:sides[0]}, {x:0, y:sides[0]}];
+        } else if (type === 'trap') {
+            pts = [{x:2, y:0}, {x:sides[0]+2, y:0}, {x:sides[2], y:sides[1]}, {x:0, y:sides[1]}];
+        }
+        return pts.map(p => ({x: p.x * scale, y: p.y * scale}));
     }
 
-    function drawPolygon(pts, offsetX, offsetY, sides, isScaled) {
+    function drawShape(pts, offsetX, offsetY, sides, isScaled) {
         ctx.beginPath();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = isScaled ? "#16a34a" : "#475569";
-        ctx.fillStyle = isScaled ? "#f0fdf4" : "#f8fafc";
         ctx.moveTo(pts[0].x + offsetX, pts[0].y + offsetY);
         pts.forEach(p => ctx.lineTo(p.x + offsetX, p.y + offsetY));
         ctx.closePath();
-        ctx.fill(); ctx.stroke();
+        
+        ctx.strokeStyle = isScaled ? "#22c55e" : "#64748b";
+        ctx.fillStyle = isScaled ? "#f0fdf4" : "#f8fafc";
+        ctx.fill();
+        ctx.stroke();
 
-        ctx.font = "bold 15px Arial";
         sides.forEach((val, i) => {
-            if (i > 2 && d.shapeType !== 'rect') return;
-            const p1 = pts[i];
-            const p2 = pts[(i+1)%pts.length];
-            const mx = (p1.x + p2.x)/2 + offsetX;
-            const my = (p1.y + p2.y)/2 + offsetY;
+            if (i > 2 && d.shapeType !== 'rect') return; 
 
-            const dx = p2.x - p1.x; const dy = p2.y - p1.y;
-            const len = Math.sqrt(dx*dx + dy*dy);
-            const nx = -dy/len; const ny = dx/len;  
+            let p1 = pts[i];
+            let p2 = pts[(i + 1) % pts.length];
+            let midX = (p1.x + p2.x) / 2 + offsetX;
+            let midY = (p1.y + p2.y) / 2 + offsetY;
 
-            let label = val;
+            let dx = p2.x - p1.x;
+            let dy = p2.y - p1.y;
+            let len = Math.sqrt(dx*dx + dy*dy);
+            let nx = -dy/len; 
+            let ny = dx/len;  
+
+            let displayVal = val;
             ctx.fillStyle = "#1e293b";
-            
-            // Logic to show exactly what is needed for the math
+
             if (!isScaled) {
-                if (i === 1) label = similarityData.baseSides[1]; // Known side 1
-                else if (i === 2) { label = "y"; ctx.fillStyle = "#ef4444"; } // Find y
-                else if (i === 0) label = similarityData.baseSides[0]; // Known side 0
-                else return;
+                if (i === idx.y) { displayVal = "y"; ctx.fillStyle = "#ef4444"; }
+                else if (i !== idx.known && i !== 1) return; // Keep reference side
             } else {
-                if (i === 1) { label = "x"; ctx.fillStyle = "#2563eb"; } // Find x
-                else if (i === 0) label = similarityData.scaledSides[0]; // Matching known side
-                else return;
+                if (i === idx.x) { displayVal = "x"; ctx.fillStyle = "#2563eb"; }
+                else if (i !== idx.known) return; // Match known side
             }
 
             ctx.textAlign = "center";
-            ctx.fillText(label, mx + nx*22, my + ny*22 + 5);
+            // Pushed to 22px outside the line
+            ctx.fillText(displayVal, midX + nx*22, midY + ny*22 + 5);
         });
     }
 
-    const pOrig = getPoints(d.shapeType, d.baseSides, drawScale);
-    const pScale = getPoints(d.shapeType, d.scaledSides, drawScale);
-    const h1 = Math.max(...pOrig.map(p => p.y));
-    const h2 = Math.max(...pScale.map(p => p.y));
-    const w1 = Math.max(...pOrig.map(p => p.x));
+    const oPts = getPolygon(d.shapeType, d.baseSides, dynamicScale);
+    const sPts = getPolygon(d.shapeType, d.scaledSides, dynamicScale);
 
-    drawPolygon(pOrig, 50, (canvas.height - h1)/2, d.baseSides, false);
-    ctx.fillStyle = "#94a3b8"; ctx.font = "22px Arial";
-    ctx.fillText("➔ k", w1 + 105, canvas.height/2 + 7);
-    drawPolygon(pScale, w1 + 175, (canvas.height - h2)/2, d.scaledSides, true);
+    const oW = Math.max(...oPts.map(p => p.x));
+    const oH = Math.max(...oPts.map(p => p.y));
+    const sH = Math.max(...sPts.map(p => p.y));
+
+    drawShape(oPts, 50, (320 - oH)/2, d.baseSides, false);
+    
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "20px Arial";
+    ctx.fillText("➔ k", oW + 100, 160);
+    
+    drawShape(sPts, oW + 180, (320 - sH)/2, d.scaledSides, true);
 }
 
 window.checkSimilarityAnswer = async function() {
-    const kInp = document.getElementById('inp-k');
-    const xInp = document.getElementById('inp-x');
-    const yInp = document.getElementById('inp-y');
-    const fb = document.getElementById('sim-feedback');
+    const kInput = document.getElementById('inp-k');
+    const xInput = document.getElementById('inp-x');
+    const yInput = document.getElementById('inp-y');
+    const feedback = document.getElementById('sim-feedback');
 
-    const uk = parseFloat(kInp.value);
-    const ux = parseFloat(xInp.value);
-    const uy = parseFloat(yInp.value);
+    const uk = parseFloat(kInput.value);
+    const ux = parseFloat(xInput.value);
+    const uy = parseFloat(yInput.value);
 
     if (isNaN(uk) || isNaN(ux) || isNaN(uy)) {
-        fb.style.backgroundColor = "#fee2e2"; fb.style.color = "#991b1b";
-        fb.innerText = "Please provide decimal answers for all fields.";
+        feedback.style.color = "#991b1b";
+        feedback.style.backgroundColor = "#fee2e2";
+        feedback.innerText = "Please provide decimal answers for all fields.";
         return;
     }
 
     const sol = similarityData.solution;
-    const kOk = Math.abs(uk - sol.k) < 0.02;
-    const xOk = Math.abs(ux - sol.x) < 0.02;
-    const yOk = Math.abs(uy - sol.y) < 0.02;
+    const kOk = Math.abs(uk - sol.k) < 0.05;
+    const xOk = Math.abs(ux - sol.x) < 0.05;
+    const yOk = Math.abs(uy - sol.y) < 0.05;
 
     if (kOk && xOk && yOk) {
-        fb.style.backgroundColor = "#dcfce7"; fb.style.color = "#166534";
-        fb.innerText = "✅ Correct! Great work.";
+        feedback.style.color = "#166534";
+        feedback.style.backgroundColor = "#dcfce7";
+        feedback.innerText = "✅ Correct! Great work.";
+        
         await updateSimilarityScore(1);
         similarityData.round++;
-        setTimeout(() => {
-            if (similarityData.round > similarityData.maxRounds) finishSimilarityGame();
-            else { generateSimilarityProblem(); renderSimilarityUI(); }
-        }, 1200);
+        
+        if (similarityData.round > similarityData.maxRounds) {
+            setTimeout(finishSimilarityGame, 1000);
+        } else {
+            setTimeout(() => { 
+                generateSimilarityProblem(); 
+                renderSimilarityUI(); 
+            }, 1000);
+        }
     } else {
-        fb.style.backgroundColor = "#fee2e2"; fb.style.color = "#991b1b";
-        if (!kOk) fb.innerText = "❌ Hint: k = Scaled Side ÷ Matching Original Side";
-        else if (!yOk) fb.innerText = "❌ Hint for y: Original = Scaled ÷ k";
-        else fb.innerText = "❌ Hint for x: Scaled = Original × k";
+        feedback.style.backgroundColor = "#fee2e2";
+        feedback.style.color = "#991b1b";
+        
+        if (!kOk) {
+            feedback.innerText = "❌ Hint: k = Scaled Side ÷ Matching Original Side.";
+        } else if (!yOk) {
+            feedback.innerText = "❌ Hint for y: Divide the Scaled side by k.";
+        } else if (!xOk) {
+            feedback.innerText = "❌ Hint for x: Multiply the Original side by k.";
+        }
     }
 };
 
 async function updateSimilarityScore(amount) {
     if (!window.userMastery) window.userMastery = {};
-    const next = Math.max(0, Math.min(10, (window.userMastery.Similarity || 0) + amount));
+    let current = window.userMastery.Similarity || 0;
+    let next = Math.max(0, Math.min(10, current + amount));
     window.userMastery.Similarity = next;
+
     if (window.supabaseClient && window.currentUser) {
-        const h = sessionStorage.getItem('target_hour') || "00";
-        await window.supabaseClient.from('assignment').update({ Similarity: next }).eq('userName', window.currentUser).eq('hour', h);
+        try {
+            const h = sessionStorage.getItem('target_hour') || "00";
+            await window.supabaseClient.from('assignment')
+                .update({ Similarity: next })
+                .eq('userName', window.currentUser)
+                .eq('hour', h);
+        } catch (e) { console.error("Supabase error", e); }
     }
 }
 
 function finishSimilarityGame() {
-    document.getElementById('q-content').innerHTML = `<div style="text-align:center; padding:80px;"><h2>Complete!</h2></div>`;
-    setTimeout(() => { if (window.loadNextQuestion) window.loadNextQuestion(); }, 2000);
+    const qContent = document.getElementById('q-content');
+    qContent.innerHTML = `
+        <div style="text-align:center; padding: 60px;">
+            <h2>Module Complete!</h2>
+            <p>Mastery achieved for similar figures.</p>
+        </div>
+    `;
+    setTimeout(() => { 
+        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
+    }, 2000);
 }
 
 const simStyle = document.createElement('style');
 simStyle.innerHTML = `
-    .sim-input-wrapper { display:flex; align-items:center; background:white; border:1px solid #cbd5e1; border-radius:8px; padding:6px 12px; }
-    .sim-tag { font-size:14px; font-weight:bold; margin-right:10px; font-family: monospace; }
-    .sim-mini-input { border:none; width:90px; height:34px; font-size:16px; text-align:center; outline:none; background:transparent; }
-    .sim-submit-btn { background:#0f172a; color:white; border:none; padding:12px 40px; border-radius:8px; font-weight:bold; cursor:pointer; width: 100%; max-width: 320px; }
-    .sim-submit-btn:hover { background:#334155; }
+    .sim-label { display:block; font-size:11px; font-weight:bold; color:#475569; margin-bottom:5px; text-transform:uppercase; }
+    .sim-input { width:100%; height:42px; border-radius:8px; border:1px solid #cbd5e1; text-align:center; font-size:18px; outline:none; box-sizing:border-box; }
+    .sim-btn { width:240px; height:48px; background:#0f172a; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px; transition:0.2s; }
+    .sim-btn:hover { background:#1e293b; }
     @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 `;
 document.head.appendChild(simStyle);
