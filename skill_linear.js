@@ -1,14 +1,13 @@
 /**
- * skill_linear.js - v2.3.0
+ * skill_linear.js - v2.3.1
  * FULL RESTORED PRODUCTION VERSION.
- * Update: Contextualized final question to use scenario-specific units/labels.
- * Fix: Grid-perfect point alignment logic preserved.
+ * Fix: Added "Subterranean Prevention" logic to ensure decay scenarios don't result in negative Y values.
  */
 
-console.log("%c [LinearMath] v2.3.0 - Contextualized Prediction ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
+console.log("%c [LinearMath] v2.3.1 - Physics Safety Fix ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
 
 var linearData = {
-    version: "2.3.0",
+    version: "2.3.1",
     scenario: {},      
     stage: 'variables', 
     errors: 0,         
@@ -60,25 +59,34 @@ function generateLinearScenario() {
     ];
 
     const t = templates[Math.floor(Math.random() * templates.length)];
-    
     const scales = [1, 2, 5, 10];
     const scale = scales[Math.floor(Math.random() * scales.length)];
     const maxLimit = scale * 10;
 
-    let b = (Math.floor(Math.random() * 5)) * scale; 
-    let m = (Math.floor(Math.random() * 3) + 1) * scale;
+    let b = (Math.floor(Math.random() * 5) + 1) * scale; 
+    let m = (Math.floor(Math.random() * 2) + 1) * scale;
+    let tx = 6; // Default prediction time
 
     if (t.type === 'decay') {
         b = maxLimit - (Math.floor(Math.random() * 2) * scale);
         m = -m;
-        while (b + (m * 5) < 0) { m += scale; }
-        if (m >= 0) m = -scale;
+        // SANITY CHECK: Ensure plane doesn't go underground at tx=6
+        // If (m * tx + b) < 0, we either need a smaller m or a smaller tx.
+        while (b + (m * tx) < 0) {
+            if (Math.abs(m) > scale) {
+                m += scale; // slow the descent
+            } else {
+                tx -= 1; // predict an earlier time
+            }
+        }
+        if (tx < 2) tx = 2; // Keep it a challenge
     } else {
-        while (b + (m * 5) > maxLimit) { m = Math.max(scale, m - scale); }
+        while (b + (m * tx) > maxLimit) { m = Math.max(scale, m - scale); }
     }
 
     linearData.gridConfig.scaleStep = scale;
     linearData.gridConfig.maxVal = maxLimit;
+    linearData.targetSolveX = tx;
 
     linearData.scenario = {
         fullText: t.prompt + " " + t.text.replace("{B}", b).replace("{M}", Math.abs(m)),
@@ -122,8 +130,7 @@ function renderLinearStage() {
                  <canvas id="linCanvas" width="400" height="400" style="border:1px solid #000; background:white; cursor:crosshair;"></canvas>`;
     }
     else if (stage === 'solve') {
-        let tx = 6; // Predicting for 6 units of x
-        linearData.targetSolveX = tx;
+        let tx = linearData.targetSolveX;
         linearData.targetSolveY = s.m * tx + s.b;
         html += `<h4>Part 6: Predict</h4><div class="eq-highlight">Equation: ${displayEq}</div>
                  <p>Based on your equation, what would the <b>${s.labelY}</b> be after <b>${tx} ${s.unitX}</b>?</p>
@@ -141,7 +148,7 @@ window.checkLinearVars = function() {
     if (document.getElementById('inp-x').value === 'correct' && document.getElementById('inp-y').value === 'correct') {
         linearData.stage = 'slope'; renderLinearStage();
     } else {
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Think: Which variable is the "timer" (x) and which is the "total" (y)?</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Hint: x is your independent variable (time), y is the result.</span>`;
     }
 };
 
