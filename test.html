@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style_test.css">
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Dev Control | v1.7.10</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script src="skill_transformation.js"></script>
     <script src="skill_linearsystem.js"></script>
@@ -17,12 +18,72 @@
     <script src="skill_diamondmath.js"></script>
     <script src="skill_linear.js"></script>
 
-        
+    <style>
+        /* DEADLINE FIX: Internal CSS to override GitHub Cache */
+        * { box-sizing: border-box; }
+
+        body { 
+            margin: 0; padding: 0; display: flex; flex-direction: column; 
+            height: 100vh; font-family: sans-serif; background: #f1f5f9; overflow: hidden; 
+        }
+
+        .header-bar { 
+            height: 40px; background: #fff; border-bottom: 1px solid #ddd; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; font-size: 13px; z-index: 10; 
+        }
+
+        .master-grid { 
+            display: grid; 
+            grid-template-columns: 420px 1fr; /* Locked width */
+            height: calc(100vh - 40px); 
+            width: 100vw;
+        }
+
+        .sidebar { 
+            background: #f8fafc; border-right: 1px solid #cbd5e1; 
+            padding: 15px; overflow-y: auto; 
+            display: flex !important; 
+            flex-direction: column !important; 
+            gap: 12px; 
+        }
+
+        .main-stage { display: flex; flex-direction: column; background: #fff; overflow: hidden; }
+
+        .card { 
+            background: white; border: 1px solid #e2e8f0; 
+            border-radius: 8px; padding: 15px; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            width: 100% !important;
+            display: block !important;
+        }
+
+        .section-tag { color: #0ea5e9; font-size: 10px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; border-bottom: 1px solid #f1f5f9; }
+
+        .slider-label { 
+            display: flex !important; justify-content: space-between; 
+            font-size: 11px; font-weight: 600; white-space: nowrap; margin-top: 10px;
+        }
+
+        input[type="range"] { width: 100%; accent-color: #4CBB17; margin: 5px 0; cursor: pointer; display: block; }
+
+        select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; }
+
+        button { 
+            cursor: pointer; font-weight: bold; padding: 12px; border-radius: 6px; 
+            border: none; background: #6366f1; color: white; width: 100%; margin-top: 5px; 
+        }
+
+        .log-container { height: 200px; background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px; display: flex; flex-direction: column; }
+        .log-box { flex-grow: 1; color: #4CBB17; font-family: monospace; font-size: 11px; overflow-y: auto; }
+        .game-area { flex-grow: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        details summary { cursor: pointer; font-size: 12px; font-weight: bold; margin: 5px 0; color: #444; }
+    </style>
 </head>
 <body>
 
 <div class="header-bar">
-    DEBUGGER: <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user | v1.7.1
+    DEBUGGER: <span style="color:#4CBB17; margin: 0 5px;">Troubleshooter</span> | test_user | v1.7.10
 </div>
 
 <div class="master-grid">
@@ -33,13 +94,6 @@
                 <option value="">-- Choose Lesson --</option>
                 <option value="C6Review">C6Review</option>
             </select>
-            <div id="assign-state-ui" style="display:none; margin-top:8px;">
-                <label style="font-size:10px; font-weight:bold;">Bool State (DB):</label>
-                <select id="bool-toggle" onchange="updateAssignmentBool()">
-                    <option value="false">False</option>
-                    <option value="true">True</option>
-                </select>
-            </div>
         </div>
 
         <div class="card" style="border-top: 3px solid #6366f1;">
@@ -74,24 +128,12 @@
                 <summary>Box Plot Skills: <span id="agg-BoxPlot">0</span></summary>
                 <input type="range" id="s-BoxPlot" min="0" max="10" value="0" oninput="updateVal('BoxPlot')">
                 <div class="slider-label" style="font-size:10px;">Median <span id="v-BoxPlotMedian">0</span></div><input type="range" id="s-BoxPlotMedian" min="0" max="10" value="0" oninput="updateVal('BoxPlotMedian')">
-                <div class="slider-label" style="font-size:10px;">IQR <span id="v-BoxPlotIQR">0</span></div><input type="range" id="s-BoxPlotIQR" min="0" max="10" value="0" oninput="updateVal('BoxPlotIQR')">
-                <div class="slider-label" style="font-size:10px;">Outliers <span id="v-BoxPlotOutlier">0</span></div><input type="range" id="s-BoxPlotOutlier" min="0" max="10" value="0" oninput="updateVal('BoxPlotOutlier')">
-            </details>
-
-            <details>
-                <summary>Transformations: <span id="agg-C6Transformation">0</span></summary>
-                <input type="range" id="s-C6Transformation" min="0" max="10" value="0" oninput="updateVal('C6Transformation')">
-                <div class="slider-label" style="font-size:10px;">Translation <span id="v-C6Translation">0</span></div><input type="range" id="s-C6Translation" min="0" max="10" value="0" oninput="updateVal('C6Translation')">
-                <div class="slider-label" style="font-size:10px;">Rotation <span id="v-C6Rotation">0</span></div><input type="range" id="s-C6Rotation" min="0" max="10" value="0" oninput="updateVal('C6Rotation')">
-                <div class="slider-label" style="font-size:10px;">Reflection X <span id="v-C6ReflectionX">0</span></div><input type="range" id="s-C6ReflectionX" min="0" max="10" value="0" oninput="updateVal('C6ReflectionX')">
-                <div class="slider-label" style="font-size:10px;">Reflection Y <span id="v-C6ReflectionY">0</span></div><input type="range" id="s-C6ReflectionY" min="0" max="10" value="0" oninput="updateVal('C6ReflectionY')">
             </details>
         </div>
     </div>
 
     <div class="main-stage">
         <div class="log-container">
-            <div style="font-size: 10px; color: #888; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;">System Log</div>
             <div class="log-box" id="log">Ready for module launch...</div>
         </div>
         <div class="game-area">
@@ -102,45 +144,27 @@
 
 <script>
     const TABLE = 'assignment';
-    const ALL_COLS = ['SolveX','LinearSystem','FigureGrowth','BoxPlot','BoxPlotMedian','BoxPlotIQR','BoxPlotOutlier','C6Transformation','C6Translation','C6ReflectionX','C6ReflectionY','C6Rotation','C6Dilation','Similarity','ComplexShapes','Graphing','DiamondMath','LinearMastery','C6Review'];
+    const ALL_COLS = ['SolveX','LinearSystem','FigureGrowth','BoxPlot','BoxPlotMedian','Similarity','ComplexShapes','Graphing','DiamondMath','LinearMastery'];
 
     function log(m) { const l=document.getElementById('log'); l.innerHTML+=`<br>[${new Date().toLocaleTimeString()}] ${m}`; l.scrollTop=l.scrollHeight; }
 
     async function syncUIWithLesson() {
-        const lesson = document.getElementById('lesson-selector').value;
-        document.getElementById('assign-state-ui').style.display = lesson ? 'block' : 'none';
-        
         try {
             const { data } = await window.supabaseClient.from(TABLE).select('*').eq('userName', 'test_user').eq('hour', 0).maybeSingle();
             if(!data) return;
-
-            if(lesson === 'C6Review') {
-                document.getElementById('bool-toggle').value = (data.C6Review === true).toString();
-            }
-
             ALL_COLS.forEach(c => {
-                const s = document.getElementById('s-'+c), v = document.getElementById('v-'+c), a = document.getElementById('agg-'+c);
-                const dbVal = data[c] ?? 0;
-                if(s) s.value = dbVal;
-                if(v) v.innerText = dbVal;
-                if(a) a.innerText = dbVal;
+                const s = document.getElementById('s-'+c), v = document.getElementById('v-'+c);
+                if(s) s.value = data[c] ?? 0;
+                if(v) v.innerText = data[c] ?? 0;
             });
-            log(`Sync Complete: ${lesson || 'Global'}`);
+            log(`Sync Complete.`);
         } catch(e) { log("Sync Error."); }
     }
 
     async function updateVal(id) {
         const val = parseInt(document.getElementById('s-'+id).value);
         document.getElementById('v-'+id).innerText = val;
-        if(document.getElementById('agg-'+id)) document.getElementById('agg-'+id).innerText = val;
         await window.supabaseClient.from(TABLE).update({ [id]: val }).eq('userName', 'test_user').eq('hour', 0);
-    }
-
-    async function updateAssignmentBool() {
-        const lesson = document.getElementById('lesson-selector').value;
-        const val = document.getElementById('bool-toggle').value === 'true';
-        await window.supabaseClient.from(TABLE).update({ [lesson]: val }).eq('userName', 'test_user').eq('hour', 0);
-        log(`Assignment: ${lesson} -> ${val}`);
     }
 
     function forceLoadModule() {
@@ -158,8 +182,7 @@
             'ComplexShapes': window.initComplexShapesGame,
             'Graphing': window.initGraphingGame,
             'DiamondMath': window.initDiamondMath || window.initDiamondMathGame,
-            'LinearMastery': window.initLinearMastery || window.initLinearGame,
-            'HubAssignment': window.initHubAssignment
+            'LinearMastery': window.initLinearMastery || window.initLinearGame
         };
 
         if(map[mod]) {
