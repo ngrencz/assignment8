@@ -1,10 +1,10 @@
 /**
- * skill_solve_x.js
- * - Generates multi-step algebraic equations.
- * - Supports: ax + b = c, a(x + b) = c, and x/a + b = c.
- * - Adapts difficulty based on current mastery score.
- * - Updates 'SolveX' column in Supabase.
+ * skill_solve_x.js - v2.5.0
+ * UPDATED: Context-aware algebraic hints (Standard vs Distributive vs Fraction).
+ * RESTORED: Standardized success screen for Hub hand-off and Supabase sync.
  */
+
+console.log("%c [SolveX] - Pedagogical Build Loaded ", "background: #1e293b; color: #10b981; font-weight: bold;");
 
 var solveXData = {
     equations: [],
@@ -17,15 +17,12 @@ var solveXData = {
 window.initSolveXGame = async function() {
     if (!document.getElementById('q-content')) return;
 
-    // Reset State
     solveXData.currentIndex = 0;
     solveXData.isFirstAttempt = true;
     solveXData.equations = [];
 
-    // Initialize Mastery
     if (!window.userMastery) window.userMastery = {};
 
-    // 1. Sync initial score & Determine Difficulty
     try {
         if (window.supabaseClient && window.currentUser) {
             const h = sessionStorage.getItem('target_hour') || "00";
@@ -41,7 +38,7 @@ window.initSolveXGame = async function() {
         }
     } catch (e) { console.log("Sync error", e); }
 
-    // Difficulty Logic: Higher score = fewer reps needed to maintain
+    // Difficulty Scaling
     if (solveXData.score >= 8) solveXData.needed = 3; 
     else if (solveXData.score >= 5) solveXData.needed = 4;
     else solveXData.needed = 5;
@@ -54,36 +51,20 @@ function generateXEquations() {
     solveXData.equations = [];
     
     for (let i = 0; i < solveXData.needed; i++) {
-        // High Mastery (6+) includes Decimals
         let useAdvanced = (solveXData.score >= 6);
         let type = Math.floor(Math.random() * 3); 
 
         if (type === 0) { 
             // Type: ax + b = c
-            let a, b, ans;
-            if (useAdvanced && Math.random() > 0.5) {
-                // Decimal Variation
-                a = (Math.floor(Math.random() * 20) + 10) / 10; // 1.1 to 3.0
-                ans = Math.floor(Math.random() * 10) + 1;
-                b = (Math.floor(Math.random() * 50) + 10) / 10; 
-                let c = parseFloat(((a * ans) + b).toFixed(2));
-                solveXData.equations.push({ 
-                    html: `${a}x + ${b} = ${c}`, 
-                    ans: ans, 
-                    type: 'standard' 
-                });
-            } else {
-                // Integer Variation
-                a = Math.floor(Math.random() * 8) + 2;
-                ans = Math.floor(Math.random() * 12) - 4; // Allow negative answers
-                b = Math.floor(Math.random() * 15) + 1;
-                let c = (a * ans) + b;
-                solveXData.equations.push({ 
-                    html: `${a}x + ${b} = ${c}`, 
-                    ans: ans, 
-                    type: 'standard' 
-                });
-            }
+            let a = Math.floor(Math.random() * 8) + 2;
+            let ans = Math.floor(Math.random() * 12) - 4;
+            let b = Math.floor(Math.random() * 15) + 1;
+            let c = (a * ans) + b;
+            solveXData.equations.push({ 
+                html: `${a}x + ${b} = ${c}`, 
+                ans: ans, 
+                type: 'standard', a: a, b: b, c: c 
+            });
         } 
         else if (type === 1) { 
             // Type: a(x + b) = c
@@ -94,24 +75,21 @@ function generateXEquations() {
             solveXData.equations.push({ 
                 html: `${a}(x + ${b}) = ${c}`, 
                 ans: ans, 
-                type: 'standard' 
+                type: 'distributive', a: a, b: b, c: c 
             });
         } 
         else { 
-            // Type: x/a + b = c (Fraction)
-            let a = Math.floor(Math.random() * 4) + 2; // Denominator
+            // Type: x/a + b = c
+            let a = Math.floor(Math.random() * 4) + 2;
             let ans = Math.floor(Math.random() * 8) + 1;
             let b = Math.floor(Math.random() * 10) + 1;
-            let x = a * ans; // Ensure x is an integer
-            let c = (x / a) + b;
+            let xVal = a * ans;
+            let c = (xVal / a) + b;
 
             solveXData.equations.push({ 
                 type: 'fraction',
-                num: 'x', 
-                den: a, 
-                constant: b, 
-                result: c, 
-                ans: x 
+                num: 'x', den: a, constant: b, result: c, 
+                ans: xVal 
             });
         }
     }
@@ -121,7 +99,6 @@ function renderSolveXUI() {
     const qContent = document.getElementById('q-content');
     if (!qContent) return;
 
-    // Reset attempt for new problem
     solveXData.isFirstAttempt = true;
 
     if(solveXData.currentIndex >= solveXData.equations.length) {
@@ -133,7 +110,6 @@ function renderSolveXUI() {
     let displayHtml = "";
 
     if (eq.type === 'fraction') {
-        // Flexbox fraction layout
         displayHtml = `
             <div class="eq-container">
                 <div class="fraction">
@@ -149,7 +125,7 @@ function renderSolveXUI() {
     qContent.innerHTML = `
         <div style="max-width:500px; margin:0 auto;">
             <div style="text-align:center; color:#64748b; margin-bottom:10px;">
-                Problem ${solveXData.currentIndex + 1} of ${solveXData.needed}
+                Step ${solveXData.currentIndex + 1} of ${solveXData.needed}
             </div>
             
             <div class="card">
@@ -159,28 +135,26 @@ function renderSolveXUI() {
             <div style="margin-top:20px; text-align:center;">
                 <div style="display:inline-flex; align-items:center; gap:10px;">
                     <span style="font-size:24px; font-weight:bold; color:#334155;">x =</span>
-                    <input type="number" id="inp-solve" class="solve-input" step="any" placeholder="?">
+                    <input type="number" id="inp-solve" class="solve-input" placeholder="?">
                     <button onclick="handleSolveSubmit()" class="solve-btn">Check</button>
                 </div>
-                <div id="solve-feedback" style="margin-top:15px; height:24px; font-weight:bold;"></div>
+                <div id="solve-feedback" style="margin-top:15px; font-weight:bold; min-height:24px;"></div>
+                <div id="solve-hint" style="margin-top: 15px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.95rem; color: #92400e; text-align:center;"></div>
             </div>
         </div>
     `;
 
-    // Focus input
-    setTimeout(() => {
-        const inp = document.getElementById('inp-solve');
-        if(inp) inp.focus();
-    }, 100);
+    setTimeout(() => { document.getElementById('inp-solve')?.focus(); }, 100);
 }
 
 window.handleSolveSubmit = async function() {
     const inp = document.getElementById('inp-solve');
     const feedback = document.getElementById('solve-feedback');
+    const hintBox = document.getElementById('solve-hint');
     if (!inp) return;
 
     const userAns = parseFloat(inp.value);
-    const correctAns = solveXData.equations[solveXData.currentIndex].ans;
+    const eq = solveXData.equations[solveXData.currentIndex];
 
     if (isNaN(userAns)) {
         feedback.innerText = "Please enter a number.";
@@ -188,39 +162,37 @@ window.handleSolveSubmit = async function() {
         return;
     }
 
-    // Check Answer (allow tiny float margin)
-    if (Math.abs(userAns - correctAns) < 0.01) {
-        // Correct
-        feedback.innerText = solveXData.isFirstAttempt ? "Correct!" : "Correct (Second Try)";
+    if (Math.abs(userAns - eq.ans) < 0.01) {
+        feedback.innerText = "✅ Correct!";
         feedback.style.color = "#16a34a";
+        hintBox.style.display = "none";
         inp.disabled = true;
 
-        // Calculate Score Change
-        let change = solveXData.isFirstAttempt ? 1 : -1; 
-        // Note: -1 if they missed it first, effectively canceling previous progress or punishing guessing
-        
+        let change = solveXData.isFirstAttempt ? 1 : 0; 
         await updateSolveXScore(change);
 
         solveXData.currentIndex++;
-        
-        setTimeout(() => {
-            renderSolveXUI();
-        }, 1200);
+        setTimeout(renderSolveXUI, 1200);
 
     } else {
-        // Incorrect
         solveXData.isFirstAttempt = false;
         feedback.innerText = "Not quite. Try again.";
-        feedback.style.color = "#ef4444";
-        inp.value = "";
-        inp.focus();
+        feedback.style.color = "#dc2626";
+        
+        // Contextual Hint Logic
+        hintBox.style.display = "block";
+        if (eq.type === 'standard') {
+            hintBox.innerHTML = `<strong>Hint:</strong> First, subtract <b>${eq.b}</b> from both sides. Then, divide the result by <b>${eq.a}</b>.`;
+        } else if (eq.type === 'distributive') {
+            hintBox.innerHTML = `<strong>Hint:</strong> Try dividing both sides by <b>${eq.a}</b> first to clear the parentheses, then subtract <b>${eq.b}</b>.`;
+        } else if (eq.type === 'fraction') {
+            hintBox.innerHTML = `<strong>Hint:</strong> First, subtract <b>${eq.constant}</b> from both sides. Then, multiply the result by <b>${eq.den}</b> to isolate x.`;
+        }
     }
 };
 
 async function updateSolveXScore(amount) {
-    let current = solveXData.score;
-    let next = Math.max(0, Math.min(10, current + amount));
-    
+    let next = Math.max(0, Math.min(10, solveXData.score + amount));
     solveXData.score = next;
     window.userMastery.SolveX = next;
 
@@ -231,37 +203,37 @@ async function updateSolveXScore(amount) {
                 .update({ SolveX: next })
                 .eq('userName', window.currentUser)
                 .eq('hour', h);
-        } catch(e) { console.error(e); }
+        } catch(e) { console.error("DB Update Failed", e); }
     }
 }
 
 function finishSolveXGame() {
     const qContent = document.getElementById('q-content');
     qContent.innerHTML = `
-        <div style="text-align:center; padding:50px; animation: fadeIn 0.5s;">
-            <div style="font-size: 50px; margin-bottom: 20px;">✅</div>
-            <h2 style="color: #1e293b;">Set Complete!</h2>
-            <p style="color: #64748b;">Mastery Level: ${solveXData.score}/10</p>
-            <p style="font-size: 0.9rem; color: #16a34a; margin-top:15px;">Loading next activity...</p>
+        <div style="text-align:center; padding:50px;">
+            <div style="font-size: 60px; margin-bottom: 20px;">🎯</div>
+            <h2 style="color: #1e293b;">Algebra Set Complete!</h2>
+            <p style="color: #64748b;">Current Mastery: ${solveXData.score}/10</p>
+            <p style="font-size: 14px; color: #10b981; margin-top: 20px;">Loading next activity...</p>
         </div>
     `;
+    
     setTimeout(() => { 
-        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion();
+        }
     }, 2000);
 }
 
-// CSS Injection
+// Optimized Styles
 const solveStyle = document.createElement('style');
 solveStyle.innerHTML = `
     .card { background:white; padding:40px 20px; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.05); display:flex; justify-content:center; }
-    .eq-container { display:flex; align-items:center; font-size:32px; font-family:monospace; color:#1e293b; }
-    .fraction { display:inline-flex; flex-direction:column; align-items:center; margin-right:10px; vertical-align:middle; }
-    .numer { border-bottom:2px solid #1e293b; padding:0 5px; text-align:center; width:100%; }
-    .denom { padding:0 5px; text-align:center; width:100%; }
-    .text-eq { letter-spacing:1px; }
-    .solve-input { width:100px; padding:10px; font-size:20px; border:2px solid #cbd5e1; border-radius:8px; text-align:center; outline:none; transition:0.2s; }
-    .solve-input:focus { border-color:#3b82f6; }
-    .solve-btn { padding:10px 20px; background:#0f172a; color:white; border:none; border-radius:8px; font-size:16px; cursor:pointer; font-weight:bold; }
-    .solve-btn:hover { background:#1e293b; }
+    .eq-container { display:flex; align-items:center; font-size:32px; font-family: 'Courier New', monospace; color:#1e293b; font-weight:bold; }
+    .fraction { display:inline-flex; flex-direction:column; align-items:center; margin-right:10px; }
+    .numer { border-bottom:3px solid #1e293b; padding:0 10px; text-align:center; width:100%; }
+    .denom { padding:0 10px; text-align:center; width:100%; }
+    .solve-input { width:100px; padding:10px; font-size:20px; border:2px solid #cbd5e1; border-radius:8px; text-align:center; }
+    .solve-btn { padding:10px 25px; background:#1e293b; color:white; border:none; border-radius:8px; font-size:16px; cursor:pointer; font-weight:bold; }
 `;
 document.head.appendChild(solveStyle);
