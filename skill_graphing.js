@@ -1,27 +1,28 @@
 /**
  * skill_graphing.js
  * - Interactive Coordinate Plane.
- * - Generates CONVEX Triangles or Quadrilaterals (no crossed lines).
+ * - Generates CONVEX Triangles or Quadrilaterals.
+ * - Axis Labeling Phase - users must identify Positive/Negative arms before plotting.
  * - Connects dots A->B->C->D automatically as found.
- * - Fills shape when complete.
- * - 4 Rounds.
- * - UPDATED: Numbered axes, initialization log, and clear progress tracker.
+ * - UPDATED: Reduced to 2 rounds, added highly visible progress tracker in the UI.
  */
 
 var graphData = {
-    targetPoints: [], // The solution {x, y, label}
-    foundPoints: [],  // Labels of points user has found ['A', 'C', ...]
-    scale: 20,        // Pixels per grid unit
-    range: 10         // Grid goes from -10 to +10
+    targetPoints: [], 
+    foundPoints: [],  
+    scale: 20,        
+    range: 10,         
+    phase: 'axis_setup', // 'axis_setup' or 'plotting'
+    axesIdentified: { posX: false, negX: false, posY: false, negY: false },
+    axisQueue: [] 
 };
 
 var graphRound = 1;
-var totalGraphRounds = 4;
+var totalGraphRounds = 2; // Reduced from 4 to 2
 
 window.initGraphingGame = async function() {
-    // Added Log Entry
     if (typeof log === 'function') {
-        log(`📉 Graphing Module Initialized - Round ${graphRound} of ${totalGraphRounds}`);
+        log(`📉 Graphing Module Initialized - Problem ${graphRound} of ${totalGraphRounds}`);
     }
 
     if (!document.getElementById('q-content')) return;
@@ -30,7 +31,6 @@ window.initGraphingGame = async function() {
     window.currentQSeconds = 0;
     graphRound = 1;
 
-    // Initialize Mastery State
     if (!window.userMastery) window.userMastery = {};
 
     try {
@@ -60,35 +60,35 @@ function startGraphingRound() {
 function generateGraphProblem() {
     graphData.foundPoints = [];
     graphData.targetPoints = [];
+    graphData.phase = 'axis_setup';
     
-    // 1. Generate Random Unique Points
+    // Reset identified axes for the new round
+    graphData.axesIdentified = { posX: false, negX: false, posY: false, negY: false };
+    
+    // Shuffle the order we ask about the axes
+    graphData.axisQueue = ['posX', 'negX', 'posY', 'negY'].sort(() => Math.random() - 0.5);
+    
     let numPoints = Math.random() > 0.5 ? 3 : 4;
     let tempPoints = [];
     
     while(tempPoints.length < numPoints) {
-        let rx = Math.floor(Math.random() * 14) - 7; // Range -7 to 7
+        let rx = Math.floor(Math.random() * 14) - 7; 
         let ry = Math.floor(Math.random() * 14) - 7;
         if (!tempPoints.some(p => p.x === rx && p.y === ry)) {
             tempPoints.push({ x: rx, y: ry });
         }
     }
 
-    // 2. Sort Angularly to ensure Convex Shape (No crossed lines)
-    // Find centroid
     let cx = tempPoints.reduce((s, p) => s + p.x, 0) / numPoints;
     let cy = tempPoints.reduce((s, p) => s + p.y, 0) / numPoints;
 
-    // Sort by angle around centroid
     tempPoints.sort((a, b) => {
         return Math.atan2(a.y - cy, a.x - cx) - Math.atan2(b.y - cy, b.x - cx);
     });
 
-    // 3. Assign Labels A, B, C, D in order
     const labels = ['A', 'B', 'C', 'D'];
     graphData.targetPoints = tempPoints.map((p, i) => ({
-        x: p.x,
-        y: p.y,
-        label: labels[i]
+        x: p.x, y: p.y, label: labels[i]
     }));
 }
 
@@ -102,25 +102,43 @@ function renderGraphingUI() {
          </div>`
     ).join('');
 
-    // Explicit Progress Tracker in Title
-    document.getElementById('q-title').innerText = `Graph the Shape (Problem ${graphRound} of ${totalGraphRounds})`;
+    // Update the main container title just in case
+    const qTitle = document.getElementById('q-title');
+    if (qTitle) qTitle.innerText = `Graph the Shape`;
 
     qContent.innerHTML = `
+        <div style="text-align:center; font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 20px; background: #e2e8f0; padding: 8px 16px; border-radius: 20px; width: fit-content; margin-left: auto; margin-right: auto; border: 1px solid #cbd5e1;">
+            Problem ${graphRound} of ${totalGraphRounds}
+        </div>
+
         <div style="display: flex; gap: 30px; flex-wrap: wrap; justify-content:center;">
             <div style="position:relative; background:white; padding:10px; border-radius:8px; border:1px solid #94a3b8; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
                 <canvas id="graphCanvas" width="400" height="400" style="cursor:crosshair;"></canvas>
-                <div style="text-align:center; font-size:12px; color:#64748b; margin-top:5px;">Click the grid intersections</div>
+                <div id="canvas-hint" style="text-align:center; font-size:12px; color:#64748b; margin-top:5px;">Setup the axes first!</div>
             </div>
 
             <div style="flex:1; min-width:250px; display:flex; flex-direction:column; justify-content:center;">
-                <h3 style="color:#1e293b; margin-bottom:10px;">Plot coordinates:</h3>
-                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-                    ${pointsHtml}
+                
+                <div id="axis-setup-ui" style="background:#fff7ed; padding:20px; border-radius:8px; border:2px solid #fdba74; text-align:center;">
+                    <h3 style="color:#c2410c; margin-top:0; margin-bottom:15px;">Identify the highlighted line:</h3>
+                    <div style="display:flex; gap:10px; justify-content:center;">
+                        <button onclick="answerAxis('pos')" style="padding:10px 20px; font-size:16px; font-weight:bold; cursor:pointer; background:#3b82f6; color:white; border:none; border-radius:6px;">Positive (+)</button>
+                        <button onclick="answerAxis('neg')" style="padding:10px 20px; font-size:16px; font-weight:bold; cursor:pointer; background:#ef4444; color:white; border:none; border-radius:6px;">Negative (-)</button>
+                    </div>
+                    <div id="axis-feedback" style="min-height:20px; margin-top:10px; color:#ef4444; font-weight:bold; font-size:14px;"></div>
                 </div>
-                <div id="graph-feedback" style="min-height:30px; color:#ef4444; font-weight:bold; font-size:14px;"></div>
-                <div style="background:#f8fafc; padding:15px; border-radius:6px; font-size:13px; color:#475569; border:1px solid #e2e8f0;">
-                    <strong>Tip:</strong> The shape connects automatically as you find neighbors (A connects to B, B to C).
+
+                <div id="plotting-ui" style="display:none; flex-direction:column;">
+                    <h3 style="color:#1e293b; margin-top:0; margin-bottom:10px;">Plot coordinates:</h3>
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                        ${pointsHtml}
+                    </div>
+                    <div id="graph-feedback" style="min-height:30px; color:#ef4444; font-weight:bold; font-size:14px;"></div>
+                    <div style="background:#f8fafc; padding:15px; border-radius:6px; font-size:13px; color:#475569; border:1px solid #e2e8f0;">
+                        <strong>Tip:</strong> The shape connects automatically as you find neighbors.
+                    </div>
                 </div>
+
             </div>
         </div>
         <div id="flash-overlay" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; pointer-events:none; text-align:center; z-index:100;"></div>
@@ -129,6 +147,36 @@ function renderGraphingUI() {
     drawGrid();
     setupCanvasInteractions();
 }
+
+// Handles the Positive/Negative button clicks
+window.answerAxis = function(answer) {
+    if (graphData.phase !== 'axis_setup' || graphData.axisQueue.length === 0) return;
+
+    let currentTarget = graphData.axisQueue[0];
+    let isCorrect = false;
+
+    if ((currentTarget === 'posX' || currentTarget === 'posY') && answer === 'pos') isCorrect = true;
+    if ((currentTarget === 'negX' || currentTarget === 'negY') && answer === 'neg') isCorrect = true;
+
+    const feedback = document.getElementById('axis-feedback');
+
+    if (isCorrect) {
+        feedback.innerText = "";
+        graphData.axesIdentified[currentTarget] = true;
+        graphData.axisQueue.shift(); // Remove from queue
+
+        // Check if all axes are done
+        if (graphData.axisQueue.length === 0) {
+            graphData.phase = 'plotting';
+            document.getElementById('axis-setup-ui').style.display = 'none';
+            document.getElementById('plotting-ui').style.display = 'flex';
+            document.getElementById('canvas-hint').innerText = 'Click the grid intersections to plot points';
+        }
+        drawGrid(); // Redraw to show new numbers / new highlight
+    } else {
+        feedback.innerText = "Oops! Try again.";
+    }
+};
 
 function drawGrid() {
     const canvas = document.getElementById('graphCanvas');
@@ -139,7 +187,6 @@ function drawGrid() {
     const scale = graphData.scale; 
     const center = w / 2; 
 
-    // Clear
     ctx.clearRect(0, 0, w, h);
     
     // 1. Draw Grid
@@ -152,15 +199,30 @@ function drawGrid() {
     }
     ctx.stroke();
 
-    // 2. Draw Axes
+    // 2. Draw Base Axes
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#475569";
     ctx.beginPath();
-    ctx.moveTo(center, 0); ctx.lineTo(center, h);
-    ctx.moveTo(0, center); ctx.lineTo(w, center);
+    ctx.moveTo(center, 0); ctx.lineTo(center, h); // Y Axis
+    ctx.moveTo(0, center); ctx.lineTo(w, center); // X Axis
     ctx.stroke();
 
-    // 2.5 Draw Axis Numbers
+    // 3. Highlight Current Target Axis (Phase 1)
+    if (graphData.phase === 'axis_setup' && graphData.axisQueue.length > 0) {
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "#f97316"; // Bright Orange
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        let target = graphData.axisQueue[0];
+        
+        if (target === 'posX') { ctx.moveTo(center, center); ctx.lineTo(w, center); }
+        if (target === 'negX') { ctx.moveTo(center, center); ctx.lineTo(0, center); }
+        if (target === 'posY') { ctx.moveTo(center, center); ctx.lineTo(center, 0); } // Y goes up
+        if (target === 'negY') { ctx.moveTo(center, center); ctx.lineTo(center, h); } // Y goes down
+        ctx.stroke();
+    }
+
+    // 4. Draw Axis Numbers (Only for identified axes)
     ctx.fillStyle = "#64748b";
     ctx.font = "10px Arial";
     ctx.textAlign = "center";
@@ -170,64 +232,78 @@ function drawGrid() {
         if (i === 0) continue; 
         
         if (i % 2 === 0) {
-            ctx.fillText(i, center + (i * scale), center + 12);
-            ctx.fillText(i, center - 12, center - (i * scale));
+            // Check X Axis
+            if (i > 0 && graphData.axesIdentified.posX) {
+                ctx.fillText(i, center + (i * scale), center + 12);
+            } else if (i < 0 && graphData.axesIdentified.negX) {
+                ctx.fillText(i, center + (i * scale), center + 12);
+            }
+
+            // Check Y Axis (Note: HTML Canvas Y is inverted from Math Y)
+            if (i > 0 && graphData.axesIdentified.posY) {
+                ctx.fillText(i, center - 12, center - (i * scale)); // Going up
+            } else if (i < 0 && graphData.axesIdentified.negY) {
+                ctx.fillText(i, center - 12, center - (i * scale)); // Going down
+            }
         }
     }
 
-    // 3. Draw Connections (The Shape Logic)
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#3b82f6";
-    
-    const allFound = graphData.targetPoints.every(p => graphData.foundPoints.includes(p.label));
-    
-    if (allFound) {
-        ctx.fillStyle = "rgba(59, 130, 246, 0.2)";
-        ctx.beginPath();
-        const start = graphData.targetPoints[0];
-        ctx.moveTo(center + start.x*scale, center - start.y*scale);
-        for(let i=1; i<graphData.targetPoints.length; i++) {
-            const p = graphData.targetPoints[i];
-            ctx.lineTo(center + p.x*scale, center - p.y*scale);
-        }
-        ctx.closePath();
-        ctx.fill();
-    }
-
-    ctx.beginPath();
-    for (let i = 0; i < graphData.targetPoints.length; i++) {
-        const current = graphData.targetPoints[i];
-        const next = graphData.targetPoints[(i + 1) % graphData.targetPoints.length];
-
-        if (graphData.foundPoints.includes(current.label) && graphData.foundPoints.includes(next.label)) {
-            ctx.moveTo(center + current.x*scale, center - current.y*scale);
-            ctx.lineTo(center + next.x*scale, center - next.y*scale);
-        }
-    }
-    ctx.stroke();
-
-    // 4. Draw The Dots (Vertices)
-    graphData.targetPoints.forEach(p => {
-        if (graphData.foundPoints.includes(p.label)) {
-            const px = center + (p.x * scale);
-            const py = center - (p.y * scale);
-            
+    // 5. Draw Shape and Points (Phase 2 only)
+    if (graphData.phase === 'plotting') {
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#3b82f6";
+        
+        const allFound = graphData.targetPoints.every(p => graphData.foundPoints.includes(p.label));
+        
+        if (allFound) {
+            ctx.fillStyle = "rgba(59, 130, 246, 0.2)";
             ctx.beginPath();
-            ctx.arc(px, py, 6, 0, Math.PI * 2);
-            ctx.fillStyle = "#2563eb"; 
+            const start = graphData.targetPoints[0];
+            ctx.moveTo(center + start.x*scale, center - start.y*scale);
+            for(let i=1; i<graphData.targetPoints.length; i++) {
+                const p = graphData.targetPoints[i];
+                ctx.lineTo(center + p.x*scale, center - p.y*scale);
+            }
+            ctx.closePath();
             ctx.fill();
-            
-            ctx.fillStyle = "#000";
-            ctx.font = "bold 14px Arial";
-            ctx.fillText(p.label, px + 10, py - 10);
         }
-    });
+
+        ctx.beginPath();
+        for (let i = 0; i < graphData.targetPoints.length; i++) {
+            const current = graphData.targetPoints[i];
+            const next = graphData.targetPoints[(i + 1) % graphData.targetPoints.length];
+
+            if (graphData.foundPoints.includes(current.label) && graphData.foundPoints.includes(next.label)) {
+                ctx.moveTo(center + current.x*scale, center - current.y*scale);
+                ctx.lineTo(center + next.x*scale, center - next.y*scale);
+            }
+        }
+        ctx.stroke();
+
+        graphData.targetPoints.forEach(p => {
+            if (graphData.foundPoints.includes(p.label)) {
+                const px = center + (p.x * scale);
+                const py = center - (p.y * scale);
+                
+                ctx.beginPath();
+                ctx.arc(px, py, 6, 0, Math.PI * 2);
+                ctx.fillStyle = "#2563eb"; 
+                ctx.fill();
+                
+                ctx.fillStyle = "#000";
+                ctx.font = "bold 14px Arial";
+                ctx.fillText(p.label, px + 10, py - 10);
+            }
+        });
+    }
 }
 
 function setupCanvasInteractions() {
     const canvas = document.getElementById('graphCanvas');
     
     canvas.onclick = (e) => {
+        // Disable canvas clicking during Phase 1
+        if (graphData.phase !== 'plotting') return;
         if (graphData.foundPoints.length === graphData.targetPoints.length) return;
 
         const rect = canvas.getBoundingClientRect();
@@ -290,7 +366,7 @@ async function handleRoundWin() {
     graphRound++;
     setTimeout(() => {
         if (graphRound > totalGraphRounds) finishGraphingGame();
-        else startGraphingRound(); // The title will automatically update to the new Problem #
+        else startGraphingRound(); 
     }, 1500);
 }
 
