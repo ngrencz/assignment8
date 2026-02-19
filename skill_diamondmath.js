@@ -65,84 +65,89 @@ function startDiamondRound() {
 }
 
 function generateDiamondProblem() {
-    // Safely parse the level from Supabase
     const lvl = Number(window.userMastery.DiamondMath) || 0;
     diamondData.level = lvl;
     
-    console.log(`[DiamondMath] Generating math for Level ${lvl}...`);
-    
     let a, b;
+    // We use these to show "3/4" instead of "0.75" if you want visual fractions
+    diamondData.displayA = null; 
+    diamondData.displayB = null;
 
-    // --- GENERATION (Difficulty tiers based on Mastery) ---
-    // (Kept exactly as you provided)
+    // --- 1. VALUE GENERATION ---
     if (lvl <= 5) {
-        console.log("[DiamondMath] Using Tier 1 (Positive Integers)");
+        // Positive Integers
         a = Math.floor(Math.random() * 12) + 1;
         b = Math.floor(Math.random() * 12) + 1;
-    } else if (lvl <= 7) {
-        console.log("[DiamondMath] Using Tier 2 (Negative Integers)");
-        a = Math.floor(Math.random() * 25) - 12; 
-        b = Math.floor(Math.random() * 25) - 12;
-        if (a === 0) a = 1; if (b === 0) b = -1; 
-    } else {
-        console.log("[DiamondMath] Using Tier 3 (Decimals & Fractions)");
-        const isFraction = Math.random() > 0.5;
-        if (isFraction) {
-            const denoms = [2, 4];
-            let denomA = denoms[Math.floor(Math.random()*2)];
-            let denomB = denoms[Math.floor(Math.random()*2)];
-            
-            let aNum = Math.floor(Math.random() * 20) - 10;
-            if (aNum % 2 === 0) aNum += 1; 
-            a = aNum / denomA;
-            
-            let bNum = Math.floor(Math.random() * 20) - 10;
-            if (bNum % 2 === 0) bNum += 1; 
-            b = bNum / denomB;
-        } else {
-            let aNum = Math.floor(Math.random() * 40) - 20;
-            if (aNum % 2 === 0) aNum += 1; 
-            a = aNum / 2;
-            
-            let bNum = Math.floor(Math.random() * 40) - 20;
-            if (bNum % 2 === 0) bNum += 1; 
-            b = bNum / 2;
-        }
+    } 
+    else if (lvl <= 7) {
+        // Negative Integers
+        a = Math.floor(Math.random() * 21) - 10;
+        b = Math.floor(Math.random() * 21) - 10;
+        if (a === 0) a = 1; if (b === 0) b = -1;
+    } 
+    else if (lvl === 8) {
+        // Level 8: Decimals (Tenths / Halves)
+        a = (Math.floor(Math.random() * 19) - 9) * 0.5;
+        b = (Math.floor(Math.random() * 19) - 9) * 0.5;
+        if (a === 0) a = 0.5;
+    } 
+    else if (lvl === 9) {
+        // Level 9: Advanced Decimals (Quarters)
+        a = (Math.floor(Math.random() * 39) - 19) * 0.25;
+        b = (Math.floor(Math.random() * 39) - 19) * 0.25;
+        if (a === 0) a = 0.25;
+    } 
+    else {
+        // Level 10+: TRUE FRACTIONS
+        const denoms = [2, 4];
+        let denA = denoms[Math.floor(Math.random() * 2)];
+        let denB = denoms[Math.floor(Math.random() * 2)];
+        let numA = (Math.floor(Math.random() * 9) + 1) * (Math.random() > 0.5 ? 1 : -1);
+        let numB = (Math.floor(Math.random() * 9) + 1) * (Math.random() > 0.5 ? 1 : -1);
+
+        // Ensure they aren't just whole numbers (e.g., 4/4)
+        if (numA % denA === 0) numA++;
+        if (numB % denB === 0) numB++;
+
+        a = numA / denA;
+        b = numB / denB;
+
+        // Optional: Store strings for your UI to display "3/4"
+        diamondData.displayA = `${numA}/${denA}`;
+        diamondData.displayB = `${numB}/${denB}`;
     }
 
-    console.log(`[DiamondMath] Values generated -> A: ${a}, B: ${b}`);
-
+    // Standard Math Calculations
     diamondData.A = a;
     diamondData.B = b;
-    diamondData.top = a * b;    
-    diamondData.bottom = a + b; 
+    diamondData.top = parseFloat((a * b).toFixed(4));      // toFixed prevents 0.30000000004 bugs
+    diamondData.bottom = parseFloat((a + b).toFixed(4));
 
-    // --- HIDING LOGIC (Modified for Level 8+ Difficulty) ---
+    // --- 2. HIDING LOGIC (The "Anti-Quadratic" Filter) ---
     const r = Math.random();
     
     if (r < 0.25) {
-        // Student sees A & B, finds Top & Bottom
         diamondData.missing = ['top', 'bottom'];
     } 
     else if (r < 0.50) {
-        // Student finds A & B (The "Classic Puzzle")
-        // We bypass this for Level 8+ because factoring decimals is too hard.
+        // THE FIX: If Level 8+, don't hide both A and B. 
+        // We force them to find the "Results" instead.
         if (lvl >= 8) {
-            diamondData.missing = ['top', 'bottom']; // Default back to finding results
+            diamondData.missing = ['top', 'bottom'];
         } else {
             diamondData.missing = ['A', 'B'];
         }
     } 
     else if (r < 0.75) {
-        // Student finds one Side and the Product
         const sideToHide = Math.random() > 0.5 ? 'A' : 'B';
         diamondData.missing = ['top', sideToHide];
     } 
     else {
-        // Student finds one Side and the Sum
         const sideToHide = Math.random() > 0.5 ? 'A' : 'B';
         diamondData.missing = ['bottom', sideToHide];
     }
+
+    console.log(`[DiamondMath] Lvl:${lvl} | A:${a}, B:${b} | Missing:${diamondData.missing}`);
 }
 function renderDiamondUI() {
     const qContent = document.getElementById('q-content');
