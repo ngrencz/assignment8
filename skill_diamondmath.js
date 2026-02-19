@@ -4,7 +4,7 @@
  * - Covers ALL missing variable combinations.
  * - Supports Integers, Negatives, Decimals, and Fractions.
  * - Order independent checking for factoring cases.
- * - UPDATED: Uses classic framed diamond design and perfectly aligned pattern key.
+ * - UPDATED: Fixed inner diagonal 'X' geometry and pattern key alignment.
  */
 
 var diamondData = {
@@ -132,8 +132,8 @@ function renderDiamondUI() {
             <div style="position:relative; width:300px; height:300px;">
                 <svg width="300" height="300" style="position:absolute; top:0; left:0; z-index:0;">
                     <polygon points="150,20 280,150 150,280 20,150" fill="#ffffff" stroke="#1e293b" stroke-width="6" stroke-linejoin="round" />
-                    <line x1="20" y1="150" x2="280" y2="150" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
-                    <line x1="150" y1="20" x2="150" y2="280" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+                    <line x1="85" y1="85" x2="215" y2="215" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+                    <line x1="85" y1="215" x2="215" y2="85" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
                 </svg>
 
                 <div style="position:absolute; top:85px; left:150px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
@@ -157,15 +157,15 @@ function renderDiamondUI() {
                 <h3 style="margin-top:0; color:#475569; font-size:14px; text-transform:uppercase; letter-spacing:1px;">Pattern Key</h3>
                 
                 <div style="display:flex; justify-content:center; margin-bottom:15px; position:relative;">
-                    <svg width="140" height="140">
-                        <polygon points="70,10 130,70 70,130 10,70" fill="white" stroke="#94a3b8" stroke-width="4" stroke-linejoin="round" />
-                        <line x1="10" y1="70" x2="130" y2="70" stroke="#94a3b8" stroke-width="4" />
-                        <line x1="70" y1="10" x2="70" y2="130" stroke="#94a3b8" stroke-width="4" />
+                    <svg width="150" height="150">
+                        <polygon points="75,10 140,75 75,140 10,75" fill="white" stroke="#94a3b8" stroke-width="4" stroke-linejoin="round" />
+                        <line x1="42.5" y1="42.5" x2="107.5" y2="107.5" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
+                        <line x1="42.5" y1="107.5" x2="107.5" y2="42.5" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
                         
-                        <text x="70" y="45" font-family="sans-serif" font-size="12" font-weight="bold" fill="#ef4444" text-anchor="middle" dominant-baseline="middle">Product (x·y)</text>
-                        <text x="70" y="95" font-family="sans-serif" font-size="12" font-weight="bold" fill="#3b82f6" text-anchor="middle" dominant-baseline="middle">Sum (x+y)</text>
-                        <text x="40" y="70" font-family="sans-serif" font-size="14" font-weight="bold" fill="#64748b" text-anchor="middle" dominant-baseline="middle">x</text>
-                        <text x="100" y="70" font-family="sans-serif" font-size="14" font-weight="bold" fill="#64748b" text-anchor="middle" dominant-baseline="middle">y</text>
+                        <text x="75" y="42" font-family="sans-serif" font-size="12" font-weight="bold" fill="#ef4444" text-anchor="middle" dominant-baseline="middle">Product</text>
+                        <text x="75" y="108" font-family="sans-serif" font-size="12" font-weight="bold" fill="#3b82f6" text-anchor="middle" dominant-baseline="middle">Sum</text>
+                        <text x="42" y="75" font-family="sans-serif" font-size="14" font-weight="bold" fill="#64748b" text-anchor="middle" dominant-baseline="middle">x</text>
+                        <text x="108" y="75" font-family="sans-serif" font-size="14" font-weight="bold" fill="#64748b" text-anchor="middle" dominant-baseline="middle">y</text>
                     </svg>
                 </div>
                 
@@ -197,13 +197,10 @@ window.checkDiamondWin = async function() {
     });
 
     // 2. Validation Logic
-    // Special Case: If BOTH sides are missing (Factoring), order doesn't matter.
     if (diamondData.missing.includes('A') && diamondData.missing.includes('B')) {
         const valA = inputs['A'].val;
         const valB = inputs['B'].val;
         
-        // Check if they multiply to Top AND add to Bottom
-        // Tolerance 0.05
         const prod = valA * valB;
         const sum = valA + valB;
         
@@ -239,7 +236,6 @@ window.checkDiamondWin = async function() {
     if (allCorrect) {
         showFlash("Correct!", "success");
         
-        // Update Mastery (+1 for every correct round)
         let current = window.userMastery.DiamondMath || 0;
         let nextScore = Math.min(10, current + 1);
         window.userMastery.DiamondMath = nextScore;
