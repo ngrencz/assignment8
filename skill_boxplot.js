@@ -1,11 +1,17 @@
-// 1. Private Variables
+/**
+ * skill_boxplot.js - Full Integrated Version
+ * Handles: Median, Mean, Range, Q1, and IQR
+ */
+
+(function() {
+    // 1. Private Variables
     let currentBoxData = {};
     let currentDataset = []; // Sorted (Math)
     let displayDataset = []; // Shuffled (Display)
     let boxErrorCount = 0;
     let boxPlotStep = 0; 
     let boxPlotSessionQuestions = [];
-    let sessionCorrectFirstTry = 0; // Tracks session performance
+    let sessionCorrectFirstTry = 0; 
 
     // 2. Init Function
     window.initBoxPlotGame = async function() {
@@ -13,31 +19,36 @@
         window.currentQSeconds = 0;
         boxErrorCount = 0;
         boxPlotStep = 0;
-        sessionCorrectFirstTry = 0; // Reset session tracker
+        sessionCorrectFirstTry = 0;
 
         // Fetch sub-skill mastery
         try {
-            // Get current hour for accurate DB lookup
-            const currentHour = sessionStorage.getItem('target_hour');
+            // Priority: target_hour from session, fallback to "00"
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
             
             const { data } = await window.supabaseClient
                 .from('assignment')
-                .select('BoxPlot, bp_median, bp_range, bp_quartiles, bp_iqr')
+                .select('BoxPlot, bp_median, bp_mean, bp_range, bp_quartiles, bp_iqr')
                 .eq('userName', window.currentUser)
                 .eq('hour', currentHour)
                 .maybeSingle();
             
             window.userMastery = data || {};
         } catch (e) {
+            console.error("Mastery Fetch Error:", e);
             window.userMastery = {};
         }
 
         generateSkewedDataset();
 
+        // 3. Question Pool
+        // Mean is now included in the pool. 
+        // Since we slice(0, 3), it will show up randomly alongside others.
         const pool = [
             { q: "What is the Median?", a: currentBoxData.median, hint: "Order the numbers first! Find the middle one.", col: "bp_median" },
+            { q: "What is the Mean? (Round to 1 decimal)", a: currentBoxData.mean, hint: "Sum of all numbers ÷ 11. Round to 1 decimal place.", col: "bp_mean" },
             { q: "What is the Range?", a: currentBoxData.max - currentBoxData.min, hint: "Highest Number - Lowest Number", col: "bp_range" },
-            { q: "What is Q1 (Lower Quartile)?", a: currentBoxData.q1, hint: "The median of the lower half of numbers.", col: "bp_quartiles" },
+            { q: "What is Q1 (Lower Quartile)?", a: currentBoxData.q1, hint: "The median of the lower half (the 3rd number in order).", col: "bp_quartiles" },
             { q: "What is the IQR?", a: currentBoxData.q3 - currentBoxData.q1, hint: "Q3 - Q1 (The width of the box).", col: "bp_iqr" }
         ];
 
@@ -46,7 +57,7 @@
         renderBoxUI();
     };
 
-    // --- Skewed Data Generator ---
+    // --- Data Generator ---
     function generateSkewedDataset() {
         let attempts = 0;
         let valid = false;
@@ -55,17 +66,13 @@
             let arr = [];
             const skewFactor = (Math.random() * 2) + 0.5; 
 
-            // 11 items ensures Median, Q1, and Q3 are exact integers (indices 2, 5, 8)
             for(let i=0; i<11; i++) {
                 let rand = Math.pow(Math.random(), skewFactor);
                 let val = Math.floor(rand * 36) + 2;
                 arr.push(val);
             }
             
-            // 1. Create Display (Shuffled)
             displayDataset = [...arr].sort(() => 0.5 - Math.random());
-
-            // 2. Create Math (Sorted)
             arr.sort((a, b) => a - b);
 
             const min = arr[0];
@@ -74,9 +81,13 @@
             const q3 = arr[8];
             const max = arr[10];
 
+            // Calculate Mean for the new sub-skill
+            const sum = arr.reduce((a, b) => a + b, 0);
+            const mean = Math.round((sum / 11) * 10) / 10;
+
             if (q3 > q1 && median > min && max > median) {
                 currentDataset = arr; 
-                currentBoxData = { min, q1, median, q3, max };
+                currentBoxData = { min, q1, median, q3, max, mean };
                 valid = true;
             }
             attempts++;
@@ -88,9 +99,10 @@
         const qContent = document.getElementById('q-content');
         if (!qContent) return;
 
-        document.getElementById('q-title').innerText = `Box Plot Mastery (${boxPlotStep + 1}/3)`;
+        // Ensure q-title exists (Safety Proxy in test.html handles this if missing)
+        const titleElem = document.getElementById('q-title');
+        if (titleElem) titleElem.innerText = `Box Plot Mastery (${boxPlotStep + 1}/3)`;
         
-        // Show SHUFFLED list
         const dataString = displayDataset.join(', ');
 
         qContent.innerHTML = `
@@ -105,13 +117,13 @@
                 <canvas id="boxCanvas" width="400" height="120" style="max-width:100%;"></canvas>
             </div>
             
-            <div class="card">
+            <div class="card" style="background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <p style="font-size: 1.1rem; margin-bottom: 15px;"><strong>Question:</strong> ${current.q}</p>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <input type="number" id="box-ans" class="math-input" placeholder="?" style="width: 100px; padding: 10px;">
-                    <button onclick="checkStep()" class="primary-btn">Submit</button>
+                <div style="display:flex; gap:10px; align-items:center; justify-content:center;">
+                    <input type="number" id="box-ans" step="0.1" class="math-input" placeholder="?" style="width: 120px; padding: 12px; font-size: 1.1rem; border: 2px solid #cbd5e1; border-radius: 6px;">
+                    <button onclick="checkStep()" class="primary-btn" style="background: #6366f1; color: white; padding: 12px 24px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold;">Submit</button>
                 </div>
-                <div id="feedback-box" style="margin-top: 15px; display: none; padding: 10px; border-radius: 6px;"></div>
+                <div id="feedback-box" style="margin-top: 15px; display: none; padding: 10px; border-radius: 6px; font-weight: bold;"></div>
             </div>
         `;
         setTimeout(drawBoxPlot, 50); 
@@ -159,15 +171,6 @@
             max: padding + currentBoxData.max * scale
         };
 
-        // Draw Stats Text
-        ctx.fillStyle = "#1e293b";
-        ctx.font = "bold 12px Arial";
-        ctx.fillText(currentBoxData.min, pts.min, y - 35);
-        ctx.fillText(currentBoxData.q1, pts.q1, y - 35);
-        ctx.fillText(currentBoxData.median, pts.med, y - 35);
-        ctx.fillText(currentBoxData.q3, pts.q3, y - 35);
-        ctx.fillText(currentBoxData.max, pts.max, y - 35);
-
         // Whiskers
         ctx.strokeStyle = "#1e293b";
         ctx.lineWidth = 2;
@@ -197,31 +200,30 @@
         const input = document.getElementById('box-ans');
         if(!input) return;
         
-        const userAns = parseInt(input.value);
+        const userAns = parseFloat(input.value);
         const current = boxPlotSessionQuestions[boxPlotStep];
         const feedback = document.getElementById('feedback-box');
         
         if (isNaN(userAns)) return;
         feedback.style.display = "block";
 
-        if (userAns === current.a) {
-            feedback.className = "correct";
+        // Correct Answer Check (Decimal Safe)
+        if (Math.abs(userAns - current.a) < 0.11) {
+            feedback.style.backgroundColor = "#dcfce7";
+            feedback.style.color = "#166534";
             feedback.innerText = "✅ Correct!";
 
-            // 1. Update Session Tracker (Perfect Step)
             if (boxErrorCount === 0) {
                 sessionCorrectFirstTry++;
             }
 
-            // 2. Update SUB-SKILL immediately
-            // Logic: if 0 errors = +1 score, else no change
+            // Update SUB-SKILL
             let subAdjustment = (boxErrorCount === 0) ? 1 : 0; 
             const updateObj = {};
-            // Ensure we don't go above 10
-            updateObj[current.col] = Math.min(10, (window.userMastery?.[current.col] || 0) + subAdjustment);
+            const currentSubScore = window.userMastery?.[current.col] || 0;
+            updateObj[current.col] = Math.min(10, currentSubScore + subAdjustment);
             
-            // Get Hour from session to ensure we update the right row
-            const currentHour = sessionStorage.getItem('target_hour');
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
 
             if (window.supabaseClient && window.currentUser) {
                 await window.supabaseClient
@@ -231,14 +233,13 @@
                     .eq('hour', currentHour);
             }
 
-            // Update Local State for Sub-skill
+            // Update Local State
             if (!window.userMastery) window.userMastery = {};
             window.userMastery[current.col] = updateObj[current.col];
 
             boxPlotStep++;
             boxErrorCount = 0;
 
-            // 3. Check for End of Session
             if (boxPlotStep >= boxPlotSessionQuestions.length) {
                 finishBoxPlotSession();
             } else {
@@ -246,22 +247,17 @@
             }
         } else {
             boxErrorCount++;
-            feedback.className = "incorrect";
+            feedback.style.backgroundColor = "#fee2e2";
+            feedback.style.color = "#991b1b";
             feedback.innerText = `❌ Not quite. Hint: ${current.hint}`;
         }
     };
 
-    // --- NEW: Handle Aggregate Scoring at End of Session ---
     async function finishBoxPlotSession() {
         window.isCurrentQActive = false;
         const feedback = document.getElementById('feedback-box');
         if(feedback) feedback.innerText = "✅ Box Plot Set Complete!";
 
-        // SCORING LOGIC:
-        // 3/3 Correct (100%) -> +1
-        // 2/3 Correct (66%)  -> No Change
-        // 0-1 Correct (<=33%) -> -1
-        
         let mainAdjustment = 0;
         if (sessionCorrectFirstTry === 3) {
             mainAdjustment = 1;
@@ -272,9 +268,8 @@
         if (mainAdjustment !== 0) {
             const currentMain = window.userMastery?.['BoxPlot'] || 0;
             const newMain = Math.max(0, Math.min(10, currentMain + mainAdjustment));
-            const currentHour = sessionStorage.getItem('target_hour');
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
 
-            // Update DB
             if (window.supabaseClient && window.currentUser) {
                 await window.supabaseClient
                     .from('assignment')
@@ -283,11 +278,13 @@
                     .eq('hour', currentHour);
             }
             
-            // Update Local
-            window.userMastery['BoxPlot'] = newMain;
+            if (window.userMastery) window.userMastery['BoxPlot'] = newMain;
         }
 
         setTimeout(() => {
             if(typeof window.loadNextQuestion === 'function') window.loadNextQuestion();
+            else document.getElementById('q-content').innerHTML = "<h2>Session Complete</h2><p>Refresh to try again.</p>";
         }, 1500);
     }
+
+})();
