@@ -1,8 +1,8 @@
 /**
  * skill_similarity.js - Full Integrated Visual Version
  * - Draws similar polygons with labeled sides.
- * - Requires decimal answers for Scale Factor (k), x, and y.
- * - Provides specific hints based on which field is incorrect.
+ * - Supports wide range of scale factors with dynamic canvas fitting.
+ * - Requires decimal answers and provides specific hints.
  */
 
 var similarityData = {
@@ -54,9 +54,10 @@ function generateSimilarityProblem() {
     similarityData.shapeName = template.name;
     similarityData.shapeType = template.type;
     
-    // Factors: 1.5, 2, 2.5, 0.5
-    const factors = [1.5, 2, 2.5, 0.5]; 
+    // Expanded Scale Factors
+    const factors = [0.25, 0.5, 0.75, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.5, 4, 4.5, 5, 6, 7, 8, 9, 10]; 
     similarityData.scaleFactor = factors[Math.floor(Math.random() * factors.length)];
+    
     similarityData.baseSides = [...template.sides];
     similarityData.scaledSides = similarityData.baseSides.map(s => s * similarityData.scaleFactor);
     
@@ -92,15 +93,15 @@ function renderSimilarityUI() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; margin-bottom:20px;">
                     <div>
                         <label class="sim-label">Scale Factor (k)</label>
-                        <input type="number" id="inp-k" class="sim-input" step="0.1" placeholder="Decimal">
+                        <input type="number" id="inp-k" class="sim-input" step="0.01" placeholder="Decimal">
                     </div>
                     <div>
                         <label class="sim-label" style="color:#ef4444;">Solve y (Orig)</label>
-                        <input type="number" id="inp-y" class="sim-input" step="0.1" placeholder="Decimal">
+                        <input type="number" id="inp-y" class="sim-input" step="0.01" placeholder="Decimal">
                     </div>
                     <div>
                         <label class="sim-label" style="color:#2563eb;">Solve x (Scaled)</label>
-                        <input type="number" id="inp-x" class="sim-input" step="0.1" placeholder="Decimal">
+                        <input type="number" id="inp-x" class="sim-input" step="0.01" placeholder="Decimal">
                     </div>
                 </div>
                 
@@ -121,7 +122,11 @@ function drawSimilarShapes() {
 
     const d = similarityData;
     const idx = d.indices;
-    const drawScale = 8;
+
+    // --- Dynamic Scaling Logic to fit large factors ---
+    const totalUnits = Math.max(...d.baseSides) + Math.max(...d.scaledSides) + 12;
+    const dynamicScale = Math.min(600 / totalUnits, 15); 
+
     ctx.lineWidth = 2;
     ctx.font = "bold 15px Arial";
 
@@ -150,18 +155,16 @@ function drawSimilarShapes() {
 
         sides.forEach((val, i) => {
             if (i > 2 && d.shapeType !== 'rect') return; 
-            
             let p1 = pts[i];
             let p2 = pts[(i + 1) % pts.length];
             let midX = (p1.x + p2.x) / 2 + offsetX;
             let midY = (p1.y + p2.y) / 2 + offsetY;
 
-            // Offset labels slightly from the line
             let dirX = (p1.y - p2.y);
             let dirY = (p2.x - p1.x);
             let len = Math.sqrt(dirX*dirX + dirY*dirY);
-            let offX = (dirX/len) * 15;
-            let offY = (dirY/len) * 15;
+            let offX = (dirX/len) * 18;
+            let offY = (dirY/len) * 18;
 
             let displayVal = val;
             ctx.fillStyle = "#1e293b";
@@ -173,21 +176,24 @@ function drawSimilarShapes() {
                 displayVal = "x"; 
                 ctx.fillStyle = "#2563eb"; 
             } else if (i !== idx.known && i !== idx.x && i !== idx.y) {
-                return; // Only label sides used in the problem
+                return;
             }
 
             ctx.fillText(displayVal, midX + offX - 5, midY + offY + 5);
         });
     }
 
-    const origPts = getPolygon(d.shapeType, d.baseSides, drawScale);
-    const scaledPts = getPolygon(d.shapeType, d.scaledSides, drawScale * 0.7); 
+    const origPts = getPolygon(d.shapeType, d.baseSides, dynamicScale);
+    const scaledPts = getPolygon(d.shapeType, d.scaledSides, dynamicScale); 
 
-    drawShape(origPts, 60, 60, d.baseSides, false);
+    const origWidth = Math.max(...origPts.map(p => p.x));
+    drawShape(origPts, 40, 60, d.baseSides, false);
+    
     ctx.fillStyle = "#94a3b8";
     ctx.font = "20px Arial";
-    ctx.fillText("➔ k", 270, 120);
-    drawShape(scaledPts, 370, 60, d.scaledSides, true);
+    ctx.fillText("➔ k", origWidth + 80, 120);
+    
+    drawShape(scaledPts, origWidth + 140, 60, d.scaledSides, true);
 }
 
 window.checkSimilarityAnswer = async function() {
@@ -273,7 +279,6 @@ async function finishSimilarityGame() {
     }, 2000);
 }
 
-// CSS Injection
 const simStyle = document.createElement('style');
 simStyle.innerHTML = `
     .sim-label { display:block; font-size:11px; font-weight:bold; color:#475569; margin-bottom:5px; text-transform:uppercase; letter-spacing: 0.5px; }
