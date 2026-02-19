@@ -1,12 +1,12 @@
 /**
  * skill_complexshapes.js
- * - Grade Level: 7th/8th (Deductive Reasoning)
- * - VERSION: 1.9
+ * - Grade Level: 7th/8th
+ * - VERSION: 2.0 (Large Shapes, Centered, Dashed Heights)
  * - LOGIC: 
- * 1. Bottom of rectangle hidden (must deduce from top).
- * 2. Semicircle Arc hidden (must calculate using r and 3.14).
- * 3. All Slants/Diagonals explicitly labeled.
- * 4. Internal Heights/Radii explicitly labeled.
+ * 1. Shapes are ~2.5x larger.
+ * 2. Auto-centering logic prevents off-screen drawing.
+ * 3. Dashed lines added for Triangles and Trapezoids (Height).
+ * 4. Trapezoids are now Isosceles (two slanted sides).
  */
 
 var complexData = {
@@ -17,9 +17,8 @@ var complexData = {
 };
 
 window.initComplexShapesGame = async function() {
-    // Log reference for version tracking
     if (typeof log === 'function') {
-        log("🚀 Complex Shapes: v1.9 - Explicit 3.14 Hint Mode");
+        log("🚀 Complex Shapes: v2.0 - Large Mode & Dashed Lines");
     }
 
     if (!document.getElementById('q-content')) return;
@@ -52,72 +51,99 @@ function startComplexRound() {
 }
 
 function generateComplexProblem() {
-    const units = ['ft', 'in', 'cm', 'm', 'units'];
+    const units = ['ft', 'in', 'cm', 'm', 'yds'];
     complexData.unit = units[Math.floor(Math.random() * units.length)];
     complexData.components = [];
     
-    // 1. Foundation Rectangle
-    let baseW = Math.floor(Math.random() * 30) + 50;
-    let baseH = Math.floor(Math.random() * 30) + 40;
+    // 1. SCALED UP DIMENSIONS
+    // Rectangle width 140-200 (was 50-80)
+    // Rectangle height 120-180 (was 40-70)
+    let baseW = Math.floor(Math.random() * 60) + 140;
+    let baseH = Math.floor(Math.random() * 60) + 120;
     
-    complexData.components.push({
-        type: 'rectangle',
-        w: baseW, h: baseH, x: 80, y: 100,
-        area: baseW * baseH,
-        hintA: `Rectangle Area = width × height (${baseW} × ${baseH})`,
-        hintP: `Deduction: If the top is ${baseW}, the bottom must also be ${baseW}.`
-    });
-
-    // 2. Add Attachment
+    // We will determine X and Y later based on total width to center it
+    
+    // 2. Select Attachment Type
     let typePool = ['triangle', 'semicircle', 'trapezoid'];
     let type = typePool[Math.floor(Math.random() * typePool.length)];
-    let attachX = 80 + baseW;
+    
+    // Component 1: Rectangle data
+    let rectComp = {
+        type: 'rectangle',
+        w: baseW, h: baseH, 
+        area: baseW * baseH,
+        hintA: `Rectangle Area = ${baseW} × ${baseH}`,
+        hintP: `Deduction: Top is ${baseW}, so bottom is also ${baseW}.`
+    };
+
+    let attachComp = {};
+    let totalWidth = baseW;
 
     if (type === 'triangle') {
-        let triH = Math.floor(Math.random() * 25) + 30;
+        let triH = Math.floor(Math.random() * 40) + 60; // Larger triangle height
         let slantValue = Math.sqrt(Math.pow(baseH/2, 2) + Math.pow(triH, 2)).toFixed(1);
         
-        complexData.components.push({
-            type: 'triangle', base: baseH, height: triH, x: attachX, y: 100,
+        attachComp = {
+            type: 'triangle', base: baseH, height: triH,
             slantLabel: slantValue,
             area: 0.5 * baseH * triH,
             hintA: `Triangle Area = ½ × base × height`,
-            hintP: `The two exterior slants are both ${slantValue} ${complexData.unit}.`
-        });
+            hintP: `The two exterior slants are both ${slantValue}.`
+        };
         complexData.totalArea = (baseW * baseH) + (0.5 * baseH * triH);
         complexData.totalPerimeter = (baseW * 2) + (parseFloat(slantValue) * 2);
+        totalWidth += triH;
 
     } else if (type === 'semicircle') {
         let r = baseH / 2;
-        // Logic: Use 3.14 specifically so student answers match perfectly
         let arcValue = 3.14 * r; 
         
-        complexData.components.push({
-            type: 'semicircle', r: r, x: attachX, y: 100 + r,
-            // No arcLabel provided, it is hidden
+        attachComp = {
+            type: 'semicircle', r: r,
             area: (3.14 * Math.pow(r, 2)) / 2,
             hintA: `Semicircle Area = (3.14 × r²) / 2`,
             hintP: `Boundary = Half of Circumference (3.14 × ${r}).`
-        });
+        };
         complexData.totalArea = (baseW * baseH) + ((3.14 * Math.pow(r, 2)) / 2);
         complexData.totalPerimeter = (baseW * 2) + baseH + arcValue;
+        totalWidth += r;
 
     } else if (type === 'trapezoid') {
-        let topB = Math.floor(baseH * 0.6);
-        let trapW = Math.floor(Math.random() * 20) + 25;
-        let diff = baseH - topB;
+        // Isosceles Trapezoid logic
+        let topB = Math.floor(baseH * 0.5); // Smaller base
+        let trapW = Math.floor(Math.random() * 40) + 50; // Width of trap
+        let diff = (baseH - topB) / 2; // Vertical diff for one side
         let slantValue = Math.sqrt(Math.pow(trapW, 2) + Math.pow(diff, 2)).toFixed(1);
 
-        complexData.components.push({
-            type: 'trapezoid', b1: baseH, b2: topB, h: trapW, x: attachX, y: 100,
+        attachComp = {
+            type: 'trapezoid', b1: baseH, b2: topB, h: trapW,
             slantLabel: slantValue,
             area: 0.5 * (baseH + topB) * trapW,
             hintA: `Trapezoid Area = ½(base1 + base2) × height`,
-            hintP: `Exterior sides: Top (${trapW}), Right (${topB}), and Slant (${slantValue}).`
-        });
+            hintP: `Exterior sides: Top slant (${slantValue}), Right vertical (${topB}), Bottom slant (${slantValue}).`
+        };
         complexData.totalArea = (baseW * baseH) + (0.5 * (baseH + topB) * trapW);
-        complexData.totalPerimeter = (baseW * 2) + topB + trapW + parseFloat(slantValue);
+        complexData.totalPerimeter = (baseW * 2) + topB + (parseFloat(slantValue) * 2);
+        totalWidth += trapW;
     }
+
+    // 3. CENTERING LOGIC
+    const canvasW = 550;
+    const canvasH = 300;
+    let startX = (canvasW - totalWidth) / 2;
+    let startY = (canvasH - baseH) / 2;
+
+    // Apply coordinates
+    rectComp.x = startX;
+    rectComp.y = startY;
+    
+    attachComp.x = startX + baseW;
+    
+    // For Triangle/Trap, Y is same as rect top. For semicircle, Y center is adjusted in draw
+    attachComp.y = startY; 
+
+    complexData.components.push(rectComp);
+    complexData.components.push(attachComp);
 }
 
 function renderComplexUI() {
@@ -131,8 +157,8 @@ function renderComplexUI() {
             </div>
             
             <div style="background: white; padding: 10px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 12px; text-align: center; position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
-                <canvas id="complexCanvas" width="550" height="280" style="max-width:100%; height:auto; cursor:help;"></canvas>
-                <div id="hint-bubble" style="position: absolute; display: none; background: #1e293b; color: white; padding: 10px; border-radius: 6px; font-size: 12px; z-index: 50; pointer-events:none; text-align:left; box-shadow: 0 4px 6px rgba(0,0,0,0.3);"></div>
+                <canvas id="complexCanvas" width="550" height="300" style="max-width:100%; height:auto; cursor:help;"></canvas>
+                <div id="hint-bubble" style="position: absolute; display: none; background: #1e293b; color: white; padding: 10px; border-radius: 6px; font-size: 14px; z-index: 50; pointer-events:none; text-align:left; box-shadow: 0 4px 6px rgba(0,0,0,0.3);"></div>
             </div>
 
             <div style="background:#f8fafc; padding:12px 18px; border-radius:12px; border:1px solid #e2e8f0; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -176,59 +202,100 @@ function drawComplex() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const u = complexData.unit;
-    ctx.clearRect(0, 0, 550, 280);
+    ctx.clearRect(0, 0, 550, 300);
     ctx.lineWidth = 3;
     ctx.strokeStyle = "#334155";
-    ctx.font = "bold 13px Arial";
+    ctx.font = "bold 15px Arial"; // Larger font for readability
 
     function drawLabel(text, x, y, color = "#1e293b", isInternal = false) {
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.save();
+        ctx.font = "bold 14px Arial";
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
         let w = ctx.measureText(text).width;
-        // Background rectangle "halo" to prevent overlap
-        ctx.fillRect(x - w/2 - 4, y - 11, w + 8, 15); 
+        ctx.fillRect(x - w/2 - 5, y - 12, w + 10, 18); // Larger Halo
         ctx.fillStyle = isInternal ? "#64748b" : color;
         ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
         ctx.fillText(text, x, y);
+        ctx.restore();
+    }
+
+    // Helper for dashed lines
+    function drawDashedLine(x1, y1, x2, y2) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([6, 6]); // The Dash Pattern
+        ctx.strokeStyle = "#94a3b8";
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.restore();
     }
 
     complexData.components.forEach(p => {
         ctx.fillStyle = "#f1f5f9";
         ctx.beginPath();
+        
+        // --- RECTANGLE ---
         if (p.type === 'rectangle') {
             ctx.rect(p.x, p.y, p.w, p.h);
             ctx.fill(); ctx.stroke();
-            // Rectangle Labels
-            drawLabel(`${p.w} ${u}`, p.x + p.w/2, p.y - 12); // Top
-            drawLabel(`${p.h} ${u}`, p.x - 45, p.y + p.h/2 + 5); // Left
-        } else if (p.type === 'triangle') {
+            
+            drawLabel(`${p.w} ${u}`, p.x + p.w/2, p.y - 15); // Top
+            drawLabel(`${p.h} ${u}`, p.x - 45, p.y + p.h/2); // Left
+        } 
+        
+        // --- TRIANGLE (Isosceles pointing right) ---
+        else if (p.type === 'triangle') {
             ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x + p.height, p.y + p.base/2);
-            ctx.lineTo(p.x, p.y + p.base);
+            ctx.lineTo(p.x + p.height, p.y + p.base/2); // Tip
+            ctx.lineTo(p.x, p.y + p.base); // Bottom left
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            // Slant Labels (Explicit)
-            drawLabel(`${p.slantLabel} ${u}`, p.x + p.height/2 + 45, p.y + p.base/4 - 10); 
-            drawLabel(`${p.slantLabel} ${u}`, p.x + p.height/2 + 45, p.y + (p.base*0.75) + 20);
-            // Height Label (Internal)
-            drawLabel(`h: ${p.height} ${u}`, p.x + 35, p.y + p.base/2 + 5, "#64748b", true);
-        } else if (p.type === 'semicircle') {
-            ctx.arc(p.x, p.y, p.r, -Math.PI/2, Math.PI/2);
+            
+            // Dashed Height Line (Middle)
+            drawDashedLine(p.x, p.y + p.base/2, p.x + p.height, p.y + p.base/2);
+
+            // Labels
+            drawLabel(`${p.slantLabel}`, p.x + p.height/2 + 10, p.y + p.base*0.25 - 20); // Top Slant
+            drawLabel(`${p.slantLabel}`, p.x + p.height/2 + 10, p.y + p.base*0.75 + 20); // Bot Slant
+            drawLabel(`h: ${p.height} ${u}`, p.x + p.height/2, p.y + p.base/2 - 15, "#64748b", true);
+        } 
+        
+        // --- SEMICIRCLE ---
+        else if (p.type === 'semicircle') {
+            let cy = p.y + p.r; // Center Y
+            ctx.arc(p.x, cy, p.r, -Math.PI/2, Math.PI/2);
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            // Radius Label (Internal, Explicit)
-            drawLabel(`r: ${p.r} ${u}`, p.x + p.r/2, p.y + 5, "#64748b", true);
-            // Arc Label is deliberately omitted
-        } else if (p.type === 'trapezoid') {
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x + p.h, p.y);
-            ctx.lineTo(p.x + p.h, p.y + p.b2);
-            ctx.lineTo(p.x, p.y + p.b1);
+            
+            // Dashed Radius Line
+            drawDashedLine(p.x, cy, p.x + p.r, cy);
+            
+            drawLabel(`r: ${p.r} ${u}`, p.x + p.r/2, cy - 15, "#64748b", true);
+        } 
+        
+        // --- TRAPEZOID (Isosceles) ---
+        else if (p.type === 'trapezoid') {
+            // Calculate vertical offset to center the smaller base
+            let vOffset = (p.b1 - p.b2) / 2; 
+            
+            ctx.moveTo(p.x, p.y); // Top-left (at shared wall)
+            ctx.lineTo(p.x + p.h, p.y + vOffset); // Top-right
+            ctx.lineTo(p.x + p.h, p.y + vOffset + p.b2); // Bottom-right
+            ctx.lineTo(p.x, p.y + p.b1); // Bottom-left (at shared wall)
             ctx.closePath();
             ctx.fill(); ctx.stroke();
-            // Trapezoid Labels
-            drawLabel(`${p.h} ${u}`, p.x + p.h/2, p.y - 12); // Top
-            drawLabel(`${p.b2} ${u}`, p.x + p.h + 40, p.y + p.b2/2 + 5); // Right
-            drawLabel(`${p.slantLabel} ${u}`, p.x + p.h/2 - 30, p.y + p.b1 + 25); // Slant (Explicit)
+            
+            // Dashed Height Line (Middle)
+            let midY = p.y + p.b1/2;
+            drawDashedLine(p.x, midY, p.x + p.h, midY);
+
+            // Labels
+            drawLabel(`${p.b2} ${u}`, p.x + p.h + 45, midY); // Right Vertical Base
+            drawLabel(`${p.slantLabel}`, p.x + p.h/2, p.y - 15); // Top Slant (approximated location)
+            drawLabel(`${p.slantLabel}`, p.x + p.h/2, p.y + p.b1 + 25); // Bottom Slant
+            drawLabel(`h: ${p.h} ${u}`, p.x + p.h/2, midY - 15, "#64748b", true);
         }
     });
 
@@ -239,13 +306,24 @@ function drawComplex() {
         const my = (e.clientY - rect.top) * (canvas.height / rect.height);
         const bubble = document.getElementById('hint-bubble');
         
-        let part = complexData.components.find(p => mx > p.x - 20 && mx < p.x + 180 && my > p.y - 20 && my < p.y + 180);
-        if (part) {
-            bubble.innerHTML = `<strong>Formula Help:</strong><br>${part.hintA}<br>${part.hintP}`;
-            bubble.style.left = `${mx + 10}px`;
-            bubble.style.top = `${my - 40}px`;
-            bubble.style.display = 'block';
-            setTimeout(() => { bubble.style.display = 'none'; }, 4000);
+        // Check collision (broad check based on centered area)
+        if (mx > complexData.components[0].x && mx < complexData.components[0].x + 400 && 
+            my > complexData.components[0].y && my < complexData.components[0].y + 300) {
+            
+            // Find which part was clicked
+            let part = complexData.components.find(p => {
+               // Simple bounding box check
+               if(p.type === 'rectangle') return mx >= p.x && mx <= p.x + p.w;
+               return mx > p.x; // Attachment is always to the right
+            });
+            
+            if (part) {
+                bubble.innerHTML = `<strong>Formula Help:</strong><br>${part.hintA}<br>${part.hintP}`;
+                bubble.style.left = `${mx + 10}px`;
+                bubble.style.top = `${my - 40}px`;
+                bubble.style.display = 'block';
+                setTimeout(() => { bubble.style.display = 'none'; }, 4000);
+            }
         }
     };
 }
@@ -261,6 +339,7 @@ window.checkComplexWin = async function() {
         return;
     }
 
+    // Slightly wider tolerance for 3.14 calc
     const areaOK = (Math.abs(aVal - complexData.totalArea) < 3.0) && (aUnit === 'square');
     const perimOK = (Math.abs(pVal - complexData.totalPerimeter) < 3.0) && (pUnit === 'linear');
 
