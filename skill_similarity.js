@@ -1,13 +1,15 @@
 /**
- * skill_similarity.js - Visual Version
+ * skill_similarity.js - Full Integrated Visual Version
  * - Draws similar polygons with labeled sides.
- * - Tracks 'Similarity' in Supabase.
+ * - Requires decimal answers for Scale Factor (k), x, and y.
+ * - Provides specific hints based on which field is incorrect.
  */
 
 var similarityData = {
     round: 1,
     maxRounds: 3,
     shapeName: '',
+    shapeType: '',
     scaleFactor: 1,
     baseSides: [],
     scaledSides: [],
@@ -17,9 +19,12 @@ var similarityData = {
 
 window.initSimilarityGame = async function() {
     if (!document.getElementById('q-content')) return;
+    
+    // Reset State
     similarityData.round = 1;
     if (!window.userMastery) window.userMastery = {};
 
+    // Sync initial score from Supabase
     try {
         const h = sessionStorage.getItem('target_hour') || "00";
         if (window.supabaseClient && window.currentUser) {
@@ -49,12 +54,14 @@ function generateSimilarityProblem() {
     similarityData.shapeName = template.name;
     similarityData.shapeType = template.type;
     
+    // Factors: 1.5, 2, 2.5, 0.5
     const factors = [1.5, 2, 2.5, 0.5]; 
     similarityData.scaleFactor = factors[Math.floor(Math.random() * factors.length)];
     similarityData.baseSides = [...template.sides];
     similarityData.scaledSides = similarityData.baseSides.map(s => s * similarityData.scaleFactor);
     
-    let indices = [0, 1, 2]; // For triangles/rects/traps, use first 3 distinct sides
+    // Assign indices for Known pair, X (on scaled), and Y (on original)
+    let indices = [0, 1, 2]; 
     similarityData.indices.known = indices[0];
     similarityData.indices.x = indices[1];
     similarityData.indices.y = indices[2];
@@ -69,31 +76,36 @@ function renderSimilarityUI() {
     if (!qContent) return;
 
     qContent.innerHTML = `
-        <div style="max-width:650px; margin:0 auto;">
+        <div style="max-width:650px; margin:0 auto; animation: fadeIn 0.5s;">
             <div style="text-align:center; margin-bottom:10px; color:#64748b; font-weight:bold;">
                 Round ${similarityData.round} of ${similarityData.maxRounds} • ${similarityData.shapeName}
             </div>
 
-            <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:10px; margin-bottom:20px; text-align:center;">
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:12px; padding:10px; margin-bottom:20px; text-align:center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);">
                 <canvas id="simCanvas" width="600" height="220" style="max-width:100%; height:auto;"></canvas>
             </div>
 
             <div style="background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0;">
+                <p style="font-size: 0.9rem; color: #475569; margin-bottom: 15px; text-align:center;">
+                    Find the <b>Scale Factor (k)</b>, then solve for the missing sides <b>x</b> and <b>y</b>.
+                </p>
                 <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; margin-bottom:20px;">
                     <div>
                         <label class="sim-label">Scale Factor (k)</label>
-                        <input type="number" id="inp-k" class="sim-input" step="0.1" placeholder="k">
+                        <input type="number" id="inp-k" class="sim-input" step="0.1" placeholder="Decimal">
                     </div>
                     <div>
                         <label class="sim-label" style="color:#ef4444;">Solve y (Orig)</label>
-                        <input type="number" id="inp-y" class="sim-input" step="0.1" placeholder="y">
+                        <input type="number" id="inp-y" class="sim-input" step="0.1" placeholder="Decimal">
                     </div>
                     <div>
                         <label class="sim-label" style="color:#2563eb;">Solve x (Scaled)</label>
-                        <input type="number" id="inp-x" class="sim-input" step="0.1" placeholder="x">
+                        <input type="number" id="inp-x" class="sim-input" step="0.1" placeholder="Decimal">
                     </div>
                 </div>
-                <div id="sim-feedback" style="text-align:center; min-height:20px; font-weight:bold; margin-bottom:10px; font-size:14px;"></div>
+                
+                <div id="sim-feedback" style="text-align:center; min-height:45px; font-weight:bold; margin-bottom:15px; font-size:14px; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center;"></div>
+                
                 <button onclick="checkSimilarityAnswer()" class="sim-btn">Submit Answers</button>
             </div>
         </div>
@@ -109,11 +121,9 @@ function drawSimilarShapes() {
 
     const d = similarityData;
     const idx = d.indices;
-
-    // Drawing settings
     const drawScale = 8;
     ctx.lineWidth = 2;
-    ctx.font = "bold 14px Arial";
+    ctx.font = "bold 15px Arial";
 
     function getPolygon(type, sides, scale) {
         let pts = [];
@@ -132,42 +142,53 @@ function drawSimilarShapes() {
         ctx.moveTo(pts[0].x + offsetX, pts[0].y + offsetY);
         pts.forEach(p => ctx.lineTo(p.x + offsetX, p.y + offsetY));
         ctx.closePath();
+        
         ctx.strokeStyle = isScaled ? "#22c55e" : "#64748b";
         ctx.fillStyle = isScaled ? "#f0fdf4" : "#f8fafc";
         ctx.fill();
         ctx.stroke();
 
-        // Labels
-        ctx.fillStyle = "#1e293b";
         sides.forEach((val, i) => {
-            if (i > 2 && d.shapeType !== 'rect') return; // Only label primary sides
+            if (i > 2 && d.shapeType !== 'rect') return; 
             
-            // Find midpoint of side
             let p1 = pts[i];
             let p2 = pts[(i + 1) % pts.length];
             let midX = (p1.x + p2.x) / 2 + offsetX;
             let midY = (p1.y + p2.y) / 2 + offsetY;
 
-            let displayVal = val;
-            if (!isScaled && i === idx.y) { displayVal = "y"; ctx.fillStyle = "#ef4444"; }
-            else if (isScaled && i === idx.x) { displayVal = "x"; ctx.fillStyle = "#2563eb"; }
-            else if (i !== idx.known && i !== idx.x && i !== idx.y) return; // Hide noisy sides
-            else ctx.fillStyle = "#1e293b";
+            // Offset labels slightly from the line
+            let dirX = (p1.y - p2.y);
+            let dirY = (p2.x - p1.x);
+            let len = Math.sqrt(dirX*dirX + dirY*dirY);
+            let offX = (dirX/len) * 15;
+            let offY = (dirY/len) * 15;
 
-            ctx.fillText(displayVal, midX - 5, midY);
+            let displayVal = val;
+            ctx.fillStyle = "#1e293b";
+
+            if (!isScaled && i === idx.y) { 
+                displayVal = "y"; 
+                ctx.fillStyle = "#ef4444"; 
+            } else if (isScaled && i === idx.x) { 
+                displayVal = "x"; 
+                ctx.fillStyle = "#2563eb"; 
+            } else if (i !== idx.known && i !== idx.x && i !== idx.y) {
+                return; // Only label sides used in the problem
+            }
+
+            ctx.fillText(displayVal, midX + offX - 5, midY + offY + 5);
         });
     }
 
     const origPts = getPolygon(d.shapeType, d.baseSides, drawScale);
-    const scaledPts = getPolygon(d.shapeType, d.scaledSides, drawScale * 0.8); // slight visual normalize
+    const scaledPts = getPolygon(d.shapeType, d.scaledSides, drawScale * 0.7); 
 
-    drawShape(origPts, 50, 50, d.baseSides, false);
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillText("➔ k", 260, 110);
-    drawShape(scaledPts, 350, 50, d.scaledSides, true);
+    drawShape(origPts, 60, 60, d.baseSides, false);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "20px Arial";
+    ctx.fillText("➔ k", 270, 120);
+    drawShape(scaledPts, 370, 60, d.scaledSides, true);
 }
-
-// ... Keep existing checkSimilarityAnswer, updateSimilarityScore, and CSS Injection from your original script ...
 
 window.checkSimilarityAnswer = async function() {
     const kInput = document.getElementById('inp-k');
@@ -180,8 +201,9 @@ window.checkSimilarityAnswer = async function() {
     const uy = parseFloat(yInput.value);
 
     if (isNaN(uk) || isNaN(ux) || isNaN(uy)) {
-        feedback.style.color = "#ef4444";
-        feedback.innerText = "Please fill in all three fields.";
+        feedback.style.color = "#991b1b";
+        feedback.style.backgroundColor = "#fee2e2";
+        feedback.innerText = "Please provide decimal answers for all three fields.";
         return;
     }
 
@@ -191,20 +213,32 @@ window.checkSimilarityAnswer = async function() {
     const yOk = Math.abs(uy - sol.y) < 0.05;
 
     if (kOk && xOk && yOk) {
-        feedback.style.color = "#16a34a";
-        feedback.innerText = "Correct!";
+        feedback.style.color = "#166534";
+        feedback.style.backgroundColor = "#dcfce7";
+        feedback.innerText = "✅ Correct! Great work.";
+        
         await updateSimilarityScore(1);
         similarityData.round++;
+        
         if (similarityData.round > similarityData.maxRounds) {
             setTimeout(finishSimilarityGame, 1000);
         } else {
-            setTimeout(() => { generateSimilarityProblem(); renderSimilarityUI(); }, 1000);
+            setTimeout(() => { 
+                generateSimilarityProblem(); 
+                renderSimilarityUI(); 
+            }, 1000);
         }
     } else {
-        feedback.style.color = "#ef4444";
-        if (!kOk) feedback.innerText = "Check your Scale Factor (k).";
-        else if (!yOk) feedback.innerText = "Check y. Original = Scaled / k";
-        else if (!xOk) feedback.innerText = "Check x. Scaled = Original * k";
+        feedback.style.backgroundColor = "#fee2e2";
+        feedback.style.color = "#991b1b";
+        
+        if (!kOk) {
+            feedback.innerText = "❌ Hint: k = Scaled Side ÷ Matching Original Side.";
+        } else if (!yOk) {
+            feedback.innerText = "❌ Hint for y: To find an Original side, divide the Scaled side by k.";
+        } else if (!xOk) {
+            feedback.innerText = "❌ Hint for x: To find a Scaled side, multiply the Original side by k.";
+        }
     }
 };
 
@@ -221,22 +255,32 @@ async function updateSimilarityScore(amount) {
                 .update({ Similarity: next })
                 .eq('userName', window.currentUser)
                 .eq('hour', h);
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Supabase update failed", e); }
     }
 }
 
 async function finishSimilarityGame() {
     const qContent = document.getElementById('q-content');
-    qContent.innerHTML = `<div style="text-align:center; padding:50px;"><h2>Complete!</h2></div>`;
-    setTimeout(() => { if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); }, 2000);
+    qContent.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px; animation: fadeIn 0.5s;">
+            <div style="font-size:60px; margin-bottom: 20px;">📐</div>
+            <h2 style="color:#1e293b; margin:0;">Module Complete!</h2>
+            <p style="color:#64748b;">You've mastered scale factors and similar figures.</p>
+        </div>
+    `;
+    setTimeout(() => { 
+        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
+    }, 2000);
 }
 
+// CSS Injection
 const simStyle = document.createElement('style');
 simStyle.innerHTML = `
-    .sim-label { display:block; font-size:12px; font-weight:bold; color:#475569; margin-bottom:5px; text-transform:uppercase; }
-    .sim-input { width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; text-align:center; font-size:18px; font-family:monospace; color:#1e293b; outline:none; transition:0.2s; box-sizing:border-box; }
-    .sim-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,0.1); }
-    .sim-btn { width:100%; height:45px; background:#0f172a; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px; transition:0.2s; }
-    .sim-btn:hover { background:#1e293b; }
+    .sim-label { display:block; font-size:11px; font-weight:bold; color:#475569; margin-bottom:5px; text-transform:uppercase; letter-spacing: 0.5px; }
+    .sim-input { width:100%; height:42px; border-radius:8px; border:1px solid #cbd5e1; text-align:center; font-size:18px; font-family: 'Courier New', monospace; color:#1e293b; outline:none; transition:0.2s; box-sizing:border-box; }
+    .sim-input:focus { border-color:#6366f1; border-width: 2px; box-shadow:0 0 0 3px rgba(99, 102, 241, 0.1); }
+    .sim-btn { width:100%; height:48px; background:#0f172a; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:16px; transition:0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .sim-btn:hover { background:#1e293b; transform: translateY(-1px); }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 `;
 document.head.appendChild(simStyle);
