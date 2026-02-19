@@ -1,14 +1,14 @@
 /**
- * skill_linear.js - v2.2.9
+ * skill_linear.js - v2.3.0
  * FULL RESTORED PRODUCTION VERSION.
- * * Logic Change: Forces slope and intercept to be multiples of the grid scale 
- * to ensure all points land on clickable intersections.
+ * Update: Contextualized final question to use scenario-specific units/labels.
+ * Fix: Grid-perfect point alignment logic preserved.
  */
 
-console.log("%c [LinearMath] v2.2.9 - Full Production Build ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
+console.log("%c [LinearMath] v2.3.0 - Contextualized Prediction ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
 
 var linearData = {
-    version: "2.2.9",
+    version: "2.3.0",
     scenario: {},      
     stage: 'variables', 
     errors: 0,         
@@ -21,7 +21,6 @@ var linearData = {
 window.initLinearMastery = async function() {
     if (!document.getElementById('q-content')) return;
 
-    // Reset State
     linearData.stage = 'variables';
     linearData.errors = 0;
     linearData.pointsClicked = [];
@@ -54,27 +53,25 @@ window.initLinearMastery = async function() {
 
 function generateLinearScenario() {
     const templates = [
-        { type: 'growth', prompt: "A botanist tracks a sunflower's growth.", text: "The sunflower is {B} cm tall and grows {M} cm per day.", unitX: "days", unitY: "cm" },
-        { type: 'growth', prompt: "A contractor charges for a job.", text: "There is a base fee of ${B} plus ${M} per hour of labor.", unitX: "hours", unitY: "dollars" },
-        { type: 'decay',  prompt: "A pilot is descending for landing.", text: "The plane is at {B} thousand feet and descends {M} thousand feet per minute.", unitX: "minutes", unitY: "feet" },
-        { type: 'decay',  prompt: "A phone battery is losing charge.", text: "The battery is at {B}% and drops {M}% every hour.", unitX: "hours", unitY: "percent" }
+        { type: 'growth', prompt: "A botanist tracks a sunflower's growth.", text: "The sunflower is {B} cm tall and grows {M} cm per day.", unitX: "days", unitY: "cm", labelX: "time", labelY: "height" },
+        { type: 'growth', prompt: "A contractor charges for a job.", text: "There is a base fee of ${B} plus ${M} per hour of labor.", unitX: "hours", unitY: "dollars", labelX: "labor time", labelY: "total cost" },
+        { type: 'decay',  prompt: "A pilot is descending for landing.", text: "The plane is at {B} thousand feet and descends {M} thousand feet per minute.", unitX: "minutes", unitY: "thousand feet", labelX: "time", labelY: "altitude" },
+        { type: 'decay',  prompt: "A phone battery is losing charge.", text: "The battery is at {B}% and drops {M}% every hour.", unitX: "hours", unitY: "percent", labelX: "time", labelY: "remaining charge" }
     ];
 
     const t = templates[Math.floor(Math.random() * templates.length)];
     
-    // Pick a Scale (1, 2, 5, or 10)
     const scales = [1, 2, 5, 10];
     const scale = scales[Math.floor(Math.random() * scales.length)];
     const maxLimit = scale * 10;
 
-    // ALIGNMENT LOGIC: b and m must be multiples of the scale to hit grid intersections
     let b = (Math.floor(Math.random() * 5)) * scale; 
     let m = (Math.floor(Math.random() * 3) + 1) * scale;
 
     if (t.type === 'decay') {
         b = maxLimit - (Math.floor(Math.random() * 2) * scale);
         m = -m;
-        while (b + (m * 5) < 0) { m += scale; } // Ensure it stays on grid for at least 5 units
+        while (b + (m * 5) < 0) { m += scale; }
         if (m >= 0) m = -scale;
     } else {
         while (b + (m * 5) > maxLimit) { m = Math.max(scale, m - scale); }
@@ -85,7 +82,7 @@ function generateLinearScenario() {
 
     linearData.scenario = {
         fullText: t.prompt + " " + t.text.replace("{B}", b).replace("{M}", Math.abs(m)),
-        b: b, m: m, unitX: t.unitX, unitY: t.unitY
+        b: b, m: m, unitX: t.unitX, unitY: t.unitY, labelX: t.labelX, labelY: t.labelY
     };
 }
 
@@ -94,7 +91,6 @@ function renderLinearStage() {
     const s = linearData.scenario;
     const stage = linearData.stage;
 
-    // Formulate Equation String
     let mPart = (s.m === 1 ? "x" : (s.m === -1 ? "-x" : s.m + "x"));
     let bPart = (s.b === 0 ? "" : (s.b > 0 ? "+" + s.b : s.b));
     let displayEq = "y = " + mPart + bPart;
@@ -109,7 +105,7 @@ function renderLinearStage() {
                  <button onclick="checkLinearVars()" class="btn-primary">Next Step</button>`;
     }
     else if (stage === 'slope') {
-        html += `<h4>Part 2: Slope</h4><p>What is the <b>slope (m)</b>?</p>
+        html += `<h4>Part 2: Slope</h4><p>What is the <b>slope (m)</b> for this scenario?</p>
                  <input type="number" id="inp-m" class="math-input"> <button onclick="checkLinearM()" class="btn-primary">Check</button>`;
     }
     else if (stage === 'intercept') {
@@ -122,16 +118,17 @@ function renderLinearStage() {
     }
     else if (stage === 'graph') {
         html += `<h4>Part 5: Graphing</h4><div class="eq-highlight">Equation: ${displayEq}</div>
-                 <p>Plot 3 points. Each grid line = ${linearData.gridConfig.scaleStep} units.</p>
+                 <p>Plot 3 points on the grid. Each line = ${linearData.gridConfig.scaleStep} units.</p>
                  <canvas id="linCanvas" width="400" height="400" style="border:1px solid #000; background:white; cursor:crosshair;"></canvas>`;
     }
     else if (stage === 'solve') {
-        let tx = 5; 
+        let tx = 6; // Predicting for 6 units of x
         linearData.targetSolveX = tx;
         linearData.targetSolveY = s.m * tx + s.b;
         html += `<h4>Part 6: Predict</h4><div class="eq-highlight">Equation: ${displayEq}</div>
-                 <p>Using your equation, what is y when x = ${tx}?</p>
-                 <input type="number" id="inp-solve" class="math-input"> <button onclick="checkLinearD()" class="btn-primary">Submit</button>`;
+                 <p>Based on your equation, what would the <b>${s.labelY}</b> be after <b>${tx} ${s.unitX}</b>?</p>
+                 <input type="number" id="inp-solve" class="math-input"> ${s.unitY}
+                 <button onclick="checkLinearD()" class="btn-primary">Submit</button>`;
     }
 
     html += `<div id="lin-feedback" style="margin-top:15px; min-height:30px; font-weight:bold;"></div></div>`;
@@ -144,7 +141,7 @@ window.checkLinearVars = function() {
     if (document.getElementById('inp-x').value === 'correct' && document.getElementById('inp-y').value === 'correct') {
         linearData.stage = 'slope'; renderLinearStage();
     } else {
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Hint: x is your independent variable (time), y is the result.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Think: Which variable is the "timer" (x) and which is the "total" (y)?</span>`;
     }
 };
 
@@ -178,7 +175,7 @@ window.checkLinearEq = async function() {
         linearData.stage = 'graph'; renderLinearStage();
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Remember: The equation follows y = mx + b where m is slope and b is intercept.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Use your slope (m) and intercept (b) in the form y = mx + b.</span>`;
     }
 };
 
@@ -224,7 +221,6 @@ function setupLinearGraph() {
         const rect = canvas.getBoundingClientRect();
         const gx = Math.round((e.clientX - rect.left) / pixelStep);
         const gy = Math.round((400 - (e.clientY - rect.top)) / pixelStep);
-        
         let valX = gx; 
         let valY = gy * cfg.scaleStep;
 
@@ -234,7 +230,7 @@ function setupLinearGraph() {
             document.getElementById('lin-feedback').innerHTML = "";
         } else {
             linearData.errors++;
-            document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Point (${valX}, ${valY}) is not on the line!</span>`;
+            document.getElementById('lin-feedback').innerHTML = `<span style="color:red">That point is not on the line!</span>`;
         }
     };
 }
@@ -248,7 +244,7 @@ window.checkLinearD = async function() {
         showFinalLinearMessage(inc);
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect. Calculate y using your equation.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect. Use your equation to find the result.</span>`;
     }
 };
 
