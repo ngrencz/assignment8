@@ -83,6 +83,20 @@
 
         .equation-container { display: block; margin-bottom: 15px; text-align: center; }
         .input-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        #q-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+    gap: 20px;
+    width: 100%;
+    text-align: center;
+}
+
+/* Forces SolveX inputs and buttons to stack vertically */
+#q-content div, #q-content input, #q-content button {
+    display: block;
+    margin: 10px auto;
+}
     </style>
 </head>
 <body>
@@ -156,7 +170,8 @@
 <script>
     const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
-
+    window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    window.currentUser = 'test_user';
     if (typeof supabase !== 'undefined') {
         window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
     }
