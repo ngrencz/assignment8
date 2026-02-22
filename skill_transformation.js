@@ -101,6 +101,7 @@ function startNewRound() {
 
         let stepCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 steps
         let tempSkills = [];
+        let allStepsValid = true; // NEW: Tracks validity through every step
 
         for (let i = 0; i < stepCount; i++) {
             let picked = typePool[Math.floor(Math.random() * typePool.length)];
@@ -108,15 +109,39 @@ function startNewRound() {
             applyMoveToPoints(targetShape, move);
             generatedMoves.push(move);
             if (!tempSkills.includes(picked.key)) tempSkills.push(picked.key);
+
+            // Constraint 1: Ensure intermediate steps NEVER leave the visible grid
+            let isStepOnGrid = targetShape.every(p => Math.abs(p[0]) <= 10 && Math.abs(p[1]) <= 10);
+            
+            // Constraint 2: Ensure dilations ONLY create 0.5 increments (never 0.25, 0.75, etc.)
+            let isCleanDecimals = targetShape.every(p => Number.isInteger(p[0] * 2) && Number.isInteger(p[1] * 2));
+
+            if (!isStepOnGrid || !isCleanDecimals) {
+                allStepsValid = false;
+                break; // Invalid path, break out to generate a new sequence
+            }
         }
-        activeSkills = tempSkills;
 
-        let isOnGrid = targetShape.every(p => Math.abs(p[0]) <= 10 && Math.abs(p[1]) <= 10);
-        let isVisible = targetShape.every(p => Math.abs(p[0]) > 0.05 || Math.abs(p[1]) > 0.05);
-        let moved = JSON.stringify(targetShape) !== JSON.stringify(originalStartShape);
+        if (allStepsValid) {
+            activeSkills = tempSkills;
 
-        if (moved && isOnGrid && isVisible) validChallenge = true;
-        else { generatedMoves = []; activeSkills = []; }
+            // Fix for "No Target Outline": Replaces flawed JSON compare to prevent -0 overlap bugs
+            const sorter = (a, b) => (a[0] - b[0]) || (a[1] - b[1]);
+            let sortedStart = [...originalStartShape].sort(sorter);
+            let sortedTarget = [...targetShape].sort(sorter);
+
+            let visuallyIdentical = sortedStart.every((p, i) => 
+                Math.abs(p[0] - sortedTarget[i][0]) < 0.1 && 
+                Math.abs(p[1] - sortedTarget[i][1]) < 0.1
+            );
+
+            let moved = !visuallyIdentical;
+
+            if (moved) validChallenge = true;
+            else { generatedMoves = []; activeSkills = []; }
+        } else {
+            generatedMoves = []; activeSkills = [];
+        }
     }
     renderUI();
 }
