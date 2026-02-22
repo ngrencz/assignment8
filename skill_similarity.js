@@ -1,5 +1,8 @@
 /**
  * skill_similarity.js
+ * - MODIFICATION: Added "Similar Shapes" title.
+ * - MODIFICATION: Swapped input order to [k, x, y].
+ * - MODIFICATION: Updated transition logic to ensure it passes to the next skill.
  * - REVERTED: To 292-line logic to restore robust shape scaling.
  * - MODIFICATION: Tightened bottom UI container (removed excess padding/gaps).
  * - MODIFICATION: Refined Scale Factors to prevent extreme size differences.
@@ -22,7 +25,7 @@ var similarityData = {
 
 window.initSimilarityGame = async function() {
     if (typeof log === 'function') {
-        log("🚀 Similarity: 292-line Logic Restored | UI Tightened");
+        log("🚀 Similarity: Title added, XY Swapped, Next Skill transition updated.");
     }
 
     if (!document.getElementById('q-content')) return;
@@ -83,7 +86,8 @@ function renderSimilarityUI() {
 
     qContent.innerHTML = `
         <div style="max-width:650px; margin:0 auto; animation: fadeIn 0.5s;">
-            <div style="text-align:center; margin-bottom:5px; color:#64748b; font-weight:bold; font-size: 14px;">
+            <h2 style="text-align:center; margin: 0 0 5px 0; color:#1e293b; font-size: 1.25rem;">Similar Shapes</h2>
+            <div style="text-align:center; margin-bottom:10px; color:#64748b; font-weight:bold; font-size: 14px;">
                 Round ${similarityData.round} of ${similarityData.maxRounds} • ${similarityData.shapeName}
             </div>
 
@@ -102,12 +106,12 @@ function renderSimilarityUI() {
                         <input type="number" id="inp-k" class="sim-input" step="0.01" placeholder="Decimal">
                     </div>
                     <div>
-                        <label class="sim-label" style="color:#ef4444;">Solve y (Orig)</label>
-                        <input type="number" id="inp-y" class="sim-input" step="0.01" placeholder="Decimal">
-                    </div>
-                    <div>
                         <label class="sim-label" style="color:#2563eb;">Solve x (Scaled)</label>
                         <input type="number" id="inp-x" class="sim-input" step="0.01" placeholder="Decimal">
+                    </div>
+                    <div>
+                        <label class="sim-label" style="color:#ef4444;">Solve y (Orig)</label>
+                        <input type="number" id="inp-y" class="sim-input" step="0.01" placeholder="Decimal">
                     </div>
                 </div>
 
@@ -162,7 +166,6 @@ function drawSimilarShapes() {
         ctx.fill();
         ctx.stroke();
 
-        // CENTROID CALCULATION: Find the exact center of the shape
         let cx = 0, cy = 0;
         pts.forEach(p => { cx += p.x; cy += p.y; });
         cx = (cx / pts.length) + offsetX;
@@ -176,7 +179,6 @@ function drawSimilarShapes() {
             let midX = (p1.x + p2.x) / 2 + offsetX;
             let midY = (p1.y + p2.y) / 2 + offsetY;
 
-            // CENTROID MATH: Push label directly away from the center
             let vx = midX - cx;
             let vy = midY - cy;
             let vLen = Math.sqrt(vx * vx + vy * vy);
@@ -246,7 +248,7 @@ window.checkSimilarityAnswer = async function() {
         similarityData.round++;
         
         if (similarityData.round > similarityData.maxRounds) {
-            setTimeout(finishSimilarityGame, 1000);
+            setTimeout(finishSimilarityGame, 800);
         } else {
             setTimeout(() => { 
                 generateSimilarityProblem(); 
@@ -258,8 +260,8 @@ window.checkSimilarityAnswer = async function() {
         feedback.style.color = "#991b1b";
         
         if (!kOk) feedback.innerText = "❌ Check your Scale Factor.";
-        else if (!yOk) feedback.innerText = "❌ Check value for y.";
-        else feedback.innerText = "❌ Check value for x.";
+        else if (!xOk) feedback.innerText = "❌ Check value for x.";
+        else feedback.innerText = "❌ Check value for y.";
     }
 };
 
@@ -281,16 +283,22 @@ async function updateSimilarityScore(amount) {
 }
 
 function finishSimilarityGame() {
+    window.isCurrentQActive = false; // This is the secret sauce!
     const qContent = document.getElementById('q-content');
-    qContent.innerHTML = `
-        <div style="text-align:center; padding: 40px;">
-            <h2>Module Complete!</h2>
-            <p>Mastery achieved.</p>
-        </div>
-    `;
+    
+    if (qContent) {
+        qContent.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
+                <div style="font-size:60px;">🏆</div>
+                <h2 style="color:#1e293b; margin:10px 0;">Module Complete!</h2>
+                <p style="color:#64748b; font-size:16px;">Mastery achieved. Loading next skill...</p>
+            </div>
+        `;
+    }
+    
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
-    }, 2000);
+    }, 2500); // Matched the 2.5 second delay from your other script
 }
 
 const simStyle = document.createElement('style');
