@@ -9,6 +9,7 @@
  * - MODIFICATION: Labels forced outside via vector normal.
  * - BUGFIX: Ensured corresponding side for 'y' always renders on the scaled shape.
  * - BUGFIX 2: Centroid-based normal vectors to force all labels outside the shapes.
+ * - BUGFIX 3: Fixed vertex mapping so visual proportions accurately reflect the side values.
  */
 
 var similarityData = {
@@ -146,11 +147,15 @@ function drawSimilarShapes() {
     function getPolygon(type, sides, scale) {
         let pts = [];
         if (type === 'tri') {
-            pts = [{x:0, y:sides[1]}, {x:sides[0], y:sides[1]}, {x:0, y:0}];
+            // Fix: Maps Side 0 to bottom leg, Side 1 to left leg, Side 2 to hypotenuse
+            pts = [{x:sides[0], y:sides[1]}, {x:0, y:sides[1]}, {x:0, y:0}];
         } else if (type === 'rect') {
-            pts = [{x:0, y:0}, {x:sides[1], y:0}, {x:sides[1], y:sides[0]}, {x:0, y:sides[0]}];
+            // Fix: Maps Side 0 and 2 to width (x-axis), Side 1 and 3 to height (y-axis)
+            pts = [{x:0, y:0}, {x:sides[0], y:0}, {x:sides[0], y:sides[1]}, {x:0, y:sides[1]}];
         } else if (type === 'trap') {
-            pts = [{x:2, y:0}, {x:sides[0]+2, y:0}, {x:sides[2], y:sides[1]}, {x:0, y:sides[1]}];
+            // Fix: Makes it an isosceles trapezoid using accurate side differences
+            let dx = Math.abs(sides[2] - sides[0]) / 2;
+            pts = [{x:dx, y:0}, {x:sides[0]+dx, y:0}, {x:sides[2], y:sides[1]}, {x:0, y:sides[1]}];
         }
         return pts.map(p => ({x: p.x * scale, y: p.y * scale}));
     }
@@ -172,7 +177,7 @@ function drawSimilarShapes() {
         cy = (cy / pts.length) + offsetY;
 
         sides.forEach((val, i) => {
-            if (i > 2 && d.shapeType !== 'rect') return; 
+            if (i >= pts.length) return; 
 
             let p1 = pts[i];
             let p2 = pts[(i + 1) % pts.length];
