@@ -1,16 +1,20 @@
 /**
- * skill_linear.js - v2.5.1
+ * skill_linear.js - v2.5.2
  * STABILITY PATCH: Deterministic scenario generation to prevent infinite loops.
  * FEATURES: Contextual hints for m and b, full DB sync, and Hub hand-off.
+ * BUGFIX: Math logic fixed to ensure points always land exactly on clickable grid intersections.
+ * MODIFICATION: Grid line visibility increased.
+ * MODIFICATION: Title updated to "Linear Equations".
+ * MODIFICATION: Transition logic updated for seamless next-skill handoff.
  */
 
-console.log("%c [LinearMath] - Stability Build 2.5.1 ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
+console.log("%c [LinearMath] - Stability Build 2.5.2 ", "background: #1e293b; color: #3b82f6; font-weight: bold;");
 
 var linearData = {
-    version: "2.5.1",
+    version: "2.5.2",
     scenario: {},      
     stage: 'variables', 
-    errors: 0,         
+    errors: 0,          
     pointsClicked: [], 
     gridConfig: { maxVal: 20, scaleStep: 2 }, 
     targetSolveX: 0,
@@ -50,6 +54,15 @@ window.initLinearMastery = async function() {
 
     generateLinearScenario();
     renderLinearStage();
+
+    // Try to overwrite the external "System Analysis" title if it exists on the host page
+    setTimeout(() => {
+        document.querySelectorAll('h1, h2, h3, h4, .title, .header-title').forEach(el => {
+            if (el.textContent && el.textContent.includes('System Analysis')) {
+                el.textContent = 'Linear Equations';
+            }
+        });
+    }, 100);
 };
 
 function generateLinearScenario() {
@@ -67,17 +80,17 @@ function generateLinearScenario() {
     
     let b, m, tx = 6;
 
-    // DETERMINISTIC MATH (Prevents Freezing)
+    // DETERMINISTIC MATH (Fixed to guarantee perfectly clickable grid intersections)
     if (t.type === 'growth') {
         b = Math.floor(Math.random() * 4) * scale; 
-        let maxM = Math.floor((maxVal - b) / tx);
-        m = Math.max(1, Math.floor(Math.random() * maxM) + 1);
-        if (m > scale && m % scale !== 0) m = Math.floor(m / scale) * scale;
+        let maxM_scaled = Math.floor((maxVal - b) / (tx * scale));
+        if (maxM_scaled < 1) maxM_scaled = 1; // Guarantee at least a slope of 1*scale
+        m = (Math.floor(Math.random() * maxM_scaled) + 1) * scale;
     } else {
         b = maxVal - (Math.floor(Math.random() * 2) * scale);
-        let maxM = Math.floor(b / tx);
-        m = -Math.max(1, Math.floor(Math.random() * maxM) + 1);
-        if (Math.abs(m) > scale && Math.abs(m) % scale !== 0) m = -Math.floor(Math.abs(m) / scale) * scale;
+        let maxM_scaled = Math.floor(b / (tx * scale));
+        if (maxM_scaled < 1) maxM_scaled = 1;
+        m = -(Math.floor(Math.random() * maxM_scaled) + 1) * scale;
     }
 
     linearData.gridConfig.scaleStep = scale;
@@ -99,7 +112,10 @@ function renderLinearStage() {
     let bPart = (s.b === 0 ? "" : (s.b > 0 ? "+" + s.b : s.b));
     let displayEq = "y = " + mPart + bPart;
 
-    let html = `<div style="max-width:600px; margin:0 auto;">`;
+    let html = `<div style="max-width:600px; margin:0 auto; animation: fadeIn 0.5s;">`;
+    
+    // Injected title explicitly inside our workspace
+    html += `<h2 style="text-align:center; margin: 0 0 15px 0; color:#1e293b; font-size: 1.5rem;">Linear Equations</h2>`;
     html += `<div class="scenario-box"><h3>${s.fullText}</h3></div>`;
 
     if (stage === 'variables') {
@@ -145,7 +161,7 @@ window.checkLinearVars = function() {
     if (document.getElementById('inp-x').value === 'correct' && document.getElementById('inp-y').value === 'correct') {
         linearData.stage = 'slope'; renderLinearStage();
     } else {
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Not quite.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:#ef4444">Not quite.</span>`;
         hintBox.style.display = "block";
         hintBox.innerHTML = `<strong>Hint:</strong> <b>x</b> is your independent variable (time), and <b>y</b> is the result or total.`;
     }
@@ -159,7 +175,7 @@ window.checkLinearM = function() {
         linearData.stage = 'intercept'; renderLinearStage();
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:#ef4444">Incorrect.</span>`;
         hintBox.style.display = "block";
         let dir = s.type === 'decay' ? "decreasing (negative)" : "increasing (positive)";
         hintBox.innerHTML = `<strong>Hint:</strong> Slope is the rate of change. How much is the ${s.labelY} changing every 1 ${s.unitX}? Since it is ${dir}, check your sign!`;
@@ -173,7 +189,7 @@ window.checkLinearB = function() {
         linearData.stage = 'eq'; renderLinearStage();
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Incorrect.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:#ef4444">Incorrect.</span>`;
         hintBox.style.display = "block";
         hintBox.innerHTML = `<strong>Hint:</strong> The y-intercept (b) is the <b>starting value</b>. What was the ${linearData.scenario.labelY} at 0 ${linearData.scenario.unitX}?`;
     }
@@ -192,7 +208,7 @@ window.checkLinearEq = async function() {
         linearData.stage = 'graph'; renderLinearStage();
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Check your format.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:#ef4444">Check your format.</span>`;
         hintBox.style.display = "block";
         hintBox.innerHTML = `<strong>Hint:</strong> Use <b>y = mx + b</b>. You found m = ${m} and b = ${b}.`;
     }
@@ -206,7 +222,10 @@ function setupLinearGraph() {
 
     const draw = () => {
         ctx.clearRect(0,0,400,400);
-        ctx.strokeStyle = "#e2e8f0";
+        
+        // Darkened the grid line color to make it much easier to see!
+        ctx.strokeStyle = "#94a3b8"; 
+        
         for(let i=0; i<=10; i++) {
             ctx.beginPath(); ctx.moveTo(i*pixelStep,0); ctx.lineTo(i*pixelStep,400); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(0,i*pixelStep); ctx.lineTo(400,i*pixelStep); ctx.stroke();
@@ -246,7 +265,7 @@ function setupLinearGraph() {
             draw();
         } else {
             linearData.errors++;
-            document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Point (${gx}, ${valY}) is not on the line!</span>`;
+            document.getElementById('lin-feedback').innerHTML = `<span style="color:#ef4444">Point (${gx}, ${valY}) is not on the line!</span>`;
         }
     };
 }
@@ -261,7 +280,7 @@ window.checkLinearD = async function() {
         showFinalLinearMessage(inc);
     } else {
         linearData.errors++;
-        document.getElementById('lin-feedback').innerHTML = `<span style="color:red">Try again.</span>`;
+        document.getElementById('lin-feedback').innerHTML = `<span style="color:#ef4444">Try again.</span>`;
         hintBox.style.display = "block";
         hintBox.innerHTML = `<strong>Hint:</strong> Use your equation! Plug <b>${linearData.targetSolveX}</b> into <b>x</b>: y = ${linearData.scenario.m}(${linearData.targetSolveX}) + ${linearData.scenario.b}`;
     }
@@ -278,14 +297,27 @@ async function updateSkill(col, amt) {
 }
 
 function showFinalLinearMessage(inc) {
-    const color = inc > 0 ? "green" : (inc < 0 ? "red" : "gray");
+    window.isCurrentQActive = false; // Reset the flag so the parent app knows it's clear to move on!
+    const color = inc > 0 ? "#166534" : (inc < 0 ? "#991b1b" : "#475569");
+    
     document.getElementById('q-content').innerHTML = `
-        <div style="text-align:center; padding:40px;">
-            <h2>Challenge Complete</h2>
-            <p style="font-size:24px; color:${color}; font-weight:bold;">${inc > 0 ? '+2 Mastery Points' : 'Completed'}</p>
-            <p style="color:#64748b; margin-top:15px;"><em>Loading next question...</em></p>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
+            <div style="font-size:60px;">🏆</div>
+            <h2 style="color:#1e293b; margin:10px 0;">Module Complete!</h2>
+            <p style="font-size:20px; color:${color}; font-weight:bold;">${inc > 0 ? '+2 Mastery Points' : 'Completed'}</p>
+            <p style="color:#64748b; margin-top:15px;"><em>Loading next skill...</em></p>
         </div>`;
-    setTimeout(() => { if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); }, 1500);
+        
+    // Broadened check to ensure the next module loads smoothly
+    setTimeout(() => { 
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion(); 
+        } else if (typeof window.nextSkill === 'function') {
+            window.nextSkill();
+        } else if (typeof window.loadNextModule === 'function') {
+            window.loadNextModule();
+        }
+    }, 2500); 
 }
 
 // Styles
@@ -298,6 +330,7 @@ if (!document.getElementById(styleId)) {
         .eq-highlight { background:#eff6ff; padding:8px; border-radius:4px; margin-bottom:10px; font-weight:bold; color:#1d4ed8; border:1px solid #bfdbfe; }
         .btn-primary { background:#1e293b; color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold; }
         .math-input { font-size:18px; width:80px; padding:4px; }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
     `;
     document.head.appendChild(style);
 }
