@@ -343,7 +343,7 @@ function drawComplex() {
     };
 }
 
-window.checkComplexWin = async function() {
+window.checkComplexWin = function() { // FIX: Removed 'async'
     const rawA = document.getElementById('ans-area-val').value.replace(/,/g, '');
     const rawP = document.getElementById('ans-perim-val').value.replace(/,/g, '');
     
@@ -369,7 +369,12 @@ window.checkComplexWin = async function() {
         window.userMastery.ComplexShapes = newVal;
         if (window.supabaseClient && window.currentUser) {
             const h = sessionStorage.getItem('target_hour') || "00";
-            await window.supabaseClient.from('assignment').update({ ComplexShapes: newVal }).eq('userName', window.currentUser).eq('hour', h);
+            // FIX: Removed 'await' so UI instantly proceeds; added .catch() to log errors safely
+            window.supabaseClient.from('assignment')
+                .update({ ComplexShapes: newVal })
+                .eq('userName', window.currentUser)
+                .eq('hour', h)
+                .catch(e => console.error("Score update failed:", e));
         }
         showFlash("✅ Correct! Mastered.", "success");
         setTimeout(() => finishComplex(), 1500);
@@ -381,23 +386,27 @@ window.checkComplexWin = async function() {
     }
 };
 
-async function finishComplex() {
-    window.isCurrentQActive = false; 
-    const qContent = document.getElementById('q-content');
-    
-    // UI Only - Scoring happened in checkWin
-    qContent.innerHTML = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
-            <div style="font-size:60px;">🏆</div>
-            <h2 style="color:#1e293b; margin:10px 0;">Great Job!</h2>
-            <p style="color:#64748b; font-size:16px;">Skills updated.</p>
-        </div>
-    `;
+function finishComplex() { // Removed the unnecessary 'async'
+        window.isCurrentQActive = false; 
+        const qContent = document.getElementById('q-content');
+        
+        // UI Only - Scoring happened in checkWin
+        qContent.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
+                <div style="font-size:60px;">🏆</div>
+                <h2 style="color:#1e293b; margin:10px 0;">Great Job!</h2>
+                <p style="color:#64748b; font-size:16px;">Skills updated.</p>
+            </div>
+        `;
 
-    setTimeout(() => { 
-        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
-    }, 2500);
-}
+        setTimeout(() => { 
+            if (typeof window.loadNextQuestion === 'function') {
+                window.loadNextQuestion(); 
+            } else {
+                location.reload(); // Added standard fallback
+            }
+        }, 2500);
+    }
 
 function showFlash(msg, type) {
     const o = document.getElementById('flash-overlay');
