@@ -155,10 +155,17 @@ function renderDiamondUI() {
 
     const renderField = (key, val) => {
         if (diamondData.missing.includes(key)) {
+            // Widened to 90px to fit negatives and decimals
             return `<input type="text" id="ans-${key}" placeholder="?" autocomplete="off" 
-                    style="width:60px; height:40px; text-align:center; font-size:18px; border:2px solid #3b82f6; border-radius:8px; outline:none; background:white;">`;
+                    style="width:90px; height:40px; text-align:center; font-size:18px; border:2px solid #3b82f6; border-radius:8px; outline:none; background:white;">`;
         }
+        
         let displayVal = Number.isInteger(val) ? val : parseFloat(val.toFixed(2));
+        
+        // This ensures generated fractions aren't forced into decimals on the screen
+        if (key === 'A' && diamondData.displayA) displayVal = diamondData.displayA;
+        if (key === 'B' && diamondData.displayB) displayVal = diamondData.displayB;
+        
         return `<span style="font-size:26px; font-weight:bold; color:#1e293b;">${displayVal}</span>`;
     };
 
@@ -174,19 +181,19 @@ function renderDiamondUI() {
                     <line x1="85" y1="215" x2="215" y2="85" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
                 </svg>
 
-                <div style="position:absolute; top:85px; left:150px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
+                <div style="position:absolute; top:85px; left:150px; transform:translate(-50%, -50%); width:100px; text-align:center; z-index:10;">
                     ${renderField('top', diamondData.top)}
                 </div>
 
-                <div style="position:absolute; top:215px; left:150px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
+                <div style="position:absolute; top:215px; left:150px; transform:translate(-50%, -50%); width:100px; text-align:center; z-index:10;">
                     ${renderField('bottom', diamondData.bottom)}
                 </div>
 
-                <div style="position:absolute; top:150px; left:85px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
+                <div style="position:absolute; top:150px; left:85px; transform:translate(-50%, -50%); width:100px; text-align:center; z-index:10;">
                     ${renderField('A', diamondData.A)}
                 </div>
 
-                <div style="position:absolute; top:150px; left:215px; transform:translate(-50%, -50%); width:80px; text-align:center; z-index:10;">
+                <div style="position:absolute; top:150px; left:215px; transform:translate(-50%, -50%); width:100px; text-align:center; z-index:10;">
                     ${renderField('B', diamondData.B)}
                 </div>
             </div>
@@ -213,7 +220,6 @@ function renderDiamondUI() {
         <div id="flash-overlay" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; pointer-events:none; text-align:center; z-index:100;"></div>
     `;
 }
-
 function parseMathInput(str) {
     if (!str) return NaN;
     str = str.trim();
@@ -301,18 +307,20 @@ window.checkDiamondWin = async function() {
 };
 
 function finishDiamondGame() {
-    window.isCurrentQActive = false;
-    document.getElementById('q-content').innerHTML = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; text-align:center;">
-            <div style="font-size:60px; margin-bottom:10px;">💎</div>
-            <h2 style="color:#1e293b; margin-bottom:5px;">Diamond Set Complete!</h2>
-            <p style="color:#64748b;">Great work.</p>
-            <p style="font-size: 14px; color: #10b981; margin-top: 10px;">Loading next activity...</p>
+    window.isCurrentQActive = false; 
+    const qContent = document.getElementById('q-content');
+    
+    qContent.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
+            <div style="font-size:60px;">💎</div>
+            <h2 style="color:#1e293b; margin:10px 0;">Diamond Set Complete!</h2>
+            <p style="color:#64748b; font-size:16px;">Skills updated.</p>
         </div>
     `;
-    setTimeout(() => {
-        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion();
-    }, 2000);
+
+    setTimeout(() => { 
+        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
+    }, 2500);
 }
 
 function showFlash(msg, type) {
