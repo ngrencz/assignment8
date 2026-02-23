@@ -182,8 +182,9 @@ async function syncTimerToDB() {
 // --- Adaptive Routing & DB Check/Create Logic ---
 async function loadNextQuestion() {
     if (window.isCurrentQActive) return;
-    window.isCurrentQActive = true; // Important to lock it immediately
+    window.isCurrentQActive = true; // Lock it immediately
     window.currentQSeconds = 0; 
+    
     const feedback = document.getElementById('feedback-box');
     if(feedback) {
         feedback.style.display = 'none';
@@ -192,9 +193,10 @@ async function loadNextQuestion() {
     
     window.scrollTo(0,0);
 
-    // Get the exact hour string from session storage
     const currentHour = sessionStorage.getItem('target_hour') || "00";
+    let userData = null; // We will store the DB result here to use throughout
 
+    // --- Single Database Fetch ---
     try {
         let { data, error } = await window.supabaseClient
             .from('assignment')
@@ -205,7 +207,7 @@ async function loadNextQuestion() {
 
         // Create record if missing
         if (!data && !error) {
-            console.warn(`User ${window.currentUser} not found for Hour ${currentHour}. Creating record...`);
+            console.warn(`User ${window.currentUser} not found. Creating record...`);
             await window.supabaseClient
                 .from('assignment')
                 .insert([{ 
@@ -226,6 +228,7 @@ async function loadNextQuestion() {
         }
 
         if (data) {
+            userData = data; // Save for routing logic below
             const timerCol = `${window.targetLesson}Timer`;
             const savedTime = data[timerCol] || 0;
             window.totalSecondsWorked = Math.max(0, savedTime - 30); // 30s penalty on reload
@@ -238,10 +241,10 @@ async function loadNextQuestion() {
 
     } catch (err) {
         console.error("DB Initialization Error:", err);
+        // We DON'T return here. We let the code continue so the game doesn't freeze.
     }
 
     // --- Skill Mapping Logic ---
-    // If you remove a script file, just remove it from here too
     const skillMap = [
         { id: 'C6Transformation', fn: typeof initTransformationGame !== 'undefined' ? initTransformationGame : null },
         { id: 'LinearSystem', fn: typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null },
@@ -260,7 +263,6 @@ async function loadNextQuestion() {
         // FORCE FIRST QUESTION: Transformation
         if (!window.hasDonePrimaryLesson) {
             window.hasDonePrimaryLesson = true;
-            // Check if Transformation is loaded before forcing it
             const transformSkill = skillMap.find(s => s.id === 'C6Transformation');
             if (transformSkill) {
                 window.skillsCompletedThisSession.push('C6Transformation');
@@ -268,39 +270,25 @@ async function loadNextQuestion() {
             }
         }
 
-        // Fetch user progress to determine weakest skill
-        const { data: skillData } = await window.supabaseClient
-            .from('assignment')
-            .select('*')
-            .eq('userName', window.currentUser)
-            .eq('hour', currentHour)
-            .maybeSingle(); 
-
-        // Filter out skills done this session so we rotate
         let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
         
-        // If we've done them all once, reset the rotation
         if (availableSkills.length === 0) {
             window.skillsCompletedThisSession = [];
             availableSkills = skillMap;
         }
 
-        // Sort by Mastery Score (Lowest first)
-        // If the database column (e.g., 'DiamondMath') doesn't exist yet, it treats it as 0
+        // --- Optimized Routing ---
+        // Uses the userData we already fetched at the top!
         availableSkills.sort((a, b) => {
-            const scoreA = skillData ? (skillData[a.id] || 0) : 0;
-            const scoreB = skillData ? (skillData[b.id] || 0) : 0;
+            const scoreA = userData ? (userData[a.id] || 0) : 0;
+            const scoreB = userData ? (userData[b.id] || 0) : 0;
             return scoreA - scoreB;
         });
 
-        // Pick the lowest mastery skill
         const nextSkill = availableSkills[0];
-        
-        // Log it so we don't repeat immediately
         window.skillsCompletedThisSession.push(nextSkill.id);
         
-        // Run it
-        nextSkill.fn();
+        nextSkill.fn(); // Run it safely
 
     } else {
         document.getElementById('q-title').innerText = "Under Construction";
