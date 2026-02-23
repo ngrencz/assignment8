@@ -1,3 +1,10 @@
+/**
+ * skill_linearsystem.js
+ * - Analyzes systems of linear equations
+ * - Handles One, None, and Infinite solutions
+ * - Includes graphing verification
+ */
+
 var linearErrorCount = 0;
 var currentStep = 1; 
 var currentSystem = {};
@@ -132,7 +139,6 @@ function renderLinearUI() {
         </div>`;
 
     if (currentStep < 4) {
-        // ... (Same Step 1-3 Logic) ...
         let questionText = "";
         let pointToTest = (currentStep === 1) ? step1Point : step2Point;
         
@@ -162,24 +168,36 @@ function renderLinearUI() {
                  </div>`;
     }
 
+    // Add the flash overlay to the UI
+    html += `<div id="flash-overlay" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; pointer-events:none; text-align:center; z-index:100;"></div>`;
+
     qContent.innerHTML = html;
     if (currentStep === 4) initCanvas();
 }
 
-// ... (handleStep and handleCount are unchanged) ...
 window.handleStep = function(userSaidYes) {
     const p = (currentStep === 1) ? step1Point : step2Point;
     const val1 = (currentSystem.m1 * p.x) + currentSystem.b1;
     const val2 = (currentSystem.m2 * p.x) + currentSystem.b2;
     const works = (Math.abs(p.y - val1) < 0.001) && (Math.abs(p.y - val2) < 0.001);
 
-    if (userSaidYes === works) { currentStep++; renderLinearUI(); } 
-    else { linearErrorCount++; alert("Incorrect."); }
+    if (userSaidYes === works) { 
+        currentStep++; 
+        renderLinearUI(); 
+    } else { 
+        linearErrorCount++; 
+        showFlash("Incorrect.", "error"); 
+    }
 };
 
 window.handleCount = function(val) {
-    if (val === currentSystem.correctCount) { currentStep = 4; renderLinearUI(); }
-    else { linearErrorCount++; alert("Check the slopes!"); }
+    if (val === currentSystem.correctCount) { 
+        currentStep = 4; 
+        renderLinearUI(); 
+    } else { 
+        linearErrorCount++; 
+        showFlash("Check the slopes!", "error"); 
+    }
 };
 
 function initCanvas() {
@@ -269,7 +287,7 @@ function initCanvas() {
                 renderLinearUI(); // Updates highlight to Eq 2
             } else {
                 linearErrorCount++; 
-                alert("Incorrect. That point is not on Eq 1."); 
+                showFlash("Incorrect. Not on Eq 1.", "error"); 
                 userPoints = []; // Reset Line 1
                 drawGrid();
             }
@@ -278,7 +296,7 @@ function initCanvas() {
                 finishGame(); 
             } else {
                 linearErrorCount++; 
-                alert("Incorrect. That point is not on Eq 2."); 
+                showFlash("Incorrect. Not on Eq 2.", "error"); 
                 userPoints = [userPoints[0], userPoints[1]]; // Keep Line 1, Reset Line 2
                 drawGrid();
             }
@@ -340,7 +358,7 @@ async function finishGame() {
                 .from('assignment')
                 .select('LinearSystem')
                 .eq('userName', window.currentUser)
-                .eq('hour', hour) // Added missing hour check
+                .eq('hour', hour)
                 .maybeSingle();
 
             let currentScore = data ? (data.LinearSystem || 0) : 0;
@@ -350,10 +368,19 @@ async function finishGame() {
                 .from('assignment')
                 .update({ LinearSystem: newScore })
                 .eq('userName', window.currentUser)
-                .eq('hour', hour); // Added missing hour check
+                .eq('hour', hour);
                 
         } catch(e) {
             console.error("Score update failed:", e);
         }
     }
+}
+
+function showFlash(msg, type) {
+    const overlay = document.getElementById('flash-overlay');
+    if (!overlay) return;
+    overlay.innerText = msg;
+    overlay.style.display = 'block';
+    overlay.style.backgroundColor = type === 'success' ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)';
+    setTimeout(() => { overlay.style.display = 'none'; }, 1500);
 }
