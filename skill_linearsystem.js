@@ -307,28 +307,40 @@ async function finishGame() {
     // 1. STOP the timer immediately
     window.isCurrentQActive = false;
 
-    // 2. Clear the UI so they know it's done (Consistent with SolveX)
+    // 2. Clear the UI so they know it's done
     document.getElementById('q-content').innerHTML = `
-        <div style="text-align:center; padding:50px; animation: fadeIn 0.5s;">
-            <div style="font-size: 50px; margin-bottom: 20px;">📈</div>
-            <h2 style="color: var(--black);">System Analyzed!</h2>
-            <p style="color: var(--gray-text);">Graphing and Analysis Complete.</p>
-            <p style="font-size: 0.9rem; color: var(--kelly-green); margin-top: 10px;">Loading next activity...</p>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s; text-align:center;">
+            <div style="font-size:60px; margin-bottom:10px;">📈</div>
+            <h2 style="color:#1e293b; margin-bottom:5px;">System Analyzed!</h2>
+            <p style="color:#64748b;">Graphing and Analysis Complete.</p>
+            <p style="font-size: 14px; color: #10b981; margin-top: 10px;">Loading next activity...</p>
         </div>
     `;
 
-    // 3. Calculate Score Adjustment
+    // 3. Queue the Hub handoff IMMEDIATELY so it isn't blocked by database lag
+    setTimeout(() => { 
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion(); 
+        } else {
+            location.reload();
+        }
+    }, 2000); 
+
+    // 4. Calculate Score Adjustment
     let adjustment = 0;
     if (linearErrorCount === 0) adjustment = 1;
     else if (linearErrorCount >= 2) adjustment = -1;
 
-    // 4. Update Database
+    // 5. Update Database (Now runs safely in the background)
     if (window.supabaseClient && window.currentUser && adjustment !== 0) {
         try {
+            const hour = sessionStorage.getItem('target_hour') || "00";
+
             const { data } = await window.supabaseClient
                 .from('assignment')
                 .select('LinearSystem')
                 .eq('userName', window.currentUser)
+                .eq('hour', hour) // Added missing hour check
                 .maybeSingle();
 
             let currentScore = data ? (data.LinearSystem || 0) : 0;
@@ -337,19 +349,11 @@ async function finishGame() {
             await window.supabaseClient
                 .from('assignment')
                 .update({ LinearSystem: newScore })
-                .eq('userName', window.currentUser);
+                .eq('userName', window.currentUser)
+                .eq('hour', hour); // Added missing hour check
                 
         } catch(e) {
             console.error("Score update failed:", e);
         }
     }
-
-    // 5. Hand over to Hub
-    setTimeout(() => { 
-        if (typeof window.loadNextQuestion === 'function') {
-            window.loadNextQuestion(); 
-        } else {
-            location.reload();
-        }
-    }, 2000); // Give them 2 seconds to see the success message
 }
