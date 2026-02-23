@@ -256,7 +256,7 @@ window.checkFigureAns = async function() {
     }
 };
 
-async function finishFigureGame() {
+function finishFigureGame() { // Removed 'async'
     window.isCurrentQActive = false;
     document.getElementById('q-content').innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; text-align:center;">
@@ -276,19 +276,21 @@ async function finishFigureGame() {
     window.userMastery.FigureGrowth = newScore;
 
     if (window.supabaseClient && window.currentUser) {
-        try {
-            const currentHour = sessionStorage.getItem('target_hour') || "00";
-            await window.supabaseClient
-                .from('assignment')
-                .update({ FigureGrowth: newScore })
-                .eq('userName', window.currentUser)
-                .eq('hour', currentHour);
-        } catch(e) { console.error("Database sync failed:", e); }
+        const currentHour = sessionStorage.getItem('target_hour') || "00";
+        // Removed 'await' and replaced try/catch with .catch()
+        window.supabaseClient
+            .from('assignment')
+            .update({ FigureGrowth: newScore })
+            .eq('userName', window.currentUser)
+            .eq('hour', currentHour)
+            .catch(e => console.error("Database sync failed:", e)); 
     }
 
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
+        } else {
+            location.reload(); // Added standard fallback
         }
     }, 2000);
 }
