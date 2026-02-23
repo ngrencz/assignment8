@@ -221,10 +221,11 @@ function finishSolveXGame() {
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
+        } else {
+            location.reload(); // Added standard fallback
         }
     }, 2000);
 }
-
 // Optimized Styles
 const solveStyle = document.createElement('style');
 solveStyle.innerHTML = `
