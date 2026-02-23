@@ -302,8 +302,12 @@ function finishSimilarityGame() {
     }
     
     setTimeout(() => { 
-        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
-    }, 2500); // Matched the 2.5 second delay from your other script
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion(); 
+        } else {
+            location.reload(); // Added standard fallback
+        }
+    }, 2500); 
 }
 
 const simStyle = document.createElement('style');
