@@ -245,7 +245,7 @@
         }
     };
 
-    async function finishBoxPlotSession() {
+   function finishBoxPlotSession() {
         window.isCurrentQActive = false;
         const feedback = document.getElementById('feedback-box');
         if(feedback) feedback.innerText = "✅ Box Plot Set Complete!";
@@ -260,17 +260,24 @@
             const currentHour = sessionStorage.getItem('target_hour') || "00";
 
             if (window.supabaseClient && window.currentUser) {
-                await window.supabaseClient
+                // Fire and forget: no 'await' here!
+                window.supabaseClient
                     .from('assignment')
                     .update({ 'BoxPlot': newMain })
                     .eq('userName', window.currentUser)
-                    .eq('hour', currentHour);
+                    .eq('hour', currentHour)
+                    .catch(e => console.error("Score update failed:", e));
             }
             if (window.userMastery) window.userMastery['BoxPlot'] = newMain;
         }
 
+        // This will now reliably fire after exactly 1.5 seconds
         setTimeout(() => {
-            if(typeof window.loadNextQuestion === 'function') window.loadNextQuestion();
+            if (typeof window.loadNextQuestion === 'function') {
+                window.loadNextQuestion();
+            } else {
+                location.reload();
+            }
         }, 1500);
     }
 })();
