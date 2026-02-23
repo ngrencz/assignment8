@@ -318,12 +318,8 @@ function showFinalLinearMessage(inc) {
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion(); 
-        } else if (typeof window.nextSkill === 'function') {
-            window.nextSkill();
-        } else if (typeof window.loadNextModule === 'function') {
-            window.loadNextModule();
         } else {
-            // FIX: Added your standard location.reload fallback
+            // Your standard fallback
             location.reload(); 
         }
     }, 2500); 
