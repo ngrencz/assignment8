@@ -533,7 +533,7 @@ window.checkWin = async function() {
     }
 };
 
-async function finishGame() {
+function finishGame() { // Removed unnecessary 'async'
     window.isCurrentQActive = false; 
     const qContent = document.getElementById('q-content');
     
@@ -547,6 +547,10 @@ async function finishGame() {
     `;
 
     setTimeout(() => { 
-        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion(); 
+        } else {
+            location.reload(); // Added standard fallback
+        }
     }, 2500);
 }
