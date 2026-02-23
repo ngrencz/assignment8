@@ -93,9 +93,9 @@ function generateComplexProblem() {
             let r = baseLen / 2;
             comp.r = r;
             ext = r;
-            comp.area = (3.14 * Math.pow(r, 2)) / 2;
-            comp.outerP = 3.14 * r;
-            comp.hintA = `Semicircle: (3.14 × r²) / 2`;
+            comp.area = (Math.PI * Math.pow(r, 2)) / 2;
+            comp.outerP = Math.PI * r;
+            comp.hintA = `Semicircle: (π × r²) / 2`;
             
         } else if (type === 'trapezoid') {
             let topB = Math.floor(baseLen * 0.5); 
@@ -357,8 +357,12 @@ window.checkComplexWin = async function() {
         return;
     }
 
-    const areaOK = (Math.abs(aVal - complexData.totalArea) < 3.0) && (aUnit === 'square');
-    const perimOK = (Math.abs(pVal - complexData.totalPerimeter) < 3.0) && (pUnit === 'linear');
+    // Dynamic tolerance: 1% margin of error covers both 3.14 and Math.PI rounding differences
+    const areaTol = Math.max(5.0, complexData.totalArea * 0.01);
+    const perimTol = Math.max(3.0, complexData.totalPerimeter * 0.01);
+
+    const areaOK = (Math.abs(aVal - complexData.totalArea) <= areaTol) && (aUnit === 'square');
+    const perimOK = (Math.abs(pVal - complexData.totalPerimeter) <= perimTol) && (pUnit === 'linear');
 
     if (areaOK && perimOK) {
         let newVal = Math.min(10, (window.userMastery.ComplexShapes || 0) + 1);
@@ -377,14 +381,22 @@ window.checkComplexWin = async function() {
     }
 };
 
-function finishComplex() {
-    document.getElementById('q-content').innerHTML = `
-        <div style="text-align:center; padding:50px; animation: fadeIn 0.5s;">
-            <div style="font-size:50px; margin-bottom:10px;">🏆</div>
-            <h2 style="color:#1e293b;">Composite Shape Mastered!</h2>
+async function finishComplex() {
+    window.isCurrentQActive = false; 
+    const qContent = document.getElementById('q-content');
+    
+    // UI Only - Scoring happened in checkWin
+    qContent.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
+            <div style="font-size:60px;">🏆</div>
+            <h2 style="color:#1e293b; margin:10px 0;">Great Job!</h2>
+            <p style="color:#64748b; font-size:16px;">Skills updated.</p>
         </div>
     `;
-    setTimeout(() => { if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); }, 2000);
+
+    setTimeout(() => { 
+        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
+    }, 2500);
 }
 
 function showFlash(msg, type) {
