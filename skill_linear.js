@@ -195,7 +195,8 @@ window.checkLinearB = function() {
     }
 };
 
-window.checkLinearEq = async function() {
+// FIX: Removed 'async' and 'await' so DB lag doesn't block the UI transition
+window.checkLinearEq = function() {
     let userVal = document.getElementById('inp-eq').value.replace(/\s/g, '').toLowerCase();
     const { m, b } = linearData.scenario;
     const hintBox = document.getElementById('lin-hint');
@@ -204,7 +205,7 @@ window.checkLinearEq = async function() {
     let correct = mPart + bPart;
 
     if (userVal === correct || userVal === "y=" + correct) {
-        await updateSkill('LinearEq', 1);
+        updateSkill('LinearEq', 1); 
         linearData.stage = 'graph'; renderLinearStage();
     } else {
         linearData.errors++;
@@ -223,7 +224,6 @@ function setupLinearGraph() {
     const draw = () => {
         ctx.clearRect(0,0,400,400);
         
-        // Darkened the grid line color to make it much easier to see!
         ctx.strokeStyle = "#94a3b8"; 
         
         for(let i=0; i<=10; i++) {
@@ -249,7 +249,13 @@ function setupLinearGraph() {
             const yStart = 400 - ((linearData.scenario.b / cfg.maxVal) * 400);
             const yEnd = 400 - (((linearData.scenario.m * 10 + linearData.scenario.b) / cfg.maxVal) * 400);
             ctx.beginPath(); ctx.moveTo(0, yStart); ctx.lineTo(400, yEnd); ctx.stroke();
-            setTimeout(async () => { await updateSkill('LinearGraph', 1); linearData.stage = 'solve'; renderLinearStage(); }, 1500);
+            
+            // FIX: Removed 'async' and 'await' from this timeout block
+            setTimeout(() => { 
+                updateSkill('LinearGraph', 1); 
+                linearData.stage = 'solve'; 
+                renderLinearStage(); 
+            }, 1500);
         }
     };
     draw();
@@ -270,13 +276,14 @@ function setupLinearGraph() {
     };
 }
 
-window.checkLinearD = async function() {
+// FIX: Removed 'async' and 'await' so the handoff isn't blocked
+window.checkLinearD = function() {
     let val = parseFloat(document.getElementById('inp-solve').value);
     const hintBox = document.getElementById('lin-hint');
     if (Math.abs(val - linearData.targetSolveY) < 0.1) {
-        await updateSkill('LinearSolve', 1);
+        updateSkill('LinearSolve', 1);
         let inc = linearData.errors <= 1 ? 2 : (linearData.errors >= 4 ? -1 : 0);
-        await updateSkill('LinearMastery', inc);
+        updateSkill('LinearMastery', inc);
         showFinalLinearMessage(inc);
     } else {
         linearData.errors++;
@@ -297,7 +304,7 @@ async function updateSkill(col, amt) {
 }
 
 function showFinalLinearMessage(inc) {
-    window.isCurrentQActive = false; // Reset the flag so the parent app knows it's clear to move on!
+    window.isCurrentQActive = false; 
     const color = inc > 0 ? "#166534" : (inc < 0 ? "#991b1b" : "#475569");
     
     document.getElementById('q-content').innerHTML = `
@@ -308,7 +315,6 @@ function showFinalLinearMessage(inc) {
             <p style="color:#64748b; margin-top:15px;"><em>Loading next skill...</em></p>
         </div>`;
         
-    // Broadened check to ensure the next module loads smoothly
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion(); 
@@ -316,6 +322,9 @@ function showFinalLinearMessage(inc) {
             window.nextSkill();
         } else if (typeof window.loadNextModule === 'function') {
             window.loadNextModule();
+        } else {
+            // FIX: Added your standard location.reload fallback
+            location.reload(); 
         }
     }, 2500); 
 }
