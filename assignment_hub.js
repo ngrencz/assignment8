@@ -9,9 +9,9 @@ if (!window.supabaseClient) {
 }
 
 // --- Dynamic Time Requirements ---
+// REMOVED 6.2.4 to prevent schema errors
 const timeRequirements = {
     'C6Review': 35 * 60, // 35 minutes -> 2100s
-    '6.2.4': 12 * 60,    // 12 minutes -> 720s
     'default': 12 * 60
 };
 
@@ -20,7 +20,11 @@ window.totalSecondsWorked = 0;
 window.isCurrentQActive = false;
 window.currentQSeconds = 0;
 window.currentUser = sessionStorage.getItem('target_user') || 'test_user';
-window.targetLesson = sessionStorage.getItem('target_lesson') || 'C6Review';
+
+// FIX: Force any rogue '6.2.4' requests to 'C6Review' to prevent database crashing
+let reqLesson = sessionStorage.getItem('target_lesson');
+window.targetLesson = (reqLesson === '6.2.4') ? 'C6Review' : (reqLesson || 'C6Review');
+
 window.lastActivity = Date.now();
 window.isIdle = false;
 window.hasDonePrimaryLesson = false;
@@ -30,21 +34,19 @@ window.resumeTimeout = null;
 window.isWindowLargeEnough = true;
 window.hasLoadedTime = false; 
 
+// --- NEW: Free Play Override ---
+window.isFreePlay = sessionStorage.getItem('free_play_mode') === 'true';
+
 // This "Bridge" pulls data from the login page and gives it to the math scripts
 window.currentHour = sessionStorage.getItem('target_hour');
 
 // --- Activity Reset Logic ---
 ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
     document.addEventListener(evt, () => {
-        // Update the timestamp to current time
         window.lastActivity = Date.now();
-        
-        // If the system was paused due to IDLE, wake it up
         if (window.isIdle) {
             window.isIdle = false;
             console.log("Activity detected: System Awake");
-            
-            // Immediate UI feedback
             const statePill = document.getElementById('timer-state-pill');
             if (statePill) {
                 statePill.innerText = "RUNNING";
@@ -57,7 +59,7 @@ window.currentHour = sessionStorage.getItem('target_hour');
 console.log("Session Loaded:", window.currentUser, window.currentHour);
 const GOAL_SECONDS = timeRequirements[window.targetLesson] || timeRequirements['default'];
 
-// --- Window Size Checker Function (PURPLE OUT) ---
+// --- Window Size Checker Function ---
 function checkWindowSize() {
     if (!isAssignmentPage) {
         window.isWindowLargeEnough = true;
@@ -69,7 +71,6 @@ function checkWindowSize() {
     const screenHeight = window.screen.availHeight;
     const overlay = document.getElementById('size-overlay');
 
-    // LOOSENED: Now triggers at 80% screen size instead of 90%
     if (winWidth < (screenWidth * 0.8) || winHeight < (screenHeight * 0.8)) {
         window.isWindowLargeEnough = false;
         if (overlay) overlay.classList.add('active');
@@ -79,7 +80,7 @@ function checkWindowSize() {
     }
 }
 
-// --- Activity & Focus Listeners (RELAXED PENALTY) ---
+// --- Activity & Focus Listeners ---
 window.onblur = () => {
     window.canCount = false;
     clearTimeout(window.resumeTimeout);
@@ -87,7 +88,6 @@ window.onblur = () => {
 window.onfocus = () => {
     clearTimeout(window.resumeTimeout);
     if (isAssignmentPage) {
-        // LOOSENED: 5 second wait instead of 15s
         window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 5000);
     } else {
         window.canCount = true;
@@ -107,7 +107,6 @@ document.addEventListener('visibilitychange', () => {
 if (!isAssignmentPage) {
     window.canCount = true; 
 } else {
-    // LOOSENED: 5 second initial start wait instead of 20s
     window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 5000);
 }
 
@@ -118,7 +117,6 @@ setInterval(() => {
     const statePill = document.getElementById('timer-state-pill');
     const totalDisplay = document.getElementById('debug-total-time');
     
-    // LOOSENED: 60s idle check instead of 30s
     const secondsSinceLastActivity = (Date.now() - window.lastActivity) / 1000;
     if (secondsSinceLastActivity > 60) window.isIdle = true;
 
@@ -146,7 +144,10 @@ setInterval(() => {
             statePill.style.background = "#22c55e";
         }
         
-        if (window.totalSecondsWorked >= GOAL_SECONDS) finishAssignment();
+        // --- NEW: Trigger completion ONLY if not in Free Play Mode ---
+        if (window.totalSecondsWorked >= GOAL_SECONDS && !window.isFreePlay) {
+            finishAssignment();
+        }
     } else {
         if (statePill) {
             if (!window.isWindowLargeEnough) {
@@ -182,7 +183,7 @@ async function syncTimerToDB() {
 // --- Adaptive Routing & DB Check/Create Logic ---
 async function loadNextQuestion() {
     if (window.isCurrentQActive) return;
-    window.isCurrentQActive = true; // Lock it immediately
+    window.isCurrentQActive = true; 
     window.currentQSeconds = 0; 
     
     const feedback = document.getElementById('feedback-box');
@@ -196,7 +197,7 @@ async function loadNextQuestion() {
     const currentHour = sessionStorage.getItem('target_hour') || "00";
     let userData = null; 
 
-    // --- 1. Resilient Database Fetch ---
+    // --- Resilient Database Fetch ---
     try {
         let { data, error } = await window.supabaseClient
             .from('assignment')
@@ -228,21 +229,29 @@ async function loadNextQuestion() {
         if (data) {
             userData = data; 
             const timerCol = `${window.targetLesson}Timer`;
-            const savedTime = data[timerCol] || 0;
-            window.totalSecondsWorked = Math.max(0, savedTime - 30); 
             
+            // --- NEW: Handle Free Play vs Locked Completion ---
             if (data[window.targetLesson] === true) {
-                window.totalSecondsWorked = GOAL_SECONDS;
+                if (window.isFreePlay) {
+                    // Let them keep practicing, resume timer from where it was
+                    window.totalSecondsWorked = Math.max(0, (data[timerCol] || 0) - 30); 
+                } else {
+                    // Force the lock
+                    window.totalSecondsWorked = Math.max(GOAL_SECONDS, data[timerCol] || 0);
+                }
+            } else {
+                // Normal resume
+                const savedTime = data[timerCol] || 0;
+                window.totalSecondsWorked = Math.max(0, savedTime - 30); 
             }
         }
     } catch (err) {
         console.error("DB Initialization Error:", err);
     } finally {
-        // FIX: Ensure the timer always starts, even if the DB is offline
         window.hasLoadedTime = true;
     }
 
-    // --- 2. Safe Routing Execution ---
+    // --- Safe Routing Execution ---
     try {
         const skillMap = [
             { id: 'C6Transformation', fn: typeof initTransformationGame !== 'undefined' ? initTransformationGame : null },
@@ -257,14 +266,14 @@ async function loadNextQuestion() {
             { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null }
         ].filter(s => s.fn !== null);
 
-        // FIX: Prevent crash if scripts failed to load
         if (skillMap.length === 0) {
             console.error("No skill scripts loaded.");
             window.isCurrentQActive = false;
             return;
         }
 
-        if (window.targetLesson === '6.2.4' || window.targetLesson === 'C6Review') {
+        // REMOVED 6.2.4 logic here too
+        if (window.targetLesson === 'C6Review') {
             
             if (!window.hasDonePrimaryLesson) {
                 window.hasDonePrimaryLesson = true;
@@ -290,7 +299,6 @@ async function loadNextQuestion() {
 
             const nextSkill = availableSkills[0];
             
-            // FIX: Prevent undefined ID crash
             if (!nextSkill) {
                 window.isCurrentQActive = false;
                 return;
@@ -304,7 +312,6 @@ async function loadNextQuestion() {
             document.getElementById('q-content').innerHTML = `Lesson ${window.targetLesson} is not yet available.`;
         }
     } catch (err) {
-        // FIX: Always release the lock if a game crashes during init
         console.error("Error executing skill script:", err);
         window.isCurrentQActive = false; 
     }
@@ -317,7 +324,7 @@ async function finishAssignment() {
 
     const updateObj = {
         [window.targetLesson]: true,
-        [timerCol]: GOAL_SECONDS
+        [timerCol]: Math.max(GOAL_SECONDS, window.totalSecondsWorked) // Saves extra time if they played longer
     };
 
     try {
@@ -327,11 +334,12 @@ async function finishAssignment() {
             .eq('userName', window.currentUser)
             .eq('hour', currentHour);
 
+        // --- NEW: The button now sets the free_play_mode flag before reloading ---
         document.getElementById('work-area').innerHTML = `
             <div style="text-align: center; padding: 40px; background: #f8fafc; border-radius: 12px; border: 2px solid #22c55e;">
                 <h1 style="color: #22c55e;">Goal Reached!</h1>
                 <p>Your ${GOAL_SECONDS / 60} minutes of practice for <strong>${window.targetLesson}</strong> are complete.</p>
-                <button onclick="location.reload()" class="primary-btn">Start New Session</button>
+                <button onclick="sessionStorage.setItem('free_play_mode', 'true'); location.reload()" class="primary-btn">Keep Practicing (Free Play)</button>
             </div>
         `;
     } catch (err) { 
