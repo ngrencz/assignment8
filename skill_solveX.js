@@ -209,7 +209,9 @@ function updateSolveXScore(amount) {
             .update({ SolveX: next })
             .eq('userName', window.currentUser)
             .eq('hour', h)
-            .catch(e => console.error("DB Update Failed", e));
+            .then(({ error }) => { 
+                if (error) console.error("DB Update Failed", error); 
+            });
     }
 }
 
