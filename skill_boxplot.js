@@ -231,14 +231,16 @@
 
             const currentHour = sessionStorage.getItem('target_hour') || "00";
 
-            // --- HUB FIX: Background DB Sync (no await) ---
+            // --- HUB FIX: Background DB Sync (using .then) ---
             if (window.supabaseClient && window.currentUser) {
                 window.supabaseClient
                     .from('assignment')
                     .update(updateObj)
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
-                    .catch(e => console.error("Sub-score update failed:", e));
+                    .then(({ error }) => { 
+                        if (error) console.error("Sub-score update failed:", error); 
+                    });
             }
 
             boxPlotStep++;
@@ -273,13 +275,15 @@
             if (window.userMastery) window.userMastery['BoxPlot'] = newMain;
 
             if (window.supabaseClient && window.currentUser) {
-                // Fire and forget: no 'await' here!
+                // Fire and forget using .then
                 window.supabaseClient
                     .from('assignment')
                     .update({ 'BoxPlot': newMain })
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
-                    .catch(e => console.error("Score update failed:", e));
+                    .then(({ error }) => { 
+                        if (error) console.error("Score update failed:", error); 
+                    });
             }
         }
 
