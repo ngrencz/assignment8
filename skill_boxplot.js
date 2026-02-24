@@ -1,19 +1,19 @@
 /**
- * skill_boxplot.js - STANDARDIZED VERSION
- * Follows unified Hub Interaction architecture.
+ * skill_boxplot.js - Full Integrated Version (RESTORED LABELS)
+ * Handles: Median, Mean, Range, Q1, and IQR
  */
 
 (function() {
-    // 1. Private Variables (Encapsulated)
+    // 1. Private Variables
     let currentBoxData = {};
-    let currentDataset = []; 
-    let displayDataset = []; 
+    let currentDataset = []; // Sorted (Math)
+    let displayDataset = []; // Shuffled (Display)
     let boxErrorCount = 0;
     let boxPlotStep = 0; 
     let boxPlotSessionQuestions = [];
     let sessionCorrectFirstTry = 0; 
 
-    // --- RULE 2: Safe Initialization & DB Merge ---
+    // 2. Init Function
     window.initBoxPlotGame = async function() {
         window.isCurrentQActive = true;
         window.currentQSeconds = 0;
@@ -21,23 +21,22 @@
         boxPlotStep = 0;
         sessionCorrectFirstTry = 0;
 
-        // Ensure mastery object exists without overwriting other skills
+        // --- HUB FIX: Ensure mastery object exists safely ---
         if (!window.userMastery) window.userMastery = {};
 
         try {
-            if (window.supabaseClient && window.currentUser) {
-                const currentHour = sessionStorage.getItem('target_hour') || "00";
-                const { data } = await window.supabaseClient
-                    .from('assignment')
-                    .select('BoxPlot, bp_median, bp_mean, bp_range, bp_quartiles, bp_iqr')
-                    .eq('userName', window.currentUser)
-                    .eq('hour', currentHour)
-                    .maybeSingle();
-                
-                // Safely merge this specific data into the global tracker
-                if (data) {
-                    window.userMastery = { ...window.userMastery, ...data };
-                }
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
+            
+            const { data } = await window.supabaseClient
+                .from('assignment')
+                .select('BoxPlot, bp_median, bp_mean, bp_range, bp_quartiles, bp_iqr')
+                .eq('userName', window.currentUser)
+                .eq('hour', currentHour)
+                .maybeSingle();
+            
+            // --- HUB FIX: Safely merge data instead of overwriting ---
+            if (data) {
+                window.userMastery = { ...window.userMastery, ...data };
             }
         } catch (e) {
             console.warn("BoxPlot DB sync error, falling back to local state.");
@@ -138,6 +137,7 @@
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        // Number Line
         ctx.strokeStyle = "#94a3b8"; 
         ctx.fillStyle = "#64748b";
         ctx.lineWidth = 1;
@@ -166,6 +166,7 @@
             max: padding + currentBoxData.max * scale
         };
 
+        // --- RESTORED: Draw Stats Text Labels ---
         ctx.fillStyle = "#1e293b";
         ctx.font = "bold 12px Arial";
         ctx.fillText(currentBoxData.min, pts.min, y - 35);
@@ -174,6 +175,7 @@
         ctx.fillText(currentBoxData.q3, pts.q3, y - 35);
         ctx.fillText(currentBoxData.max, pts.max, y - 35);
 
+        // Whiskers
         ctx.strokeStyle = "#1e293b";
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -183,11 +185,13 @@
         ctx.moveTo(pts.max, y - 10); ctx.lineTo(pts.max, y + 10);
         ctx.stroke();
 
+        // Box
         ctx.fillStyle = "#f0fdf4";
         const boxWidth = pts.q3 - pts.q1;
         ctx.fillRect(pts.q1, y - 20, boxWidth, 40);
         ctx.strokeRect(pts.q1, y - 20, boxWidth, 40);
         
+        // Median Line
         ctx.strokeStyle = "#22c55e";
         ctx.lineWidth = 4;
         ctx.beginPath();
@@ -196,7 +200,7 @@
         ctx.stroke();
     }
 
-    // --- RULE 3: Non-Blocking DB Saves ---
+    // --- HUB FIX: Removed async to make it non-blocking ---
     window.checkStep = function() {
         const input = document.getElementById('box-ans');
         if(!input) return;
@@ -212,20 +216,26 @@
             feedback.className = "correct";
             feedback.innerText = "✅ Correct!";
 
-            if (boxErrorCount === 0) sessionCorrectFirstTry++;
+            if (boxErrorCount === 0) {
+                sessionCorrectFirstTry++;
+            }
 
             let subAdjustment = (boxErrorCount === 0) ? 1 : 0; 
+            const updateObj = {};
             
-            // Update local state immediately
-            const newScore = Math.min(10, (window.userMastery[current.col] || 0) + subAdjustment);
-            window.userMastery[current.col] = newScore;
+            // --- HUB FIX: Use safe local mastery merge ---
+            if (!window.userMastery) window.userMastery = {};
+            let currentScore = window.userMastery[current.col] || 0;
+            updateObj[current.col] = Math.min(10, currentScore + subAdjustment);
+            window.userMastery[current.col] = updateObj[current.col]; // Update instantly
 
-            // Fire and forget to Supabase
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
+
+            // --- HUB FIX: Background DB Sync (no await) ---
             if (window.supabaseClient && window.currentUser) {
-                const currentHour = sessionStorage.getItem('target_hour') || "00";
                 window.supabaseClient
                     .from('assignment')
-                    .update({ [current.col]: newScore })
+                    .update(updateObj)
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
                     .catch(e => console.error("Sub-score update failed:", e));
@@ -246,9 +256,8 @@
         }
     };
 
-    // --- RULE 4: Standard Handoff ---
-    function finishBoxPlotSession() {
-        window.isCurrentQActive = false; // Immediately unlock hub
+   function finishBoxPlotSession() {
+        window.isCurrentQActive = false;
         const feedback = document.getElementById('feedback-box');
         if(feedback) feedback.innerText = "✅ Box Plot Set Complete!";
 
@@ -257,22 +266,24 @@
         else if (sessionCorrectFirstTry <= 1) mainAdjustment = -1;
 
         if (mainAdjustment !== 0) {
-            const currentMain = window.userMastery['BoxPlot'] || 0;
+            const currentMain = window.userMastery?.['BoxPlot'] || 0;
             const newMain = Math.max(0, Math.min(10, currentMain + mainAdjustment));
-            window.userMastery['BoxPlot'] = newMain; // Update local instantly
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
+
+            if (window.userMastery) window.userMastery['BoxPlot'] = newMain;
 
             if (window.supabaseClient && window.currentUser) {
-                const currentHour = sessionStorage.getItem('target_hour') || "00";
+                // Fire and forget: no 'await' here!
                 window.supabaseClient
                     .from('assignment')
                     .update({ 'BoxPlot': newMain })
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
-                    .catch(e => console.error("Main score update failed:", e));
+                    .catch(e => console.error("Score update failed:", e));
             }
         }
 
-        // Standardized Hub Call
+        // This will now reliably fire after exactly 1.5 seconds
         setTimeout(() => {
             if (typeof window.loadNextQuestion === 'function') {
                 window.loadNextQuestion();
