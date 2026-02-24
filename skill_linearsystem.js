@@ -380,17 +380,18 @@ function finishGame() {
 
         if (window.supabaseClient && window.currentUser) {
             const hour = sessionStorage.getItem('target_hour') || "00";
-            // --- HUB FIX: Background sync to DB (no await) ---
+            // --- HUB FIX: Background sync to DB (using .then) ---
             window.supabaseClient
                 .from('assignment')
                 .update({ LinearSystem: newScore })
                 .eq('userName', window.currentUser)
                 .eq('hour', hour)
-                .catch(e => console.error("Score update failed:", e));
+                .then(({ error }) => { 
+                    if (error) console.error("Score update failed:", error); 
+                });
         }
     }
 }
-
 function showFlash(msg, type) {
     const overlay = document.getElementById('flash-overlay');
     if (!overlay) return;
