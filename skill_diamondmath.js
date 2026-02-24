@@ -293,8 +293,8 @@ window.checkDiamondWin = async function() {
                 .update({ DiamondMath: nextScore })
                 .eq('userName', window.currentUser)
                 .eq('hour', hour)
-                .then(({error}) => { if (error) console.error("[DiamondMath] Update Error:", error); })
-                .catch(e => console.error("[DiamondMath] Supabase update catch block failed:", e));
+                .then(({error}) => { if (error) console.error("[DiamondMath] Update Error:", error); });
+                // REMOVED THE CATCH LINE HERE
         }
 
         diamondRound++;
@@ -306,7 +306,6 @@ window.checkDiamondWin = async function() {
         showFlash("Check your math.", "error");
     }
 };
-
 function finishDiamondGame() {
     window.isCurrentQActive = false; 
     const qContent = document.getElementById('q-content');
