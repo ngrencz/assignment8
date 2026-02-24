@@ -284,7 +284,9 @@ function updateSimilarityScore(amount) {
             .update({ Similarity: next })
             .eq('userName', window.currentUser)
             .eq('hour', h)
-            .catch(e => console.error("Supabase error", e));
+            .then(({ error }) => { 
+                if (error) console.error("Supabase error", error); 
+            });
     }
 }
 
