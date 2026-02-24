@@ -34,7 +34,8 @@ window.initLinearMastery = async function() {
     // 1. Database Sync
     try {
         if (window.supabaseClient && window.currentUser) {
-            const currentHour = sessionStorage.getItem('target_hour');
+            // --- HUB FIX: Added || "00" fallback ---
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
             const { data } = await window.supabaseClient
                 .from('assignment')
                 .select('LinearMastery, LinearEq, LinearGraph, LinearInt, LinearSolve')
@@ -195,7 +196,6 @@ window.checkLinearB = function() {
     }
 };
 
-// FIX: Removed 'async' and 'await' so DB lag doesn't block the UI transition
 window.checkLinearEq = function() {
     let userVal = document.getElementById('inp-eq').value.replace(/\s/g, '').toLowerCase();
     const { m, b } = linearData.scenario;
@@ -250,7 +250,6 @@ function setupLinearGraph() {
             const yEnd = 400 - (((linearData.scenario.m * 10 + linearData.scenario.b) / cfg.maxVal) * 400);
             ctx.beginPath(); ctx.moveTo(0, yStart); ctx.lineTo(400, yEnd); ctx.stroke();
             
-            // FIX: Removed 'async' and 'await' from this timeout block
             setTimeout(() => { 
                 updateSkill('LinearGraph', 1); 
                 linearData.stage = 'solve'; 
@@ -276,7 +275,6 @@ function setupLinearGraph() {
     };
 }
 
-// FIX: Removed 'async' and 'await' so the handoff isn't blocked
 window.checkLinearD = function() {
     let val = parseFloat(document.getElementById('inp-solve').value);
     const hintBox = document.getElementById('lin-hint');
@@ -293,13 +291,21 @@ window.checkLinearD = function() {
     }
 };
 
-async function updateSkill(col, amt) {
+// --- HUB FIX: Removed async entirely for non-blocking background sync ---
+function updateSkill(col, amt) {
     let curr = window.userMastery[col] || 0;
     let next = Math.max(0, Math.min(10, curr + amt));
-    window.userMastery[col] = next;
+    window.userMastery[col] = next; // Update instantly in local memory
+    
+    // Fire and forget to Supabase
     if (window.supabaseClient && window.currentUser) {
         const h = sessionStorage.getItem('target_hour') || "00";
-        try { await window.supabaseClient.from('assignment').update({ [col]: next }).eq('userName', window.currentUser).eq('hour', h); } catch(e) {}
+        window.supabaseClient
+            .from('assignment')
+            .update({ [col]: next })
+            .eq('userName', window.currentUser)
+            .eq('hour', h)
+            .catch(e => console.error("Skill update failed:", e));
     }
 }
 
