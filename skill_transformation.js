@@ -1,11 +1,12 @@
 /**
- * Transformation Geometry Game - STANDARDIZED VERSION
- * Follows unified Hub Interaction architecture.
+ * Transformation Geometry Game - STANDARDIZED & HARDENED VERSION
+ * - Follows unified Hub Interaction architecture.
+ * - Added strict Try/Catch blocks to prevent silent button failures.
+ * - Safe fallback for Web Animations API.
  */
 
 (function() {
-    // --- RULE 1: Strict Encapsulation (IIFE) ---
-    // All variables are now scoped locally to prevent global leaks
+    // --- RULE 1: Strict Encapsulation ---
     let currentShape = [];
     let targetShape = [];
     let originalStartShape = [];
@@ -33,7 +34,6 @@
         window.currentQSeconds = 0;
         currentRound = 1;
         
-        // Ensure mastery object exists without overwriting
         if (!window.userMastery) window.userMastery = {};
 
         try {
@@ -43,13 +43,10 @@
                     .from('assignment')
                     .select('C6Translation, C6ReflectionX, C6ReflectionY, C6Rotation, C6Dilation, C6Transformation')
                     .eq('userName', window.currentUser)
-                    .eq('hour', currentHour) // FIX: Added missing hour check
+                    .eq('hour', currentHour) 
                     .maybeSingle();
                 
-                // Safely merge specific data
-                if (data) {
-                    window.userMastery = { ...window.userMastery, ...data };
-                }
+                if (data) window.userMastery = { ...window.userMastery, ...data };
             }
         } catch (e) {
             console.warn("Transformation DB sync error, falling back to local state.");
@@ -65,7 +62,6 @@
         editingIndex = -1;
         isAnimating = false;
         
-        // Adaptive Logic uses the unified window.userMastery
         let skillWeights = [
             { type: 'translation', key: 'C6Translation', score: window.userMastery.C6Translation || 0 },
             { type: 'reflectX', key: 'C6ReflectionX', score: window.userMastery.C6ReflectionX || 0 },
@@ -125,9 +121,7 @@
                     Math.abs(p[1] - sortedTarget[i][1]) < 0.1
                 );
 
-                let moved = !visuallyIdentical;
-
-                if (moved) validChallenge = true;
+                if (!visuallyIdentical) validChallenge = true;
                 else { generatedMoves = []; activeSkills = []; }
             } else {
                 generatedMoves = []; activeSkills = [];
@@ -171,7 +165,7 @@
                 <div style="position:relative; width:440px; height:440px;">
                     <canvas id="gridCanvas" width="440" height="440" style="background: white; border-radius: 8px; border: 1px solid #94a3b8; cursor: crosshair;"></canvas>
                     <div id="coord-tip" style="position:absolute; bottom:10px; right:10px; background:rgba(15, 23, 42, 0.8); color:white; padding:4px 10px; border-radius:4px; font-family:monospace; font-size:11px; pointer-events:none;">(0, 0)</div>
-                    <div id="flash-overlay" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; pointer-events:none; text-align:center; z-index:10;"></div>
+                    <div id="flash-overlay" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; pointer-events:none; text-align:center; z-index:100;"></div>
                 </div>
                 
                 <div id="vertex-list" style="flex: 1; background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1; max-height: 440px; overflow-y: auto;">
@@ -220,14 +214,27 @@
         draw(currentShape); 
     }
 
+    // --- HARDENED FLASH FUNCTION ---
     function showFlash(msg, type) {
-        const overlay = document.getElementById('flash-overlay');
-        if (!overlay) return;
-        overlay.innerText = msg;
-        overlay.style.display = 'block';
-        overlay.style.backgroundColor = type === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)';
-        overlay.animate([{ opacity: 0, transform: 'translate(-50%, -40%)' }, { opacity: 1, transform: 'translate(-50%, -50%)' }], { duration: 200, fill: 'forwards' });
-        setTimeout(() => { overlay.style.display = 'none'; }, 1500);
+        try {
+            const overlay = document.getElementById('flash-overlay');
+            if (!overlay) return;
+            overlay.innerText = msg;
+            overlay.style.display = 'block';
+            overlay.style.backgroundColor = type === 'success' ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)';
+            
+            // Safe fallback if .animate is unsupported
+            if (typeof overlay.animate === 'function') {
+                overlay.animate([
+                    { opacity: 0, transform: 'translate(-50%, -40%)' }, 
+                    { opacity: 1, transform: 'translate(-50%, -50%)' }
+                ], { duration: 200, fill: 'forwards' });
+            } else {
+                overlay.style.opacity = '1'; 
+            }
+            
+            setTimeout(() => { overlay.style.display = 'none'; }, 1500);
+        } catch(e) { console.error("Flash UI Error:", e); }
     }
 
     function updateCoordinateList() {
@@ -310,29 +317,33 @@
     };
 
     window.executeAction = async function() {
-        const type = document.getElementById('move-selector').value;
-        let m = { type };
-        
-        if (type === 'translation') {
-            m.dx = parseFloat(document.getElementById('dx').value) || 0;
-            m.dy = parseFloat(document.getElementById('dy').value) || 0;
-        } else if (type === 'rotate') {
-            m.deg = parseInt(document.getElementById('rot-deg').value);
-            m.dir = document.getElementById('rot-dir').value;
-        } else if (type === 'dilation') {
-            m.factor = parseFloat(document.getElementById('dil-factor').value) || 1;
-        }
+        try {
+            const type = document.getElementById('move-selector').value;
+            let m = { type };
+            
+            if (type === 'translation') {
+                m.dx = parseFloat(document.getElementById('dx').value) || 0;
+                m.dy = parseFloat(document.getElementById('dy').value) || 0;
+            } else if (type === 'rotate') {
+                m.deg = parseInt(document.getElementById('rot-deg').value);
+                m.dir = document.getElementById('rot-dir').value;
+            } else if (type === 'dilation') {
+                m.factor = parseFloat(document.getElementById('dil-factor').value) || 1;
+            }
 
-        if (editingIndex === -1) {
-            moveSequence.push(m);
-            await animateMove(currentShape, m);
-        } else {
-            moveSequence[editingIndex] = m;
-            editingIndex = -1;
-            await replayAll();
+            if (editingIndex === -1) {
+                moveSequence.push(m);
+                await animateMove(currentShape, m);
+            } else {
+                moveSequence[editingIndex] = m;
+                editingIndex = -1;
+                await replayAll();
+            }
+            updateCoordinateList();
+            renderUI();
+        } catch (e) {
+            console.error("Execution error:", e);
         }
-        updateCoordinateList();
-        renderUI();
     };
 
     async function animateMove(pts, m) {
@@ -430,91 +441,102 @@
         });
     }
 
-    // --- RULE 3: Non-Blocking DB Saves ---
+    // --- RULE 3: Strict Validation Check ---
     window.checkWin = function() {
-        const sorter = (a, b) => (a[0] - b[0]) || (a[1] - b[1]);
-        let sortedCurrent = [...currentShape].sort(sorter);
-        let sortedTarget = [...targetShape].sort(sorter);
+        try {
+            const sorter = (a, b) => (a[0] - b[0]) || (a[1] - b[1]);
+            let sortedCurrent = [...currentShape].sort(sorter);
+            let sortedTarget = [...targetShape].sort(sorter);
 
-        const isCorrect = sortedCurrent.every((p, i) => 
-            Math.abs(p[0] - sortedTarget[i][0]) < 0.1 && 
-            Math.abs(p[1] - sortedTarget[i][1]) < 0.1
-        );
+            // Fail-safe check: Ensure shapes haven't corrupted length
+            let isCorrect = false;
+            if (sortedCurrent.length === sortedTarget.length) {
+                isCorrect = sortedCurrent.every((p, i) => 
+                    Math.abs(p[0] - sortedTarget[i][0]) < 0.1 && 
+                    Math.abs(p[1] - sortedTarget[i][1]) < 0.1
+                );
+            }
 
-        if (isCorrect) {
-            let adjustedUserMoves = 0;
-            let i = 0;
-            while (i < moveSequence.length) {
-                let m1 = moveSequence[i];
-                
-                if (i < moveSequence.length - 1) {
-                    let m2 = moveSequence[i+1];
-                    if (m1.type === 'translation' && m2.type === 'translation') {
-                        if ((Math.abs(m1.dx) > 0 && m1.dy === 0 && m2.dx === 0 && Math.abs(m2.dy) > 0) ||
-                            (m1.dx === 0 && Math.abs(m1.dy) > 0 && Math.abs(m2.dx) > 0 && m2.dy === 0)) {
-                            
-                            adjustedUserMoves++;
-                            i += 2; 
-                            continue;
+            if (isCorrect) {
+                let adjustedUserMoves = 0;
+                let i = 0;
+                while (i < moveSequence.length) {
+                    let m1 = moveSequence[i];
+                    
+                    if (i < moveSequence.length - 1) {
+                        let m2 = moveSequence[i+1];
+                        if (m1.type === 'translation' && m2.type === 'translation') {
+                            if ((Math.abs(m1.dx) > 0 && m1.dy === 0 && m2.dx === 0 && Math.abs(m2.dy) > 0) ||
+                                (m1.dx === 0 && Math.abs(m1.dy) > 0 && Math.abs(m2.dx) > 0 && m2.dy === 0)) {
+                                
+                                adjustedUserMoves++;
+                                i += 2; 
+                                continue;
+                            }
                         }
                     }
+                    adjustedUserMoves++;
+                    i++;
                 }
+
+                // Prevent division by 0 error if user somehow matches with 0 moves
+                adjustedUserMoves = Math.max(1, adjustedUserMoves); 
+
+                const optimalMoves = generatedMoves.length;
+                const mistakes = Math.max(0, adjustedUserMoves - optimalMoves);
+                const efficiency = optimalMoves / adjustedUserMoves;
+
+                let updates = {};
+                let skillDelta = (mistakes === 0) ? 1 : (mistakes === 1 ? 0 : -1);
                 
-                adjustedUserMoves++;
-                i++;
+                activeSkills.forEach(key => {
+                    let oldVal = window.userMastery[key] || 0;
+                    let newVal = Math.max(0, Math.min(10, oldVal + skillDelta));
+                    window.userMastery[key] = newVal;
+                    updates[key] = newVal;
+                });
+
+                let aggDelta = 0;
+                if (efficiency >= 0.75) aggDelta = 1;
+                else if (efficiency < 0.50) aggDelta = -1;
+
+                let oldAgg = window.userMastery.C6Transformation || 0;
+                let newAgg = Math.max(0, Math.min(10, oldAgg + aggDelta));
+                window.userMastery.C6Transformation = newAgg;
+                updates.C6Transformation = newAgg;
+
+                // Fire and forget
+                if (window.supabaseClient && window.currentUser) {
+                    const currentHour = sessionStorage.getItem('target_hour') || "00";
+                    window.supabaseClient
+                        .from('assignment')
+                        .update(updates)
+                        .eq('userName', window.currentUser)
+                        .eq('hour', currentHour) 
+                        .then(({error}) => { if (error) console.error("Supabase Error:", error); })
+                        .catch(e => console.error("Update failed:", e));
+                }
+
+                showFlash("Correct!", "success");
+                currentRound++;
+                
+                setTimeout(() => {
+                    if (currentRound > 3) finishGame();
+                    else startNewRound();
+                }, 1500);
+
+            } else {
+                showFlash("Incorrect", "error");
             }
-
-            const optimalMoves = generatedMoves.length;
-            const mistakes = Math.max(0, adjustedUserMoves - optimalMoves);
-            const efficiency = optimalMoves / adjustedUserMoves;
-
-            let updates = {};
-            let skillDelta = (mistakes === 0) ? 1 : (mistakes === 1 ? 0 : -1);
-            
-            // Update Local State instantly using userMastery
-            activeSkills.forEach(key => {
-                let oldVal = window.userMastery[key] || 0;
-                let newVal = Math.max(0, Math.min(10, oldVal + skillDelta));
-                window.userMastery[key] = newVal;
-                updates[key] = newVal;
-            });
-
-            let aggDelta = 0;
-            if (efficiency >= 0.75) aggDelta = 1;
-            else if (efficiency < 0.50) aggDelta = -1;
-
-            let oldAgg = window.userMastery.C6Transformation || 0;
-            let newAgg = Math.max(0, Math.min(10, oldAgg + aggDelta));
-            window.userMastery.C6Transformation = newAgg;
-            updates.C6Transformation = newAgg;
-
-            // Fire and forget to Supabase (non-blocking)
-            if (window.supabaseClient && window.currentUser) {
-                const currentHour = sessionStorage.getItem('target_hour') || "00";
-                window.supabaseClient
-                    .from('assignment')
-                    .update(updates)
-                    .eq('userName', window.currentUser)
-                    .eq('hour', currentHour) // FIX: Added hour
-                    .catch(e => console.error("Transformation score update failed:", e));
-            }
-
-            showFlash("Correct!", "success");
-            currentRound++;
-            
-            setTimeout(() => {
-                if (currentRound > 3) finishGame();
-                else startNewRound();
-            }, 1500);
-
-        } else {
-            showFlash("Incorrect", "error");
+        } catch (err) {
+            console.error("Critical error in checkWin:", err);
+            showFlash("Error checking match", "error");
         }
     };
 
     // --- RULE 4: Standard Handoff ---
     function finishGame() { 
-        window.isCurrentQActive = false; // Immediately unlock hub
+        window.isCurrentQActive = false;
         const qContent = document.getElementById('q-content');
         
         qContent.innerHTML = `
@@ -525,7 +547,6 @@
             </div>
         `;
 
-        // Standardized Hub Call
         setTimeout(() => { 
             if (typeof window.loadNextQuestion === 'function') {
                 window.loadNextQuestion(); 
