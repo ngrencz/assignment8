@@ -23,11 +23,13 @@ window.initFigureGrowthGame = async function() {
     currentStep = 1;
     isVisualMode = Math.random() > 0.5;
 
+    // --- HUB FIX: Ensure mastery object exists safely ---
     if (!window.userMastery) window.userMastery = {};
 
     try {
         if (window.supabaseClient && window.currentUser) {
-            const currentHour = sessionStorage.getItem('target_hour');
+            // --- HUB FIX: Added fallback hour to prevent null query crash ---
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
             const { data } = await window.supabaseClient
                 .from('assignment')
                 .select('FigureGrowth')
@@ -35,10 +37,12 @@ window.initFigureGrowthGame = async function() {
                 .eq('hour', currentHour)
                 .maybeSingle();
             
-            window.userMastery.FigureGrowth = data?.FigureGrowth || 0;
+            if (data) {
+                window.userMastery.FigureGrowth = data.FigureGrowth || 0;
+            }
         }
     } catch (e) {
-        console.log("Supabase sync error, using local state");
+        console.warn("FigureGrowth DB sync error, falling back to local state.");
     }
 
     // Logic: m (3-10), b (1-10)
@@ -256,28 +260,34 @@ window.checkFigureAns = async function() {
     }
 };
 
-function finishFigureGame() { // Removed 'async'
+function finishFigureGame() { 
+    // --- HUB FIX: Release lock immediately ---
     window.isCurrentQActive = false;
-    document.getElementById('q-content').innerHTML = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; text-align:center;">
-            <div style="font-size:60px; margin-bottom:10px;">🟦</div>
-            <h2 style="color:#1e293b; margin-bottom:5px;">Pattern Mastered!</h2>
-            <p style="color:#64748b;">You successfully modeled the growth rule.</p>
-            <p style="font-size: 14px; color: #10b981; margin-top: 10px;">Loading next activity...</p>
-        </div>
-    `;
+    
+    const qContent = document.getElementById('q-content');
+    if (qContent) {
+        qContent.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; text-align:center;">
+                <div style="font-size:60px; margin-bottom:10px;">🟦</div>
+                <h2 style="color:#1e293b; margin-bottom:5px;">Pattern Mastered!</h2>
+                <p style="color:#64748b;">You successfully modeled the growth rule.</p>
+                <p style="font-size: 14px; color: #10b981; margin-top: 10px;">Loading next activity...</p>
+            </div>
+        `;
+    }
 
     let adjustment = 0;
     if (figureErrorCount === 0) adjustment = 1;
     else if (figureErrorCount >= 2) adjustment = -1;
 
+    // --- HUB FIX: Safely retrieve and update local memory ---
     let currentScore = window.userMastery.FigureGrowth || 0;
     let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
     window.userMastery.FigureGrowth = newScore;
 
+    // --- HUB FIX: Background sync to DB ---
     if (window.supabaseClient && window.currentUser) {
         const currentHour = sessionStorage.getItem('target_hour') || "00";
-        // Removed 'await' and replaced try/catch with .catch()
         window.supabaseClient
             .from('assignment')
             .update({ FigureGrowth: newScore })
@@ -286,11 +296,12 @@ function finishFigureGame() { // Removed 'async'
             .catch(e => console.error("Database sync failed:", e)); 
     }
 
+    // --- HUB FIX: Standard Handoff ---
     setTimeout(() => { 
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
         } else {
-            location.reload(); // Added standard fallback
+            location.reload(); 
         }
     }, 2000);
 }
