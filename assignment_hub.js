@@ -9,7 +9,6 @@ if (!window.supabaseClient) {
 }
 
 // --- Dynamic Time Requirements ---
-// REMOVED 6.2.4 to prevent schema errors
 const timeRequirements = {
     'C6Review': 35 * 60, // 35 minutes -> 2100s
     'default': 12 * 60
@@ -21,9 +20,9 @@ window.isCurrentQActive = false;
 window.currentQSeconds = 0;
 window.currentUser = sessionStorage.getItem('target_user') || 'test_user';
 
-// FIX: Force any rogue '6.2.4' requests to 'C6Review' to prevent database crashing
+// FIX: Safely route target lessons (defaults to C6Review if old 6.2.4 is found)
 let reqLesson = sessionStorage.getItem('target_lesson');
-window.targetLesson = (reqLesson === '6.2.4') ? 'C6Review' : (reqLesson || 'C6Review');
+window.targetLesson = (reqLesson === '7.1.1') ? '7.1.1' : 'C6Review';
 
 window.lastActivity = Date.now();
 window.isIdle = false;
@@ -85,6 +84,7 @@ window.onblur = () => {
     window.canCount = false;
     clearTimeout(window.resumeTimeout);
 };
+
 window.onfocus = () => {
     clearTimeout(window.resumeTimeout);
     if (isAssignmentPage) {
@@ -177,7 +177,9 @@ async function syncTimerToDB() {
     const update = { [timerCol]: window.totalSecondsWorked };
     try {
         await window.supabaseClient.from('assignment').update(update).eq('userName', window.currentUser).eq('hour', currentHour);
-    } catch (e) { console.error("Sync error", e); }
+    } catch (e) { 
+        console.error("Sync error", e); 
+    }
 }
 
 // --- Adaptive Routing & DB Check/Create Logic ---
@@ -264,7 +266,7 @@ async function loadNextQuestion() {
             { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
             { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
             { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null },
-            { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null } 
+            { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null } // NEW SKILL ADDED
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -273,15 +275,19 @@ async function loadNextQuestion() {
             return;
         }
 
-        // REMOVED 6.2.4 logic here too
-        if (window.targetLesson === 'C6Review') {
+        // --- NEW: Dynamic Primary Skill Routing ---
+        if (window.targetLesson === 'C6Review' || window.targetLesson === '7.1.1') {
             
             if (!window.hasDonePrimaryLesson) {
                 window.hasDonePrimaryLesson = true;
-                const transformSkill = skillMap.find(s => s.id === 'C6Transformation');
-                if (transformSkill) {
-                    window.skillsCompletedThisSession.push('C6Transformation');
-                    return transformSkill.fn();
+                
+                // Determine which skill acts as the starting anchor for this specific lesson
+                let primarySkillId = (window.targetLesson === '7.1.1') ? 'PieChart' : 'C6Transformation';
+                const primarySkill = skillMap.find(s => s.id === primarySkillId);
+                
+                if (primarySkill) {
+                    window.skillsCompletedThisSession.push(primarySkillId);
+                    return primarySkill.fn();
                 }
             }
 
@@ -325,7 +331,7 @@ async function finishAssignment() {
 
     const updateObj = {
         [window.targetLesson]: true,
-        [timerCol]: Math.max(GOAL_SECONDS, window.totalSecondsWorked) // Saves extra time if they played longer
+        [timerCol]: Math.max(GOAL_SECONDS, window.totalSecondsWorked)
     };
 
     try {
@@ -335,7 +341,6 @@ async function finishAssignment() {
             .eq('userName', window.currentUser)
             .eq('hour', currentHour);
 
-        // --- NEW: The button now sets the free_play_mode flag before reloading ---
         document.getElementById('work-area').innerHTML = `
             <div style="text-align: center; padding: 40px; background: #f8fafc; border-radius: 12px; border: 2px solid #22c55e;">
                 <h1 style="color: #22c55e;">Goal Reached!</h1>
