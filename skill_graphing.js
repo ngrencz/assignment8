@@ -31,11 +31,13 @@ window.initGraphingGame = async function() {
     window.currentQSeconds = 0;
     graphRound = 1;
 
+    // --- HUB FIX: Ensure mastery object exists safely ---
     if (!window.userMastery) window.userMastery = {};
 
     try {
         if (window.supabaseClient && window.currentUser) {
-            const currentHour = sessionStorage.getItem('target_hour');
+            // --- HUB FIX: Added || "00" fallback ---
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
             const { data } = await window.supabaseClient
                 .from('assignment')
                 .select('Graphing')
@@ -43,10 +45,12 @@ window.initGraphingGame = async function() {
                 .eq('hour', currentHour)
                 .maybeSingle();
             
-            window.userMastery.Graphing = data?.Graphing || 0;
+            if (data) {
+                window.userMastery.Graphing = data.Graphing || 0;
+            }
         }
     } catch (e) { 
-        console.log("Supabase sync error, using local state"); 
+        console.warn("Graphing DB sync error, falling back to local state."); 
     }
 
     startGraphingRound();
@@ -343,24 +347,23 @@ function setupCanvasInteractions() {
     };
 }
 
-async function handleRoundWin() {
+// --- HUB FIX: Removed async to allow background database syncing ---
+function handleRoundWin() {
     showFlash("Nice Shape!", "success");
     
     let current = window.userMastery.Graphing || 0;
     let nextScore = Math.min(10, current + 1);
-    window.userMastery.Graphing = nextScore;
+    window.userMastery.Graphing = nextScore; // Update instantly in memory
 
+    // --- HUB FIX: Fire and forget update (no await) ---
     if (window.supabaseClient && window.currentUser) {
-        try {
-            const currentHour = sessionStorage.getItem('target_hour') || "00";
-            await window.supabaseClient
-                .from('assignment')
-                .update({ Graphing: nextScore })
-                .eq('userName', window.currentUser)
-                .eq('hour', currentHour);
-        } catch (e) { 
-            console.error("DB Save Fail", e); 
-        }
+        const currentHour = sessionStorage.getItem('target_hour') || "00";
+        window.supabaseClient
+            .from('assignment')
+            .update({ Graphing: nextScore })
+            .eq('userName', window.currentUser)
+            .eq('hour', currentHour)
+            .catch(e => console.error("DB Save Fail", e));
     }
 
     graphRound++;
@@ -379,8 +382,14 @@ function finishGraphingGame() {
             <p style="color:#64748b;">Loading next skill...</p>
         </div>
     `;
+    
+    // --- HUB FIX: Standard fallback array ---
     setTimeout(() => {
-        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion();
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion();
+        } else {
+            location.reload();
+        }
     }, 2500);
 }
 
