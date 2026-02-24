@@ -305,7 +305,9 @@ function updateSkill(col, amt) {
             .update({ [col]: next })
             .eq('userName', window.currentUser)
             .eq('hour', h)
-            .catch(e => console.error("Skill update failed:", e));
+            .then(({ error }) => { 
+                if (error) console.error("Skill update failed:", error); 
+            });
     }
 }
 
