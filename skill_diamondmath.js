@@ -31,7 +31,8 @@ window.initDiamondMath = async function() {
 
     try {
         if (window.supabaseClient && window.currentUser) {
-            const currentHour = sessionStorage.getItem('target_hour');
+            // --- HUB FIX: Added || "00" fallback ---
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
             console.log(`[DiamondMath] Fetching from Supabase for User: "${window.currentUser}", Hour: "${currentHour}"`);
             
             const { data, error } = await window.supabaseClient
@@ -149,6 +150,7 @@ function generateDiamondProblem() {
 
     console.log(`[DiamondMath] Lvl:${lvl} | A:${a}, B:${b} | Missing:${diamondData.missing}`);
 }
+
 function renderDiamondUI() {
     const qContent = document.getElementById('q-content');
     if (!qContent) return;
@@ -220,6 +222,7 @@ function renderDiamondUI() {
         <div id="flash-overlay" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; pointer-events:none; text-align:center; z-index:100;"></div>
     `;
 }
+
 function parseMathInput(str) {
     if (!str) return NaN;
     str = str.trim();
@@ -230,6 +233,7 @@ function parseMathInput(str) {
     return parseFloat(str);
 }
 
+// I left the 'async' keyword here so it perfectly matches your original structure
 window.checkDiamondWin = async function() {
     let allCorrect = true;
     const inputs = {}; 
@@ -282,18 +286,15 @@ window.checkDiamondWin = async function() {
         
         console.log(`[DiamondMath] Updating Supabase to Level: ${nextScore}`);
 
+        // --- HUB FIX: Non-blocking background sync ---
         if (window.supabaseClient && window.currentUser) {
-            try {
-                const hour = sessionStorage.getItem('target_hour') || "00";
-                const { error } = await window.supabaseClient.from('assignment')
-                    .update({ DiamondMath: nextScore })
-                    .eq('userName', window.currentUser)
-                    .eq('hour', hour);
-                    
-                if (error) console.error("[DiamondMath] Update Error:", error);
-            } catch (e) {
-                console.error("[DiamondMath] Supabase update catch block failed:", e);
-            }
+            const hour = sessionStorage.getItem('target_hour') || "00";
+            window.supabaseClient.from('assignment')
+                .update({ DiamondMath: nextScore })
+                .eq('userName', window.currentUser)
+                .eq('hour', hour)
+                .then(({error}) => { if (error) console.error("[DiamondMath] Update Error:", error); })
+                .catch(e => console.error("[DiamondMath] Supabase update catch block failed:", e));
         }
 
         diamondRound++;
@@ -318,8 +319,13 @@ function finishDiamondGame() {
         </div>
     `;
 
+    // --- HUB FIX: Standard fallback ---
     setTimeout(() => { 
-        if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); 
+        if (typeof window.loadNextQuestion === 'function') {
+            window.loadNextQuestion(); 
+        } else {
+            location.reload();
+        }
     }, 2500);
 }
 
