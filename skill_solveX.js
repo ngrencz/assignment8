@@ -21,6 +21,7 @@ window.initSolveXGame = async function() {
     solveXData.isFirstAttempt = true;
     solveXData.equations = [];
 
+    // --- HUB FIX: Safely ensure mastery object exists ---
     if (!window.userMastery) window.userMastery = {};
 
     try {
@@ -36,7 +37,9 @@ window.initSolveXGame = async function() {
             solveXData.score = data ? (data.SolveX || 0) : 0;
             window.userMastery.SolveX = solveXData.score;
         }
-    } catch (e) { console.log("Sync error", e); }
+    } catch (e) { 
+        console.warn("SolveX DB sync error, falling back to local state."); 
+    }
 
     // Difficulty Scaling
     if (solveXData.score >= 8) solveXData.needed = 3; 
@@ -147,7 +150,8 @@ function renderSolveXUI() {
     setTimeout(() => { document.getElementById('inp-solve')?.focus(); }, 100);
 }
 
-window.handleSolveSubmit = async function() {
+// --- HUB FIX: Removed async to prevent UI blocking on submit ---
+window.handleSolveSubmit = function() {
     const inp = document.getElementById('inp-solve');
     const feedback = document.getElementById('solve-feedback');
     const hintBox = document.getElementById('solve-hint');
@@ -169,7 +173,9 @@ window.handleSolveSubmit = async function() {
         inp.disabled = true;
 
         let change = solveXData.isFirstAttempt ? 1 : 0; 
-        await updateSolveXScore(change);
+        
+        // --- HUB FIX: Fire and forget (no await) ---
+        updateSolveXScore(change);
 
         solveXData.currentIndex++;
         setTimeout(renderSolveXUI, 1200);
@@ -191,23 +197,26 @@ window.handleSolveSubmit = async function() {
     }
 };
 
-async function updateSolveXScore(amount) {
+// --- HUB FIX: Removed async, switched to background sync ---
+function updateSolveXScore(amount) {
     let next = Math.max(0, Math.min(10, solveXData.score + amount));
     solveXData.score = next;
     window.userMastery.SolveX = next;
 
     if (window.supabaseClient && window.currentUser) {
-        try {
-            const h = sessionStorage.getItem('target_hour') || "00";
-            await window.supabaseClient.from('assignment')
-                .update({ SolveX: next })
-                .eq('userName', window.currentUser)
-                .eq('hour', h);
-        } catch(e) { console.error("DB Update Failed", e); }
+        const h = sessionStorage.getItem('target_hour') || "00";
+        window.supabaseClient.from('assignment')
+            .update({ SolveX: next })
+            .eq('userName', window.currentUser)
+            .eq('hour', h)
+            .catch(e => console.error("DB Update Failed", e));
     }
 }
 
 function finishSolveXGame() {
+    // --- HUB FIX: Immediately release the lock so the Hub can load the next script ---
+    window.isCurrentQActive = false;
+    
     const qContent = document.getElementById('q-content');
     qContent.innerHTML = `
         <div style="text-align:center; padding:50px;">
@@ -222,10 +231,11 @@ function finishSolveXGame() {
         if (typeof window.loadNextQuestion === 'function') {
             window.loadNextQuestion();
         } else {
-            location.reload(); // Added standard fallback
+            location.reload(); 
         }
     }, 2000);
 }
+
 // Optimized Styles
 const solveStyle = document.createElement('style');
 solveStyle.innerHTML = `
