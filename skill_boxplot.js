@@ -1,6 +1,7 @@
 /**
  * skill_boxplot.js - Full Integrated Version (RESTORED LABELS)
  * Handles: Median, Mean, Range, Q1, and IQR
+ * UPDATED: Targeted sub-skill weighting & .then() Supabase fixes.
  */
 
 (function() {
@@ -44,7 +45,8 @@
 
         generateSkewedDataset();
 
-        const pool = [
+        // --- TARGETED QUESTION POOL ---
+        const fullPool = [
             { q: "What is the Median?", a: currentBoxData.median, hint: "Order the numbers first! Find the middle one.", col: "bp_median" },
             { q: "What is the Mean? (Round to 1 decimal)", a: currentBoxData.mean, hint: "Sum ÷ 11. Round to 1 decimal place.", col: "bp_mean" },
             { q: "What is the Range?", a: currentBoxData.max - currentBoxData.min, hint: "Highest Number - Lowest Number", col: "bp_range" },
@@ -52,7 +54,26 @@
             { q: "What is the IQR?", a: currentBoxData.q3 - currentBoxData.q1, hint: "Q3 - Q1 (The width of the box).", col: "bp_iqr" }
         ];
 
-        boxPlotSessionQuestions = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
+        let weightedBag = [];
+        fullPool.forEach(item => {
+            let score = window.userMastery[item.col] || 0;
+            // Mastery 0-3: 4 entries | 4-7: 2 entries | 8-10: 1 entry
+            let weight = score <= 3 ? 4 : (score <= 7 ? 2 : 1);
+            for (let i = 0; i < weight; i++) {
+                weightedBag.push(item);
+            }
+        });
+
+        boxPlotSessionQuestions = [];
+        while (boxPlotSessionQuestions.length < 3) {
+            let randomIndex = Math.floor(Math.random() * weightedBag.length);
+            let selected = weightedBag[randomIndex];
+            // Ensure no duplicates in the current session
+            if (!boxPlotSessionQuestions.some(q => q.col === selected.col)) {
+                boxPlotSessionQuestions.push(selected);
+            }
+        }
+
         renderBoxUI();
     };
 
@@ -238,8 +259,8 @@
                     .update(updateObj)
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
-                    .then(({ error }) => { 
-                        if (error) console.error("Sub-score update failed:", error); 
+                    .then(({ error }) => {
+                        if (error) console.error("Sub-score update failed:", error);
                     });
             }
 
@@ -281,8 +302,8 @@
                     .update({ 'BoxPlot': newMain })
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
-                    .then(({ error }) => { 
-                        if (error) console.error("Score update failed:", error); 
+                    .then(({ error }) => {
+                        if (error) console.error("Score update failed:", error);
                     });
             }
         }
