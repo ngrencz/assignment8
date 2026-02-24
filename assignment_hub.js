@@ -263,7 +263,8 @@ async function loadNextQuestion() {
             { id: 'ComplexShapes', fn: typeof initComplexShapesGame !== 'undefined' ? initComplexShapesGame : null },
             { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
             { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
-            { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null }
+            { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null },
+            { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null } 
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
