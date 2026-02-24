@@ -194,9 +194,9 @@ async function loadNextQuestion() {
     window.scrollTo(0,0);
 
     const currentHour = sessionStorage.getItem('target_hour') || "00";
-    let userData = null; // We will store the DB result here to use throughout
+    let userData = null; 
 
-    // --- Single Database Fetch ---
+    // --- 1. Resilient Database Fetch ---
     try {
         let { data, error } = await window.supabaseClient
             .from('assignment')
@@ -205,7 +205,6 @@ async function loadNextQuestion() {
             .eq('hour', currentHour)
             .maybeSingle();
 
-        // Create record if missing
         if (!data && !error) {
             console.warn(`User ${window.currentUser} not found. Creating record...`);
             await window.supabaseClient
@@ -217,7 +216,6 @@ async function loadNextQuestion() {
                     [`${window.targetLesson}Timer`]: 0
                 }]);
             
-            // Re-fetch
             const { data: refreshed } = await window.supabaseClient
                 .from('assignment')
                 .select('*')
@@ -228,71 +226,87 @@ async function loadNextQuestion() {
         }
 
         if (data) {
-            userData = data; // Save for routing logic below
+            userData = data; 
             const timerCol = `${window.targetLesson}Timer`;
             const savedTime = data[timerCol] || 0;
-            window.totalSecondsWorked = Math.max(0, savedTime - 30); // 30s penalty on reload
+            window.totalSecondsWorked = Math.max(0, savedTime - 30); 
             
             if (data[window.targetLesson] === true) {
                 window.totalSecondsWorked = GOAL_SECONDS;
             }
         }
-        window.hasLoadedTime = true;
-
     } catch (err) {
         console.error("DB Initialization Error:", err);
-        // We DON'T return here. We let the code continue so the game doesn't freeze.
+    } finally {
+        // FIX: Ensure the timer always starts, even if the DB is offline
+        window.hasLoadedTime = true;
     }
 
-    // --- Skill Mapping Logic ---
-    const skillMap = [
-        { id: 'C6Transformation', fn: typeof initTransformationGame !== 'undefined' ? initTransformationGame : null },
-        { id: 'LinearSystem', fn: typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null },
-        { id: 'FigureGrowth', fn: typeof initFigureGrowthGame !== 'undefined' ? initFigureGrowthGame : null },
-        { id: 'SolveX', fn: typeof initSolveXGame !== 'undefined' ? initSolveXGame : null },
-        { id: 'BoxPlot', fn: typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null },
-        { id: 'Similarity', fn: typeof initSimilarityGame !== 'undefined' ? initSimilarityGame : null },
-        { id: 'ComplexShapes', fn: typeof initComplexShapesGame !== 'undefined' ? initComplexShapesGame : null },
-        { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
-        { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
-        { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null }
-    ].filter(s => s.fn !== null);
+    // --- 2. Safe Routing Execution ---
+    try {
+        const skillMap = [
+            { id: 'C6Transformation', fn: typeof initTransformationGame !== 'undefined' ? initTransformationGame : null },
+            { id: 'LinearSystem', fn: typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null },
+            { id: 'FigureGrowth', fn: typeof initFigureGrowthGame !== 'undefined' ? initFigureGrowthGame : null },
+            { id: 'SolveX', fn: typeof initSolveXGame !== 'undefined' ? initSolveXGame : null },
+            { id: 'BoxPlot', fn: typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null },
+            { id: 'Similarity', fn: typeof initSimilarityGame !== 'undefined' ? initSimilarityGame : null },
+            { id: 'ComplexShapes', fn: typeof initComplexShapesGame !== 'undefined' ? initComplexShapesGame : null },
+            { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
+            { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
+            { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null }
+        ].filter(s => s.fn !== null);
 
-    if (window.targetLesson === '6.2.4' || window.targetLesson === 'C6Review') {
-        
-        // FORCE FIRST QUESTION: Transformation
-        if (!window.hasDonePrimaryLesson) {
-            window.hasDonePrimaryLesson = true;
-            const transformSkill = skillMap.find(s => s.id === 'C6Transformation');
-            if (transformSkill) {
-                window.skillsCompletedThisSession.push('C6Transformation');
-                return transformSkill.fn();
+        // FIX: Prevent crash if scripts failed to load
+        if (skillMap.length === 0) {
+            console.error("No skill scripts loaded.");
+            window.isCurrentQActive = false;
+            return;
+        }
+
+        if (window.targetLesson === '6.2.4' || window.targetLesson === 'C6Review') {
+            
+            if (!window.hasDonePrimaryLesson) {
+                window.hasDonePrimaryLesson = true;
+                const transformSkill = skillMap.find(s => s.id === 'C6Transformation');
+                if (transformSkill) {
+                    window.skillsCompletedThisSession.push('C6Transformation');
+                    return transformSkill.fn();
+                }
             }
+
+            let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
+            
+            if (availableSkills.length === 0) {
+                window.skillsCompletedThisSession = [];
+                availableSkills = skillMap;
+            }
+
+            availableSkills.sort((a, b) => {
+                const scoreA = userData ? (userData[a.id] || 0) : 0;
+                const scoreB = userData ? (userData[b.id] || 0) : 0;
+                return scoreA - scoreB;
+            });
+
+            const nextSkill = availableSkills[0];
+            
+            // FIX: Prevent undefined ID crash
+            if (!nextSkill) {
+                window.isCurrentQActive = false;
+                return;
+            }
+
+            window.skillsCompletedThisSession.push(nextSkill.id);
+            nextSkill.fn(); 
+
+        } else {
+            document.getElementById('q-title').innerText = "Under Construction";
+            document.getElementById('q-content').innerHTML = `Lesson ${window.targetLesson} is not yet available.`;
         }
-
-        let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
-        
-        if (availableSkills.length === 0) {
-            window.skillsCompletedThisSession = [];
-            availableSkills = skillMap;
-        }
-
-        // --- Optimized Routing ---
-        // Uses the userData we already fetched at the top!
-        availableSkills.sort((a, b) => {
-            const scoreA = userData ? (userData[a.id] || 0) : 0;
-            const scoreB = userData ? (userData[b.id] || 0) : 0;
-            return scoreA - scoreB;
-        });
-
-        const nextSkill = availableSkills[0];
-        window.skillsCompletedThisSession.push(nextSkill.id);
-        
-        nextSkill.fn(); // Run it safely
-
-    } else {
-        document.getElementById('q-title').innerText = "Under Construction";
-        document.getElementById('q-content').innerHTML = `Lesson ${window.targetLesson} is not yet available.`;
+    } catch (err) {
+        // FIX: Always release the lock if a game crashes during init
+        console.error("Error executing skill script:", err);
+        window.isCurrentQActive = false; 
     }
 }
 
