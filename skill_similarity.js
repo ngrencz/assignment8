@@ -32,6 +32,8 @@ window.initSimilarityGame = async function() {
     if (!document.getElementById('q-content')) return;
 
     similarityData.round = 1;
+    
+    // --- HUB FIX: Ensure mastery object exists safely ---
     if (!window.userMastery) window.userMastery = {};
 
     try {
@@ -47,7 +49,7 @@ window.initSimilarityGame = async function() {
             if (data) window.userMastery.Similarity = data.Similarity || 0;
         }
     } catch (e) { 
-        console.log("Sync error", e); 
+        console.warn("Similarity DB sync error, falling back to local state."); 
     }
 
     generateSimilarityProblem();
@@ -147,13 +149,10 @@ function drawSimilarShapes() {
     function getPolygon(type, sides, scale) {
         let pts = [];
         if (type === 'tri') {
-            // Fix: Maps Side 0 to bottom leg, Side 1 to left leg, Side 2 to hypotenuse
             pts = [{x:sides[0], y:sides[1]}, {x:0, y:sides[1]}, {x:0, y:0}];
         } else if (type === 'rect') {
-            // Fix: Maps Side 0 and 2 to width (x-axis), Side 1 and 3 to height (y-axis)
             pts = [{x:0, y:0}, {x:sides[0], y:0}, {x:sides[0], y:sides[1]}, {x:0, y:sides[1]}];
         } else if (type === 'trap') {
-            // Fix: Makes it an isosceles trapezoid using accurate side differences
             let dx = Math.abs(sides[2] - sides[0]) / 2;
             pts = [{x:dx, y:0}, {x:sides[0]+dx, y:0}, {x:sides[2], y:sides[1]}, {x:0, y:sides[1]}];
         }
@@ -222,7 +221,8 @@ function drawSimilarShapes() {
     drawShape(sPts, oW + 180, (300 - sH)/2, d.scaledSides, true);
 }
 
-window.checkSimilarityAnswer = async function() {
+// --- HUB FIX: Removed async to prevent UI blocking ---
+window.checkSimilarityAnswer = function() {
     const kInput = document.getElementById('inp-k');
     const xInput = document.getElementById('inp-x');
     const yInput = document.getElementById('inp-y');
@@ -249,7 +249,8 @@ window.checkSimilarityAnswer = async function() {
         feedback.style.backgroundColor = "#dcfce7";
         feedback.innerText = "✅ Correct!";
         
-        await updateSimilarityScore(1);
+        // --- HUB FIX: Removed await ---
+        updateSimilarityScore(1);
         similarityData.round++;
         
         if (similarityData.round > similarityData.maxRounds) {
@@ -270,20 +271,20 @@ window.checkSimilarityAnswer = async function() {
     }
 };
 
-async function updateSimilarityScore(amount) {
+// --- HUB FIX: Removed async, switched to background sync ---
+function updateSimilarityScore(amount) {
     if (!window.userMastery) window.userMastery = {};
     let current = window.userMastery.Similarity || 0;
     let next = Math.max(0, Math.min(10, current + amount));
     window.userMastery.Similarity = next;
 
     if (window.supabaseClient && window.currentUser) {
-        try {
-            const h = sessionStorage.getItem('target_hour') || "00";
-            await window.supabaseClient.from('assignment')
-                .update({ Similarity: next })
-                .eq('userName', window.currentUser)
-                .eq('hour', h);
-        } catch (e) { console.error("Supabase error", e); }
+        const h = sessionStorage.getItem('target_hour') || "00";
+        window.supabaseClient.from('assignment')
+            .update({ Similarity: next })
+            .eq('userName', window.currentUser)
+            .eq('hour', h)
+            .catch(e => console.error("Supabase error", e));
     }
 }
 
