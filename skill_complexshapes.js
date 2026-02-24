@@ -343,7 +343,7 @@ function drawComplex() {
     };
 }
 
-window.checkComplexWin = function() { // FIX: Removed 'async'
+window.checkComplexWin = function() { 
     const rawA = document.getElementById('ans-area-val').value.replace(/,/g, '');
     const rawP = document.getElementById('ans-perim-val').value.replace(/,/g, '');
     
@@ -369,12 +369,14 @@ window.checkComplexWin = function() { // FIX: Removed 'async'
         window.userMastery.ComplexShapes = newVal;
         if (window.supabaseClient && window.currentUser) {
             const h = sessionStorage.getItem('target_hour') || "00";
-            // FIX: Removed 'await' so UI instantly proceeds; added .catch() to log errors safely
+            // FIX: Using .then()
             window.supabaseClient.from('assignment')
                 .update({ ComplexShapes: newVal })
                 .eq('userName', window.currentUser)
                 .eq('hour', h)
-                .catch(e => console.error("Score update failed:", e));
+                .then(({ error }) => { 
+                    if (error) console.error("Score update failed:", error); 
+                });
         }
         showFlash("✅ Correct! Mastered.", "success");
         setTimeout(() => finishComplex(), 1500);
