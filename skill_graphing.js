@@ -355,7 +355,7 @@ function handleRoundWin() {
     let nextScore = Math.min(10, current + 1);
     window.userMastery.Graphing = nextScore; // Update instantly in memory
 
-    // --- HUB FIX: Fire and forget update (no await) ---
+    // --- HUB FIX: Fire and forget update (using .then) ---
     if (window.supabaseClient && window.currentUser) {
         const currentHour = sessionStorage.getItem('target_hour') || "00";
         window.supabaseClient
@@ -363,7 +363,9 @@ function handleRoundWin() {
             .update({ Graphing: nextScore })
             .eq('userName', window.currentUser)
             .eq('hour', currentHour)
-            .catch(e => console.error("DB Save Fail", e));
+            .then(({ error }) => { 
+                if (error) console.error("DB Save Fail", error); 
+            });
     }
 
     graphRound++;
