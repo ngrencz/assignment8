@@ -19,6 +19,27 @@ window.initLinearSystemGame = async function() {
     currentStep = 1;
     userPoints = [];
 
+    // --- HUB FIX: Ensure mastery object exists safely & fetch initial state ---
+    if (!window.userMastery) window.userMastery = {};
+    
+    try {
+        if (window.supabaseClient && window.currentUser) {
+            const currentHour = sessionStorage.getItem('target_hour') || "00";
+            const { data } = await window.supabaseClient
+                .from('assignment')
+                .select('LinearSystem')
+                .eq('userName', window.currentUser)
+                .eq('hour', currentHour)
+                .maybeSingle();
+                
+            if (data) {
+                window.userMastery.LinearSystem = data.LinearSystem || 0;
+            }
+        }
+    } catch (e) {
+        console.warn("LinearSystem DB sync error, falling back to local state.");
+    }
+
     // --- 1. GENERATE THE SYSTEM ---
     const type = Math.floor(Math.random() * 3); // 0: One Sol, 1: None (Parallel), 2: Infinite
     
@@ -321,7 +342,8 @@ function initCanvas() {
     drawGrid();
 }
 
-async function finishGame() {
+// --- HUB FIX: Removed async entirely for non-blocking background sync ---
+function finishGame() {
     // 1. STOP the timer immediately
     window.isCurrentQActive = false;
 
@@ -350,28 +372,21 @@ async function finishGame() {
     else if (linearErrorCount >= 2) adjustment = -1;
 
     // 5. Update Database (Now runs safely in the background)
-    if (window.supabaseClient && window.currentUser && adjustment !== 0) {
-        try {
+    if (adjustment !== 0) {
+        // --- HUB FIX: Safely retrieve and update local memory ---
+        let currentScore = window.userMastery.LinearSystem || 0;
+        let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
+        window.userMastery.LinearSystem = newScore;
+
+        if (window.supabaseClient && window.currentUser) {
             const hour = sessionStorage.getItem('target_hour') || "00";
-
-            const { data } = await window.supabaseClient
-                .from('assignment')
-                .select('LinearSystem')
-                .eq('userName', window.currentUser)
-                .eq('hour', hour)
-                .maybeSingle();
-
-            let currentScore = data ? (data.LinearSystem || 0) : 0;
-            let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
-
-            await window.supabaseClient
+            // --- HUB FIX: Background sync to DB (no await) ---
+            window.supabaseClient
                 .from('assignment')
                 .update({ LinearSystem: newScore })
                 .eq('userName', window.currentUser)
-                .eq('hour', hour);
-                
-        } catch(e) {
-            console.error("Score update failed:", e);
+                .eq('hour', hour)
+                .catch(e => console.error("Score update failed:", e));
         }
     }
 }
