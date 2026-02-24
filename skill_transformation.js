@@ -513,8 +513,8 @@
                         .update(updates)
                         .eq('userName', window.currentUser)
                         .eq('hour', currentHour) 
-                        .then(({error}) => { if (error) console.error("Supabase Error:", error); })
-                        .catch(e => console.error("Update failed:", e));
+                        .then(({error}) => { if (error) console.error("Supabase Error:", error); });
+                        // REMOVED THE CATCH LINE HERE
                 }
 
                 showFlash("Correct!", "success");
