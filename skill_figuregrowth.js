@@ -1,5 +1,6 @@
 /**
- * skill_figuregrowth.js - v2.5.0
+ * skill_figuregrowth.js - v2.5.1
+ * UPDATED: "Grab Bag" randomization to guarantee varied 'm' slopes.
  * UPDATED: Context-aware Step 1 hints (m vs b logic).
  * RESTORED: Full production comments and robust error handling.
  */
@@ -8,7 +9,6 @@ let currentPattern = {};
 var figureErrorCount = 0; 
 var currentStep = 1;      
 let isVisualMode = false;
-let lastM = null; 
 
 // --- DRAG STATE VARIABLES ---
 let isDrawing = false;
@@ -45,10 +45,16 @@ window.initFigureGrowthGame = async function() {
         console.warn("FigureGrowth DB sync error, falling back to local state.");
     }
 
-    // Logic: m (3-10), b (1-10)
-    let m;
-    do { m = Math.floor(Math.random() * 8) + 3; } while (m === lastM); 
-    lastM = m;
+    // --- NEW: "Grab Bag" Randomizer for guaranteed variety ---
+    let mBag = JSON.parse(sessionStorage.getItem('fig_m_bag') || '[]');
+    if (mBag.length === 0) {
+        // Refill the bag with slopes 3 through 10 and shuffle it
+        mBag = [3, 4, 5, 6, 7, 8, 9, 10];
+        mBag.sort(() => Math.random() - 0.5); 
+    }
+    const m = mBag.pop(); // Pull one out
+    sessionStorage.setItem('fig_m_bag', JSON.stringify(mBag)); // Save the bag
+
     const b = Math.floor(Math.random() * 10) + 1; 
     
     const f1 = Math.floor(Math.random() * 2) + 1; 
@@ -192,12 +198,10 @@ window.showFigureHint = function(wrongM, wrongB) {
     let message = "";
     if (currentStep === 1) {
         if (wrongM) {
-            // Prioritize M hint
             message = `<strong>How to find growth (m):</strong><br>
                        The number of tiles increased by <b>${currentPattern.f2Count - currentPattern.f1Count}</b> over <b>${currentPattern.f2Num - currentPattern.f1Num}</b> figures.<br>
                        Divide those to find <b>m</b>.`;
         } else if (wrongB) {
-            // M is correct, but B is wrong
             message = `<strong>How to find starting value (b):</strong><br>
                        Figure ${currentPattern.f1Num} has ${currentPattern.f1Count} tiles. <br>
                        Subtract the growth: ${currentPattern.f1Count} - (${currentPattern.m} × ${currentPattern.f1Num}) = <b>b</b>.`;
@@ -255,7 +259,6 @@ window.checkFigureAns = async function() {
             feedback.style.color = "#dc2626";
             feedback.innerText = "Not quite! Try again.";
         }
-        // Trigger context-aware hint
         showFigureHint(wrongM, wrongB);
     }
 };
@@ -285,7 +288,7 @@ function finishFigureGame() {
     let newScore = Math.max(0, Math.min(10, currentScore + adjustment));
     window.userMastery.FigureGrowth = newScore;
 
-    // --- HUB FIX: Background sync to DB ---
+    // --- HUB FIX: Background sync to DB (Using .then() instead of .catch()) ---
     if (window.supabaseClient && window.currentUser) {
         const currentHour = sessionStorage.getItem('target_hour') || "00";
         window.supabaseClient
@@ -293,7 +296,9 @@ function finishFigureGame() {
             .update({ FigureGrowth: newScore })
             .eq('userName', window.currentUser)
             .eq('hour', currentHour)
-            .catch(e => console.error("Database sync failed:", e)); 
+            .then(({ error }) => {
+                if (error) console.error("Database sync failed:", error);
+            }); 
     }
 
     // --- HUB FIX: Standard Handoff ---
