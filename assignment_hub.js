@@ -10,7 +10,6 @@ if (!window.supabaseClient) {
 // --- Dynamic Time Requirements ---
 const timeRequirements = {
     'C6Review': 35 * 60, // 35 minutes -> 2100s
-    '7.1.1': 15 * 60,
     'default': 12 * 60
 };
 
@@ -254,7 +253,8 @@ async function loadNextQuestion() {
             { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
             { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
             { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null },
-            { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null } 
+            { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null },
+            { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -267,6 +267,7 @@ async function loadNextQuestion() {
         const lessonAnchors = {
             'C6Review': 'C6Transformation',
             '7.1.1': 'PieChart'
+            '7.1.3': 'Scatterplot'
         };
 
         const primarySkillId = lessonAnchors[window.targetLesson];
