@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multisensory Math Worksheet Generator</title>
     
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Andika&display=swap');
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Andika&display=swap" rel="stylesheet">
 
     <style>
         :root {
             --bg-color: #f8fafc;
             --text-color: #1e293b;
             --border-color: #cbd5e1;
-            --dot-color: #ef4444; /* Red dots */
-            --ring-color: #3b82f6; /* Blue rings */
+            --dot-color: #ef4444; 
+            --ring-color: #3b82f6; 
         }
 
         body {
@@ -26,7 +26,7 @@
             padding: 20px;
         }
 
-        /* Setup Menu */
+        /* --- Setup Menu --- */
         #setup-menu {
             max-width: 600px;
             margin: 0 auto 30px auto;
@@ -51,40 +51,77 @@
         .btn-print { background: #2563eb; }
         .btn-print:hover { background: #1d4ed8; }
 
-        /* Worksheet Grid */
+        /* --- Worksheet Grid --- */
         #worksheet-container { display: none; max-width: 900px; margin: 0 auto; }
         #worksheet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; margin-bottom: 30px; }
-        .problem-cell { display: flex; align-items: flex-end; justify-content: flex-end; font-size: 50px; font-weight: bold; line-height: 1.1; position: relative; padding-bottom: 10px; border-bottom: 3px solid var(--text-color); }
+        .problem-cell { display: flex; align-items: flex-end; justify-content: flex-end; font-size: 55px; font-weight: bold; line-height: 1.1; position: relative; padding-bottom: 10px; border-bottom: 3px solid var(--text-color); }
         .op-sign { position: absolute; left: 0; bottom: 10px; }
         .num-stack { display: flex; flex-direction: column; align-items: flex-end; }
-        .answer-box { width: 100%; height: 50px; border: 2px dashed var(--border-color); border-radius: 6px; margin-top: 10px; text-align: center; font-size: 24px; font-weight: bold; }
+        .answer-box { width: 100%; height: 50px; border: 2px dashed var(--border-color); border-radius: 6px; margin-top: 10px; text-align: center; font-size: 24px; font-weight: bold; outline: none; }
 
-        /* Touch Point CSS Engine */
+        /* --- Touch Point CSS Engine --- */
         .touch-digit {
             position: relative;
             display: inline-block;
             width: 0.6em; 
             text-align: center;
-            font-family: 'Andika', 'Arial', sans-serif; /* Priority 1: open 4 */
+            /* Forces the specific font for the open 4 */
+            font-family: 'Andika', sans-serif !important; 
         }
 
         .dot { position: absolute; width: 9px; height: 9px; background-color: var(--dot-color); border-radius: 50%; z-index: 10; transform: translate(-50%, -50%); }
         .dot.double { background-color: white; border: 3px solid var(--ring-color); width: 7px; height: 7px; }
         .dot.double::after { content: ''; position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; background-color: var(--dot-color); border-radius: 50%; transform: translate(-50%, -50%); }
 
-        /* Revised Dot Placements (Percent of digit box) */
-        /* 1 */ .d1-1 { top: 20%; left: 50%; }
-        /* 2 */ .d2-1 { top: 20%; left: 30%; } .d2-2 { top: 85%; left: 85%; } /* Bottom Right */
-        /* 3 */ .d3-1 { top: 15%; left: 20%; } /* Top Left point */ .d3-2 { top: 50%; left: 60%; } .d3-3 { top: 80%; left: 20%; }
-        /* 4 */ .d4-1 { top: 20%; left: 20%; } /* Moved from bot left to top left */ .d4-2 { top: 20%; left: 80%; } .d4-3 { top: 70%; left: 80%; } .d4-4 { top: 90%; left: 80%; }
-        /* 5 */ .d5-1 { top: 20%; left: 20%; } .d5-2 { top: 20%; left: 80%; } .d5-3 { top: 50%; left: 20%; } .d5-4 { top: 70%; left: 80%; } .d5-5 { top: 90%; left: 35%; } /* Moved bot-left to bot-center of curve */
-        /* 6 */ .d6-1 { top: 20%; left: 30%; } /* Non-standard "spine" mapping: top */ .d6-2 { top: 50%; left: 30%; } /* middle */ .d6-3 { top: 80%; left: 30%; } /* bottom */
-        /* 7 */ .d7-1 { top: 15%; left: 15%; } /* Single, top-left point */ .d7-2 { top: 40%; left: 30%; } /* Double, top spine */ .d7-3 { top: 80%; left: 30%; } /* Double, bot spine */
-        /* 8 */ .d8-1 { top: 35%; left: 20%; } /* Moved down */ .d8-2 { top: 35%; left: 80%; } /* Moved down */ .d8-3 { top: 65%; left: 20%; } /* Moved up */ .d8-4 { top: 65%; left: 80%; } /* Moved up */
-        /* 9 (PEDAGOGICAL & MATH WARNING: This pattern results in value 8) */
-        .d9-1 { top: 20%; left: 30%; } /* Double, top spine */ .d9-2 { top: 50%; left: 30%; } /* Double, mid spine */ .d9-3 { top: 80%; left: 30%; } /* Double, bot spine */
-        .d9-4 { top: 15%; left: 60%; } /* Single, on top */ .d9-5 { top: 90%; left: 60%; } /* Single, bot bubble */
+        /* --- Dot Coordinates (Expanded for easy editing) --- */
+        .d1-1 { top: 20%; left: 50%; }
+        
+        /* 2: Top left curve, bottom right point */
+        .d2-1 { top: 25%; left: 20%; } 
+        .d2-2 { top: 85%; left: 80%; } 
+        
+        /* 3: Three points on the left side of the curves */
+        .d3-1 { top: 15%; left: 25%; } 
+        .d3-2 { top: 50%; left: 45%; } 
+        .d3-3 { top: 85%; left: 25%; }
+        
+        /* 4: Open four mapping */
+        .d4-1 { top: 15%; left: 20%; } 
+        .d4-2 { top: 15%; left: 80%; } 
+        .d4-3 { top: 65%; left: 80%; } 
+        .d4-4 { top: 90%; left: 80%; }
+        
+        /* 5: Standard */
+        .d5-1 { top: 20%; left: 20%; } 
+        .d5-2 { top: 20%; left: 80%; } 
+        .d5-3 { top: 50%; left: 20%; } 
+        .d5-4 { top: 70%; left: 80%; } 
+        .d5-5 { top: 90%; left: 35%; } 
+        
+        /* 6: Double dots on spine, middle dot pushed slightly left */
+        .d6-1 { top: 25%; left: 30%; } 
+        .d6-2 { top: 50%; left: 25%; } 
+        .d6-3 { top: 75%; left: 30%; }
+        
+        /* 7: Single top left, double middle, double bottom */
+        .d7-1 { top: 15%; left: 20%; } 
+        .d7-2 { top: 45%; left: 45%; } 
+        .d7-3 { top: 85%; left: 30%; }
+        
+        /* 8: Standard bubbles */
+        .d8-1 { top: 35%; left: 20%; } 
+        .d8-2 { top: 35%; left: 80%; } 
+        .d8-3 { top: 65%; left: 20%; } 
+        .d8-4 { top: 65%; left: 80%; }
+        
+        /* 9: Double dots on spine, single on top, single on bottom */
+        .d9-1 { top: 25%; left: 30%; } 
+        .d9-2 { top: 50%; left: 30%; } 
+        .d9-3 { top: 75%; left: 30%; }
+        .d9-4 { top: 15%; left: 70%; } 
+        .d9-5 { top: 90%; left: 50%; }
 
+        /* --- Print Rules --- */
         @media print {
             body { background: white; padding: 0; }
             #setup-menu, .print-hide { display: none !important; }
@@ -145,9 +182,9 @@
         '4': `<span class="touch-digit">4<span class="dot d4-1"></span><span class="dot d4-2"></span><span class="dot d4-3"></span><span class="dot d4-4"></span></span>`,
         '5': `<span class="touch-digit">5<span class="dot d5-1"></span><span class="dot d5-2"></span><span class="dot d5-3"></span><span class="dot d5-4"></span><span class="dot d5-5"></span></span>`,
         '6': `<span class="touch-digit">6<span class="dot double d6-1"></span><span class="dot double d6-2"></span><span class="dot double d6-3"></span></span>`,
-        '7': `<span class="touch-digit">7<span class="dot d7-1"></span><span class="dot double d7-2"></span><span class="dot double d7-3"></span></span>`, // 1 single, 2 double
+        '7': `<span class="touch-digit">7<span class="dot d7-1"></span><span class="dot double d7-2"></span><span class="dot double d7-3"></span></span>`, 
         '8': `<span class="touch-digit">8<span class="dot double d8-1"></span><span class="dot double d8-2"></span><span class="dot double d8-3"></span><span class="dot double d8-4"></span></span>`,
-        '9': `<span class="touch-digit">9<span class="dot double d9-1"></span><span class="dot double d9-2"></span><span class="dot double d9-3"></span><span class="dot d9-4"></span><span class="dot d9-5"></span></span>` // 3 double, 2 single (=8)
+        '9': `<span class="touch-digit">9<span class="dot double d9-1"></span><span class="dot double d9-2"></span><span class="dot double d9-3"></span><span class="dot d9-4"></span><span class="dot d9-5"></span></span>` 
     };
 
     function renderNumberWithDots(num) {
@@ -155,7 +192,7 @@
         let html = '';
         for (let i = 0; i < str.length; i++) {
             if (touchHTML[str[i]]) html += touchHTML[str[i]];
-            else html += `<span class="touch-digit">${str[i]}</span>`; // Failsafe
+            else html += `<span class="touch-digit">${str[i]}</span>`;
         }
         return html;
     }
@@ -164,12 +201,18 @@
         const digits = parseInt(document.getElementById('setting-digits').value);
         let count = parseInt(document.getElementById('setting-count').value);
         if (count > 24) count = 24; 
+        
         const opsChecked = document.querySelectorAll('.op-check:checked');
-        if (opsChecked.length === 0) { alert("Select operations."); return; }
+        if (opsChecked.length === 0) { 
+            alert("Select operations."); 
+            return; 
+        }
+        
         let ops = Array.from(opsChecked).map(cb => cb.value);
         const grid = document.getElementById('worksheet-grid');
         grid.innerHTML = '';
         document.getElementById('max-score-display').innerText = count;
+        
         let maxVal = Math.pow(10, digits) - 1;
         let minVal = Math.pow(10, digits - 1);
         if (digits === 1) minVal = 1;
@@ -177,20 +220,56 @@
         for (let i = 0; i < count; i++) {
             let op = ops[Math.floor(Math.random() * ops.length)];
             let topNum, botNum;
-            if (op === '+') { topNum = rand(minVal, maxVal); botNum = rand(minVal, maxVal); } 
-            else if (op === '-') { topNum = rand(minVal, maxVal); botNum = rand(minVal, maxVal); if (botNum > topNum) { let t = topNum; topNum = botNum; botNum = t; } }
-            else if (op === '&times;') { let mMax = digits === 1 ? 9 : (digits === 2 ? 15 : 40); topNum = rand(1, mMax); botNum = rand(1, 9); }
-            else if (op === '&divide;') { let dFactor = rand(1, (digits === 1 ? 9 : 15)); botNum = rand(1, 9); topNum = dFactor * botNum; }
+            
+            if (op === '+') { 
+                topNum = rand(minVal, maxVal); 
+                botNum = rand(minVal, maxVal); 
+            } 
+            else if (op === '-') { 
+                topNum = rand(minVal, maxVal); 
+                botNum = rand(minVal, maxVal); 
+                if (botNum > topNum) { let t = topNum; topNum = botNum; botNum = t; } 
+            }
+            else if (op === '&times;') { 
+                let mMax = digits === 1 ? 9 : (digits === 2 ? 15 : 40); 
+                topNum = rand(1, mMax); 
+                botNum = rand(1, 9); 
+            }
+            else if (op === '&divide;') { 
+                let dFactor = rand(1, (digits === 1 ? 9 : 15)); 
+                botNum = rand(1, 9); 
+                topNum = dFactor * botNum; 
+            }
 
             if (op === '&divide;') {
-                grid.innerHTML += `<div style="display:flex; flex-direction:column; align-items:center;"><div style="font-size: 35px; font-weight: bold; display: flex; align-items: center; gap: 10px;"><div>${renderNumberWithDots(botNum)}</div><div style="border-left: 3px solid black; border-top: 3px solid black; padding-left: 10px; padding-top: 5px; min-width: 60px;">${renderNumberWithDots(topNum)}</div></div><input type="text" class="answer-box print-hide" placeholder="Ans"></div>`;
+                grid.innerHTML += `
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                        <div style="font-size: 40px; font-weight: bold; display: flex; align-items: center; gap: 10px;">
+                            <div>${renderNumberWithDots(botNum)}</div>
+                            <div style="border-left: 3px solid black; border-top: 3px solid black; padding-left: 10px; padding-top: 5px; min-width: 60px;">
+                                ${renderNumberWithDots(topNum)}
+                            </div>
+                        </div>
+                        <input type="text" class="answer-box print-hide">
+                    </div>`;
             } else {
-                grid.innerHTML += `<div><div class="problem-cell"><span class="op-sign">${op}</span><div class="num-stack"><div>${renderNumberWithDots(topNum)}</div><div>${renderNumberWithDots(botNum)}</div></div></div><input type="text" class="answer-box print-hide" placeholder="Ans"></div>`;
+                grid.innerHTML += `
+                    <div>
+                        <div class="problem-cell">
+                            <span class="op-sign">${op}</span>
+                            <div class="num-stack">
+                                <div>${renderNumberWithDots(topNum)}</div>
+                                <div>${renderNumberWithDots(botNum)}</div>
+                            </div>
+                        </div>
+                        <input type="text" class="answer-box print-hide">
+                    </div>`;
             }
         }
         document.getElementById('setup-menu').style.display = 'none';
         document.getElementById('worksheet-container').style.display = 'block';
     }
+
     const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 </script>
 
