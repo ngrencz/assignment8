@@ -1,68 +1,60 @@
 /**
- * skill_scatterplot.js
+ * skill_lineofbestfit.js
  * - Primary skill for 7.1.3
- * - Generates clear scatterplots (Positive, Negative, No Association).
- * - Matches the visual style of 8th-grade worksheets (Axis arrows, clear labels).
- * - Uses .then() for background Supabase syncing.
+ * - Generates real-world scatter data tables with realistic variance.
+ * - Draws scatterplot with a line of best fit.
+ * - Progressive steps (Equation -> Prediction -> Interpretation).
+ * - Includes targeted hint logic.
  */
 
-console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
+console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit");
 
 (function() {
-    let spData = {};
-    let spRound = 1;
-    const totalSpRounds = 3;
+    let lbfData = {};
+    let lbfRound = 1;
+    const totalLbfRounds = 3;
     let sessionCorrectFirstTry = 0;
+    let currentStep = 1;
+    let errorCount = 0;
 
     const scenarios = [
-        // Negative Associations
         {
-            xLabel: "Average Number of Hours Watching TV per Day", yLabel: "Grade Point Average", type: "negative",
-            descCorrect: "As TV hours increase, Grade Point Average tends to decrease.",
-            descWrong1: "As TV hours increase, Grade Point Average tends to increase.",
-            descWrong2: "There is no connection between TV hours and Grade Point Average."
+            xLabel: "Depth of seed (cm)", yLabel: "Plant height (cm)",
+            mSign: -1,
+            intCorrect: "The expected plant height if the seed is planted at a depth of 0 cm.",
+            intWrong1: "The depth of the seed when the plant height reaches 0 cm.",
+            intWrong2: "The amount the plant shrinks for each additional cm of depth."
         },
         {
-            xLabel: "Outside Temperature (°F)", yLabel: "Hot Chocolate Sales", type: "negative",
-            descCorrect: "As temperature increases, hot chocolate sales tend to decrease.",
-            descWrong1: "As temperature increases, hot chocolate sales tend to increase.",
-            descWrong2: "There is no connection between temperature and hot chocolate sales."
-        },
-        // Positive Associations
-        {
-            xLabel: "Age (Years)", yLabel: "Number of Gray Hairs on One's Head", type: "positive",
-            descCorrect: "As age increases, the number of gray hairs tends to increase.",
-            descWrong1: "As age increases, the number of gray hairs tends to decrease.",
-            descWrong2: "There is no connection between age and the number of gray hairs."
+            xLabel: "Months Since Purchase", yLabel: "Value of Phone ($)",
+            mSign: -1,
+            intCorrect: "The initial value of the phone when it was brand new (0 months).",
+            intWrong1: "The amount of value the phone loses each month.",
+            intWrong2: "The number of months it takes for the phone's value to reach $0."
         },
         {
-            xLabel: "Hours Studied", yLabel: "Math Test Score", type: "positive",
-            descCorrect: "As hours studied increase, test scores tend to increase.",
-            descWrong1: "As hours studied increase, test scores tend to decrease.",
-            descWrong2: "There is no connection between hours studied and test scores."
-        },
-        // No Associations
-        {
-            xLabel: "Length of Hair", yLabel: "Shoe Size", type: "none",
-            descCorrect: "There is no connection between hair length and shoe size.",
-            descWrong1: "As hair length increases, shoe size tends to increase.",
-            descWrong2: "As hair length increases, shoe size tends to decrease."
+            xLabel: "Hours of Practice", yLabel: "Points Scored in Game",
+            mSign: 1,
+            intCorrect: "The expected points scored with 0 hours of practice.",
+            intWrong1: "The additional points scored for every extra hour of practice.",
+            intWrong2: "The total number of hours needed to score the maximum points."
         },
         {
-            xLabel: "Month of Birth", yLabel: "Height (inches)", type: "none",
-            descCorrect: "There is no connection between birth month and height.",
-            descWrong1: "As the birth month increases, height tends to increase.",
-            descWrong2: "As the birth month increases, height tends to decrease."
+            xLabel: "Cars Washed", yLabel: "Money Raised ($)",
+            mSign: 1,
+            intCorrect: "The starting money in the fundraiser before washing any cars.",
+            intWrong1: "The amount of money earned for each car washed.",
+            intWrong2: "The total number of cars needed to reach the fundraiser goal."
         }
     ];
 
-    window.initScatterplotGame = async function() {
+    window.initLineOfBestFitGame = async function() {
         const qContent = document.getElementById('q-content');
         if (!qContent) return;
 
         window.isCurrentQActive = true;
         window.currentQSeconds = 0;
-        spRound = 1;
+        lbfRound = 1;
         sessionCorrectFirstTry = 0;
 
         if (!window.userMastery) window.userMastery = {};
@@ -72,198 +64,285 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
                 const currentHour = sessionStorage.getItem('target_hour') || "00";
                 const { data, error } = await window.supabaseClient
                     .from('assignment')
-                    .select('Scatterplot')
+                    .select('LineOfBestFit')
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
                     .maybeSingle();
                 
-                if (error) console.error("[Scatterplot] Fetch error:", error);
-                if (data) window.userMastery.Scatterplot = data.Scatterplot || 0;
+                if (error) console.error("[LineOfBestFit] Fetch error:", error);
+                if (data) window.userMastery.LineOfBestFit = data.LineOfBestFit || 0;
             }
         } catch (e) { 
-            console.error("[Scatterplot] Init error:", e); 
+            console.error("[LineOfBestFit] Init error:", e); 
         }
         
-        startSpRound();
+        startLbfRound();
     };
 
-    function startSpRound() {
-        generateSpProblem();
-        renderSpUI();
+    function startLbfRound() {
+        currentStep = 1;
+        errorCount = 0;
+        generateLbfProblem();
+        renderLbfUI();
     }
 
-    function generateSpProblem() {
+    function generateLbfProblem() {
         const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
-        let points = [];
-        const numPoints = 15; // Fixed number for consistent density
+        
+        let b = Math.floor(Math.random() * 20) + 20; 
+        if (scenario.mSign === 1) b = Math.floor(Math.random() * 10) + 5; 
+        
+        let m = scenario.mSign * (Math.floor(Math.random() * 3) + 2); 
+        
+        let p1 = { x: 0, y: b };
+        let xStep = Math.floor(Math.random() * 3) + 3; 
+        let p2 = { x: xStep * 2, y: b + m * (xStep * 2) };
 
-        for (let i = 0; i < numPoints; i++) {
-            // Spread X values evenly to ensure the plot covers the graph
-            let x = (i / numPoints) * 80 + 10; 
-            let y;
+        let points = [];
+        let tableData = [];
+        for (let i = 0; i <= 6; i++) {
+            let cx = i * xStep;
+            // INCREASED NOISE: Creates realistic scatter instead of a tight line
+            let noise = (Math.random() * 16 - 8); 
+            let cy = Math.max(0, Math.round(b + m * cx + noise)); 
             
-            if (scenario.type === 'positive') {
-                y = x + (Math.random() * 30 - 15); 
-            } else if (scenario.type === 'negative') {
-                y = (100 - x) + (Math.random() * 30 - 15); 
-            } else {
-                x = Math.random() * 80 + 10; // Randomize X fully for 'none'
-                y = Math.random() * 80 + 10; 
-            }
-            
-            y = Math.max(10, Math.min(90, y));
-            points.push({ x, y });
+            // Ensure the two "anchor" points the line is drawn through are actually in the data
+            if (i === 0) cy = p1.y;
+            if (i === 2) cy = p2.y;
+
+            points.push({ x: cx, y: cy });
+            tableData.push({ x: cx, y: cy });
         }
 
-        let sentences = [
-            { text: scenario.descCorrect, isCorrect: true },
-            { text: scenario.descWrong1, isCorrect: false },
-            { text: scenario.descWrong2, isCorrect: false }
+        let predictX = (7 * xStep) + Math.floor(Math.random() * xStep);
+        let expectedPredictY = m * predictX + b;
+
+        let interpretations = [
+            { text: scenario.intCorrect, isCorrect: true },
+            { text: scenario.intWrong1, isCorrect: false },
+            { text: scenario.intWrong2, isCorrect: false }
         ].sort(() => 0.5 - Math.random());
 
-        spData = { ...scenario, points: points, sentences: sentences };
+        lbfData = {
+            ...scenario,
+            m: m,
+            b: b,
+            p1: p1,
+            p2: p2,
+            points: points,
+            tableData: tableData,
+            predictX: predictX,
+            predictY: expectedPredictY,
+            interpretations: interpretations
+        };
     }
 
-    function renderSpUI() {
+    function renderLbfUI() {
         const qContent = document.getElementById('q-content');
         if (!qContent) return;
 
-        document.getElementById('q-title').innerText = `Scatterplot Associations (Round ${spRound}/${totalSpRounds})`;
+        document.getElementById('q-title').innerText = `Lines of Best Fit (Round ${lbfRound}/${totalLbfRounds})`;
+
+        // Build HTML Table
+        let tableHTML = `<table style="width:100%; border-collapse: collapse; text-align: center; margin-bottom: 15px; font-size: 14px;">`;
+        tableHTML += `<tr><th style="border: 1px solid #cbd5e1; padding: 8px; background: #f1f5f9; text-align: left; width: 40%;">${lbfData.xLabel}</th>`;
+        lbfData.tableData.forEach(d => { tableHTML += `<td style="border: 1px solid #cbd5e1; padding: 8px;">${d.x}</td>`; });
+        tableHTML += `</tr>`;
+        tableHTML += `<tr><th style="border: 1px solid #cbd5e1; padding: 8px; background: #f1f5f9; text-align: left;">${lbfData.yLabel}</th>`;
+        lbfData.tableData.forEach(d => { tableHTML += `<td style="border: 1px solid #cbd5e1; padding: 8px;">${d.y}</td>`; });
+        tableHTML += `</tr></table>`;
+
+        // Generate Progressive Steps
+        let stepHTML = "";
+        
+        let ruleDisplay = (currentStep > 1) ? `
+            <div style="background: #ecfdf5; border: 1px dashed #10b981; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; color: #065f46; font-size: 16px;">
+                <strong>Equation:</strong> y = ${lbfData.m}x + ${lbfData.b}
+            </div>` : "";
+
+        if (currentStep === 1) {
+            stepHTML = `
+                <div style="margin-bottom: 15px;">
+                    <strong style="font-size: 16px;">Step 1. Equation:</strong> Find the equation of the line of best fit.<br>
+                    <div style="display:flex; align-items:center; justify-content:center; gap: 8px; margin-top: 15px; font-size: 18px;">
+                        y = <input type="number" id="lbf-ans-m" step="0.1" placeholder="m" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;"> 
+                        x + 
+                        <input type="number" id="lbf-ans-b" step="0.1" placeholder="b" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
+                    </div>
+                </div>`;
+        } else if (currentStep === 2) {
+            stepHTML = ruleDisplay + `
+                <div style="margin-bottom: 15px;">
+                    <strong style="font-size: 16px;">Step 2. Prediction:</strong> Use your equation to predict the ${lbfData.yLabel.toLowerCase()} when the ${lbfData.xLabel.toLowerCase()} is <strong>${lbfData.predictX}</strong>.<br>
+                    <div style="margin-top: 15px; text-align: center;">
+                        <input type="number" id="lbf-ans-pred" step="0.1" placeholder="?" style="width: 100px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
+                    </div>
+                </div>`;
+        } else {
+            stepHTML = ruleDisplay + `
+                <div style="margin-bottom: 15px;">
+                    <strong style="font-size: 16px;">Step 3. Interpretation:</strong> What does the y-intercept represent in this situation?<br>
+                    <select id="lbf-ans-int" style="margin-top: 15px; width: 100%; height:45px; padding: 0 10px; font-size:14px; border:2px solid #3b82f6; border-radius:6px; outline:none; background: white; cursor: pointer;">
+                        <option value="none">-- Select the best interpretation --</option>
+                        ${lbfData.interpretations.map((s, i) => `<option value="${s.isCorrect ? 'correct' : 'wrong' + i}">${s.text}</option>`).join('')}
+                    </select>
+                </div>`;
+        }
 
         qContent.innerHTML = `
             <div style="max-width: 650px; margin: 0 auto; background:#f8fafc; padding:25px; border-radius:12px; border:1px solid #e2e8f0;">
                 
-                <p style="font-size: 16px; color: #1e293b; line-height: 1.5; margin-bottom: 20px;">
-                    Determine if there is an association between the points. Label the graph as showing a positive association, negative association, or no association, and select the sentence that best describes it.
-                </p>
+                ${tableHTML}
 
                 <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; text-align: center;">
-                    <canvas id="spCanvas" width="300" height="300" style="max-width:100%;"></canvas>
+                    <canvas id="lbfCanvas" width="350" height="250" style="max-width:100%;"></canvas>
+                    <p style="font-size: 13px; color: #475569; margin-top: 10px;"><em>The drawn line of best fit passes exactly through <strong>(0, ${lbfData.b})</strong> and <strong>(${lbfData.p2.x}, ${lbfData.p2.y})</strong>.</em></p>
                 </div>
                 
                 <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
-                    <div style="margin-bottom: 20px;">
-                        <strong style="font-size: 16px;">1. Type of Association:</strong><br>
-                        <select id="sp-ans-type" style="margin-top: 10px; width: 100%; height:40px; padding: 0 10px; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none; background: white; cursor: pointer;">
-                            <option value="none">-- Select Association --</option>
-                            <option value="positive">Positive Association</option>
-                            <option value="negative">Negative Association</option>
-                            <option value="none_assoc">No Association</option>
-                        </select>
-                    </div>
-
-                    <div style="font-size: 16px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
-                        <strong>2. Description:</strong><br>
-                        <select id="sp-ans-desc" style="margin-top: 10px; width: 100%; height:40px; padding: 0 10px; font-size:14px; border:2px solid #3b82f6; border-radius:6px; outline:none; background: white; cursor: pointer;">
-                            <option value="none">-- Select the best description --</option>
-                            ${spData.sentences.map((s, i) => `<option value="${s.isCorrect ? 'correct' : 'wrong' + i}">${s.text}</option>`).join('')}
-                        </select>
-                    </div>
+                    ${stepHTML}
                 </div>
 
-                <button onclick="checkScatterplot()" id="sp-check-btn" style="width:100%; height:50px; background:#1e293b; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 18px; transition: background 0.2s;">CHECK ANSWERS</button>
+                <div id="lbf-hint" style="margin-bottom: 15px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 14px; color: #92400e; text-align:center; line-height:1.4;"></div>
+
+                <button onclick="checkLbfStep()" id="lbf-check-btn" style="width:100%; height:50px; background:#1e293b; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 18px; transition: background 0.2s;">CHECK ANSWER</button>
             </div>
-            <div id="sp-flash" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; z-index:100;"></div>
+            <div id="lbf-flash" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; z-index:100;"></div>
         `;
 
-        setTimeout(drawScatterplot, 50);
+        setTimeout(drawLbfGraph, 50);
     }
 
-    function drawScatterplot() {
-        const canvas = document.getElementById('spCanvas');
+    function drawLbfGraph() {
+        const canvas = document.getElementById('lbfCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
-        const width = canvas.width;
-        const height = canvas.height;
-        const padX = 50; 
-        const padY = 50; 
-        const chartW = width - padX - 20;
-        const chartH = height - padY - 20;
+        const padX = 40; 
+        const padY = 40; 
+        const chartW = canvas.width - padX - 10;
+        const chartH = canvas.height - padY - 10;
 
-        ctx.clearRect(0, 0, width, height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Axes with Arrows
-        ctx.strokeStyle = '#1e293b';
+        let maxX = Math.max(...lbfData.points.map(p => p.x)) + 5;
+        let maxY = Math.max(...lbfData.points.map(p => p.y), lbfData.b) + 10;
+
+        const scaleX = chartW / maxX;
+        const scaleY = chartH / maxY;
+
+        // Draw Axes
+        ctx.strokeStyle = '#94a3b8';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        
-        ctx.moveTo(padX, height - padY); ctx.lineTo(padX, 20); // Y-axis
-        ctx.lineTo(padX - 5, 30); ctx.moveTo(padX, 20); ctx.lineTo(padX + 5, 30); // Y-arrow
-        
-        ctx.moveTo(padX, height - padY); ctx.lineTo(width - 20, height - padY); // X-axis
-        ctx.lineTo(width - 30, height - padY - 5); ctx.moveTo(width - 20, height - padY); ctx.lineTo(width - 30, height - padY + 5); // X-arrow
+        ctx.moveTo(padX, canvas.height - padY);
+        ctx.lineTo(canvas.width - 10, canvas.height - padY);
+        ctx.moveTo(padX, canvas.height - padY);
+        ctx.lineTo(padX, 10);
         ctx.stroke();
 
-        // Axis Labels
-        ctx.fillStyle = '#0f172a';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText(spData.xLabel, padX + chartW / 2, height - padY + 15);
+        // Draw Line of Best Fit
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        
+        let lineStartX = padX + (0 * scaleX);
+        let lineStartY = (canvas.height - padY) - (lbfData.b * scaleY);
+        let endX = maxX;
+        let endY = lbfData.m * endX + lbfData.b;
+        let lineEndX = padX + (endX * scaleX);
+        let lineEndY = (canvas.height - padY) - (endY * scaleY);
 
-        ctx.save();
-        ctx.translate(padX - 15, height - padY - chartH / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(spData.yLabel, 0, 0);
-        ctx.restore();
+        ctx.moveTo(lineStartX, lineStartY);
+        ctx.lineTo(lineEndX, lineEndY);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-        // Draw Points
+        // Draw Points (drawn after line so they sit on top)
         ctx.fillStyle = '#0f172a';
-        spData.points.forEach(p => {
-            let px = padX + (p.x / 100) * chartW;
-            let py = (height - padY) - (p.y / 100) * chartH;
+        lbfData.points.forEach(p => {
+            let px = padX + (p.x * scaleX);
+            let py = (canvas.height - padY) - (p.y * scaleY);
             ctx.beginPath();
             ctx.arc(px, py, 4, 0, Math.PI * 2);
             ctx.fill();
         });
     }
 
-    window.checkScatterplot = function() {
-        const elType = document.getElementById('sp-ans-type');
-        const elDesc = document.getElementById('sp-ans-desc');
+    window.showLbfHint = function() {
+        const hintBox = document.getElementById('lbf-hint');
+        if (!hintBox) return;
+        hintBox.style.display = 'block';
 
-        if (!elType || !elDesc) return;
-
-        const uType = elType.value;
-        const uDesc = elDesc.value;
-        let allCorrect = true;
-
-        const mappedType = spData.type === 'none' ? 'none_assoc' : spData.type;
-        if (uType === mappedType) {
-            elType.style.backgroundColor = "#dcfce7"; elType.style.borderColor = "#22c55e";
+        if (currentStep === 1) {
+            hintBox.innerHTML = `<strong>Need a hint?</strong><br>The line passes through <strong>(0, ${lbfData.b})</strong>, so your y-intercept (b) is <strong>${lbfData.b}</strong>.<br>Use the slope formula <span style="font-family: monospace;">(y2 - y1) / (x2 - x1)</span> with points (0, ${lbfData.b}) and (${lbfData.p2.x}, ${lbfData.p2.y}) to find <strong>m</strong>.`;
+        } else if (currentStep === 2) {
+            hintBox.innerHTML = `<strong>Need a hint?</strong><br>Plug the new value into the equation you just found: <br><strong>y = ${lbfData.m}(${lbfData.predictX}) + ${lbfData.b}</strong>`;
         } else {
-            allCorrect = false;
-            elType.style.backgroundColor = "#fee2e2"; elType.style.borderColor = "#ef4444";
-        }
-
-        if (uDesc === 'correct') {
-            elDesc.style.backgroundColor = "#dcfce7"; elDesc.style.borderColor = "#22c55e";
-        } else {
-            allCorrect = false;
-            elDesc.style.backgroundColor = "#fee2e2"; elDesc.style.borderColor = "#ef4444";
-        }
-
-        if (uType === 'none' || uDesc === 'none') allCorrect = false; 
-
-        if (allCorrect) {
-            document.getElementById('sp-check-btn').disabled = true;
-            showSpFlash("Correct!", "success");
-            sessionCorrectFirstTry++;
-
-            spRound++;
-            setTimeout(() => {
-                if (spRound > totalSpRounds) finishSpGame();
-                else startSpRound();
-            }, 1200);
-        } else {
-            showSpFlash("Review your selections.", "error");
+            hintBox.innerHTML = `<strong>Need a hint?</strong><br>The y-intercept (${lbfData.b}) happens when the x-axis value (${lbfData.xLabel.toLowerCase()}) is exactly 0.`;
         }
     };
 
-    function finishSpGame() {
+    window.checkLbfStep = function() {
+        let isCorrect = false;
+
+        if (currentStep === 1) {
+            const elM = document.getElementById('lbf-ans-m');
+            const elB = document.getElementById('lbf-ans-b');
+            if (!elM || !elB) return;
+            const uM = parseFloat(elM.value);
+            const uB = parseFloat(elB.value);
+            
+            if (Math.abs(uM - lbfData.m) < 0.05 && Math.abs(uB - lbfData.b) < 0.05) isCorrect = true;
+            else {
+                if (Math.abs(uM - lbfData.m) >= 0.05) { elM.style.backgroundColor = "#fee2e2"; elM.style.borderColor = "#ef4444"; }
+                else { elM.style.backgroundColor = "#dcfce7"; elM.style.borderColor = "#22c55e"; }
+                
+                if (Math.abs(uB - lbfData.b) >= 0.05) { elB.style.backgroundColor = "#fee2e2"; elB.style.borderColor = "#ef4444"; }
+                else { elB.style.backgroundColor = "#dcfce7"; elB.style.borderColor = "#22c55e"; }
+            }
+        } 
+        else if (currentStep === 2) {
+            const elPred = document.getElementById('lbf-ans-pred');
+            if (!elPred) return;
+            const uPred = parseFloat(elPred.value);
+            
+            if (Math.abs(uPred - lbfData.predictY) < 0.05) isCorrect = true;
+            else { elPred.style.backgroundColor = "#fee2e2"; elPred.style.borderColor = "#ef4444"; }
+        } 
+        else if (currentStep === 3) {
+            const elInt = document.getElementById('lbf-ans-int');
+            if (!elInt) return;
+            
+            if (elInt.value === 'correct') isCorrect = true;
+            else { elInt.style.backgroundColor = "#fee2e2"; elInt.style.borderColor = "#ef4444"; }
+        }
+
+        if (isCorrect) {
+            document.getElementById('lbf-hint').style.display = 'none';
+            if (currentStep < 3) {
+                currentStep++;
+                renderLbfUI();
+            } else {
+                document.getElementById('lbf-check-btn').disabled = true;
+                showLbfFlash("Correct!", "success");
+                
+                if (errorCount === 0) sessionCorrectFirstTry++;
+
+                lbfRound++;
+                setTimeout(() => {
+                    if (lbfRound > totalLbfRounds) finishLbfGame();
+                    else startLbfRound();
+                }, 1200);
+            }
+        } else {
+            errorCount++;
+            showLbfHint();
+        }
+    };
+
+    function finishLbfGame() {
         window.isCurrentQActive = false; 
         const qContent = document.getElementById('q-content');
         if (!qContent) return;
@@ -271,26 +350,26 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
         qContent.innerHTML = `
             <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
                 <div style="font-size:60px;">📈</div>
-                <h2 style="color:#1e293b; margin:10px 0;">Associations Mastered!</h2>
+                <h2 style="color:#1e293b; margin:10px 0;">Predictions Mastered!</h2>
                 <p style="color:#64748b; font-size:16px;">Skills updated.</p>
             </div>
         `;
 
         let mainAdjustment = 0;
-        if (sessionCorrectFirstTry >= totalSpRounds) mainAdjustment = 1;
+        if (sessionCorrectFirstTry >= totalLbfRounds) mainAdjustment = 1;
 
         if (mainAdjustment !== 0) {
-            const currentMain = window.userMastery?.['Scatterplot'] || 0;
+            const currentMain = window.userMastery?.['LineOfBestFit'] || 0;
             const newMain = Math.max(0, Math.min(10, currentMain + mainAdjustment));
-            window.userMastery['Scatterplot'] = newMain;
+            window.userMastery['LineOfBestFit'] = newMain;
 
             if (window.supabaseClient && window.currentUser) {
                 const hour = sessionStorage.getItem('target_hour') || "00";
                 window.supabaseClient.from('assignment')
-                    .update({ 'Scatterplot': newMain })
+                    .update({ 'LineOfBestFit': newMain })
                     .eq('userName', window.currentUser)
                     .eq('hour', hour)
-                    .then(({ error }) => { if (error) console.error("[Scatterplot] Update Error:", error); });
+                    .then(({ error }) => { if (error) console.error("[LineOfBestFit] Update Error:", error); });
             }
         }
 
@@ -303,8 +382,8 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
         }, 2000);
     }
 
-    function showSpFlash(msg, type) {
-        const overlay = document.getElementById('sp-flash');
+    function showLbfFlash(msg, type) {
+        const overlay = document.getElementById('lbf-flash');
         if (!overlay) return;
         overlay.innerText = msg;
         overlay.style.display = 'block';
