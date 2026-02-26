@@ -9,10 +9,8 @@ if (!window.supabaseClient) {
 
 // --- Dynamic Time Requirements ---
 const timeRequirements = {
-    'C6Review': 35 * 60,
-    '7.1.1': 15 * 60,
-    '7.1.3': 15 * 60, 
-    'default': 12 * 60
+    'C6Review': 35 * 60, // 35 minutes -> 2100s
+    'default': 12 * 60   // 12 minutes for 7.1.1, 7.1.3, and any future lessons
 };
 
 // Global State
@@ -247,7 +245,7 @@ async function loadNextQuestion() {
             return;
         }
 
-        // --- NEW: Scalable Dictionary Routing ---
+        // --- SCALABLE DICTIONARY ROUTING ---
         const lessonAnchors = {
             'C6Review': 'C6Transformation',
             '7.1.1': 'PieChart',
