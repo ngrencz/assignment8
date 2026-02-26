@@ -252,6 +252,7 @@ async function loadNextQuestion() {
             'C6Review': 'C6Transformation',
             '7.1.1': 'PieChart',
             '7.1.3': 'LineOfBestFit' 
+            '7.2.1': 'Graphing'
         };
 
         const primarySkillId = lessonAnchors[window.targetLesson];
