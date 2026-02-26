@@ -1,9 +1,9 @@
 /**
  * skill_scatterplot.js
  * - Primary skill for 7.1.3
- * - Generates scatterplots (Positive, Negative, No Association).
- * - Asks students to identify the association type.
- * - Asks students to select the correct describing sentence.
+ * - Generates clear scatterplots (Positive, Negative, No Association).
+ * - Matches the visual style of 8th-grade worksheets (Axis arrows, clear labels).
+ * - Uses .then() for background Supabase syncing.
  */
 
 console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
@@ -93,42 +93,35 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
     }
 
     function generateSpProblem() {
-        // Pick a random scenario
         const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
-        
-        // Generate scatter points based on the association type
         let points = [];
-        const numPoints = Math.floor(Math.random() * 8) + 12; // 12 to 19 points
+        const numPoints = 15; // Fixed number for consistent density
 
         for (let i = 0; i < numPoints; i++) {
-            let x = Math.random() * 80 + 10; // X between 10 and 90
+            // Spread X values evenly to ensure the plot covers the graph
+            let x = (i / numPoints) * 80 + 10; 
             let y;
             
             if (scenario.type === 'positive') {
-                y = x + (Math.random() * 40 - 20); // y = x + noise
+                y = x + (Math.random() * 30 - 15); 
             } else if (scenario.type === 'negative') {
-                y = (100 - x) + (Math.random() * 40 - 20); // y = -x + noise
+                y = (100 - x) + (Math.random() * 30 - 15); 
             } else {
-                y = Math.random() * 80 + 10; // purely random y
+                x = Math.random() * 80 + 10; // Randomize X fully for 'none'
+                y = Math.random() * 80 + 10; 
             }
             
-            // Constrain y to bounds
             y = Math.max(10, Math.min(90, y));
             points.push({ x, y });
         }
 
-        // Shuffle the multiple choice sentences
         let sentences = [
             { text: scenario.descCorrect, isCorrect: true },
             { text: scenario.descWrong1, isCorrect: false },
             { text: scenario.descWrong2, isCorrect: false }
         ].sort(() => 0.5 - Math.random());
 
-        spData = {
-            ...scenario,
-            points: points,
-            sentences: sentences
-        };
+        spData = { ...scenario, points: points, sentences: sentences };
     }
 
     function renderSpUI() {
@@ -149,7 +142,6 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
                 </div>
                 
                 <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
-                    
                     <div style="margin-bottom: 20px;">
                         <strong style="font-size: 16px;">1. Type of Association:</strong><br>
                         <select id="sp-ans-type" style="margin-top: 10px; width: 100%; height:40px; padding: 0 10px; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none; background: white; cursor: pointer;">
@@ -167,7 +159,6 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
                             ${spData.sentences.map((s, i) => `<option value="${s.isCorrect ? 'correct' : 'wrong' + i}">${s.text}</option>`).join('')}
                         </select>
                     </div>
-
                 </div>
 
                 <button onclick="checkScatterplot()" id="sp-check-btn" style="width:100%; height:50px; background:#1e293b; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 18px; transition: background 0.2s;">CHECK ANSWERS</button>
@@ -192,26 +183,16 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
 
         ctx.clearRect(0, 0, width, height);
 
-        // Draw Axes
+        // Draw Axes with Arrows
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 2;
         ctx.beginPath();
         
-        // Y-axis
-        ctx.moveTo(padX, height - padY);
-        ctx.lineTo(padX, 20);
-        // Y-axis arrow
-        ctx.lineTo(padX - 5, 30);
-        ctx.moveTo(padX, 20);
-        ctx.lineTo(padX + 5, 30);
+        ctx.moveTo(padX, height - padY); ctx.lineTo(padX, 20); // Y-axis
+        ctx.lineTo(padX - 5, 30); ctx.moveTo(padX, 20); ctx.lineTo(padX + 5, 30); // Y-arrow
         
-        // X-axis
-        ctx.moveTo(padX, height - padY);
-        ctx.lineTo(width - 20, height - padY);
-        // X-axis arrow
-        ctx.lineTo(width - 30, height - padY - 5);
-        ctx.moveTo(width - 20, height - padY);
-        ctx.lineTo(width - 30, height - padY + 5);
+        ctx.moveTo(padX, height - padY); ctx.lineTo(width - 20, height - padY); // X-axis
+        ctx.lineTo(width - 30, height - padY - 5); ctx.moveTo(width - 20, height - padY); ctx.lineTo(width - 30, height - padY + 5); // X-arrow
         ctx.stroke();
 
         // Axis Labels
@@ -232,10 +213,8 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
         // Draw Points
         ctx.fillStyle = '#0f172a';
         spData.points.forEach(p => {
-            // Map 0-100 scale to canvas coordinates
             let px = padX + (p.x / 100) * chartW;
             let py = (height - padY) - (p.y / 100) * chartH;
-            
             ctx.beginPath();
             ctx.arc(px, py, 4, 0, Math.PI * 2);
             ctx.fill();
@@ -250,10 +229,8 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
 
         const uType = elType.value;
         const uDesc = elDesc.value;
-
         let allCorrect = true;
 
-        // Verify Association Type
         const mappedType = spData.type === 'none' ? 'none_assoc' : spData.type;
         if (uType === mappedType) {
             elType.style.backgroundColor = "#dcfce7"; elType.style.borderColor = "#22c55e";
@@ -262,7 +239,6 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
             elType.style.backgroundColor = "#fee2e2"; elType.style.borderColor = "#ef4444";
         }
 
-        // Verify Description
         if (uDesc === 'correct') {
             elDesc.style.backgroundColor = "#dcfce7"; elDesc.style.borderColor = "#22c55e";
         } else {
@@ -270,7 +246,7 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
             elDesc.style.backgroundColor = "#fee2e2"; elDesc.style.borderColor = "#ef4444";
         }
 
-        if (uType === 'none' || uDesc === 'none') allCorrect = false; // Guard against empty drops
+        if (uType === 'none' || uDesc === 'none') allCorrect = false; 
 
         if (allCorrect) {
             document.getElementById('sp-check-btn').disabled = true;
@@ -335,5 +311,4 @@ console.log("🚀 skill_scatterplot.js is LIVE - Scatterplot Associations");
         overlay.style.backgroundColor = type === 'success' ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)';
         setTimeout(() => { overlay.style.display = 'none'; }, 1500);
     }
-
 })();
