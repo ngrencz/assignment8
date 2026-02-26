@@ -238,7 +238,8 @@ async function loadNextQuestion() {
             { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null },
             { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null },
             { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null },
-            { id: 'LineOfBestFit', fn: typeof initLineOfBestFitGame !== 'undefined' ? initLineOfBestFitGame : null }
+            { id: 'LineOfBestFit', fn: typeof initLineOfBestFitGame !== 'undefined' ? initLineOfBestFitGame : null },
+            { id: 'MixedCalc', fn: typeof initMixedCalcGame !== 'undefined' ? initMixedCalcGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
