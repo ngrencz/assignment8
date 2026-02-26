@@ -57,6 +57,8 @@
         .problem-cell { display: flex; align-items: flex-end; justify-content: flex-end; font-size: 55px; font-weight: bold; line-height: 1.1; position: relative; padding-bottom: 10px; border-bottom: 3px solid var(--text-color); }
         .op-sign { position: absolute; left: 0; bottom: 10px; }
         .num-stack { display: flex; flex-direction: column; align-items: flex-end; }
+        
+        /* Removed "Ans" placeholder visually, kept box for printing */
         .answer-box { width: 100%; height: 50px; border: 2px dashed var(--border-color); border-radius: 6px; margin-top: 10px; text-align: center; font-size: 24px; font-weight: bold; outline: none; }
 
         /* --- Touch Point CSS Engine --- */
@@ -65,7 +67,6 @@
             display: inline-block;
             width: 0.6em; 
             text-align: center;
-            /* Forces the specific font for the open 4 */
             font-family: 'Andika', sans-serif !important; 
         }
 
@@ -73,53 +74,50 @@
         .dot.double { background-color: white; border: 3px solid var(--ring-color); width: 7px; height: 7px; }
         .dot.double::after { content: ''; position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; background-color: var(--dot-color); border-radius: 50%; transform: translate(-50%, -50%); }
 
-        /* --- Dot Coordinates (Expanded for easy editing) --- */
+        /* --- Dot Coordinates --- */
         .d1-1 { top: 20%; left: 50%; }
         
-        /* 2: Top left curve, bottom right point */
         .d2-1 { top: 25%; left: 20%; } 
         .d2-2 { top: 85%; left: 80%; } 
         
-        /* 3: Three points on the left side of the curves */
-        .d3-1 { top: 15%; left: 25%; } 
+        /* 3: Lowered top dot to sit on the curve */
+        .d3-1 { top: 22%; left: 25%; } 
         .d3-2 { top: 50%; left: 45%; } 
         .d3-3 { top: 85%; left: 25%; }
         
-        /* 4: Open four mapping */
+        /* 4: Top points and two elbow points */
         .d4-1 { top: 15%; left: 20%; } 
         .d4-2 { top: 15%; left: 80%; } 
-        .d4-3 { top: 65%; left: 80%; } 
-        .d4-4 { top: 90%; left: 80%; }
+        .d4-3 { top: 60%; left: 20%; } 
+        .d4-4 { top: 60%; left: 80%; }
         
-        /* 5: Standard */
         .d5-1 { top: 20%; left: 20%; } 
         .d5-2 { top: 20%; left: 80%; } 
         .d5-3 { top: 50%; left: 20%; } 
         .d5-4 { top: 70%; left: 80%; } 
         .d5-5 { top: 90%; left: 35%; } 
         
-        /* 6: Double dots on spine, middle dot pushed slightly left */
         .d6-1 { top: 25%; left: 30%; } 
         .d6-2 { top: 50%; left: 25%; } 
         .d6-3 { top: 75%; left: 30%; }
         
-        /* 7: Single top left, double middle, double bottom */
-        .d7-1 { top: 15%; left: 20%; } 
-        .d7-2 { top: 45%; left: 45%; } 
-        .d7-3 { top: 85%; left: 30%; }
+        /* 7: Single top left (lowered), three doubles on spine */
+        .d7-1 { top: 22%; left: 15%; } 
+        .d7-2 { top: 35%; left: 45%; } 
+        .d7-3 { top: 60%; left: 35%; }
+        .d7-4 { top: 85%; left: 25%; }
         
-        /* 8: Standard bubbles */
         .d8-1 { top: 35%; left: 20%; } 
         .d8-2 { top: 35%; left: 80%; } 
         .d8-3 { top: 65%; left: 20%; } 
         .d8-4 { top: 65%; left: 80%; }
         
-        /* 9: Double dots on spine, single on top, single on bottom */
-        .d9-1 { top: 25%; left: 30%; } 
-        .d9-2 { top: 50%; left: 30%; } 
-        .d9-3 { top: 75%; left: 30%; }
-        .d9-4 { top: 15%; left: 70%; } 
-        .d9-5 { top: 90%; left: 50%; }
+        /* 9: Three doubles on spine, one double top, one single bottom of bubble */
+        .d9-1 { top: 40%; left: 75%; } 
+        .d9-2 { top: 65%; left: 70%; } 
+        .d9-3 { top: 90%; left: 60%; }
+        .d9-4 { top: 15%; left: 50%; } 
+        .d9-5 { top: 50%; left: 20%; }
 
         /* --- Print Rules --- */
         @media print {
@@ -182,9 +180,9 @@
         '4': `<span class="touch-digit">4<span class="dot d4-1"></span><span class="dot d4-2"></span><span class="dot d4-3"></span><span class="dot d4-4"></span></span>`,
         '5': `<span class="touch-digit">5<span class="dot d5-1"></span><span class="dot d5-2"></span><span class="dot d5-3"></span><span class="dot d5-4"></span><span class="dot d5-5"></span></span>`,
         '6': `<span class="touch-digit">6<span class="dot double d6-1"></span><span class="dot double d6-2"></span><span class="dot double d6-3"></span></span>`,
-        '7': `<span class="touch-digit">7<span class="dot d7-1"></span><span class="dot double d7-2"></span><span class="dot double d7-3"></span></span>`, 
+        '7': `<span class="touch-digit">7<span class="dot d7-1"></span><span class="dot double d7-2"></span><span class="dot double d7-3"></span><span class="dot double d7-4"></span></span>`, 
         '8': `<span class="touch-digit">8<span class="dot double d8-1"></span><span class="dot double d8-2"></span><span class="dot double d8-3"></span><span class="dot double d8-4"></span></span>`,
-        '9': `<span class="touch-digit">9<span class="dot double d9-1"></span><span class="dot double d9-2"></span><span class="dot double d9-3"></span><span class="dot d9-4"></span><span class="dot d9-5"></span></span>` 
+        '9': `<span class="touch-digit">9<span class="dot double d9-1"></span><span class="dot double d9-2"></span><span class="dot double d9-3"></span><span class="dot double d9-4"></span><span class="dot d9-5"></span></span>` 
     };
 
     function renderNumberWithDots(num) {
