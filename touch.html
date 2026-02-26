@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multisensory Math Worksheet Generator</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Andika&display=swap" rel="stylesheet">
 
     <style>
         :root {
@@ -58,7 +54,6 @@
         .op-sign { position: absolute; left: 0; bottom: 10px; }
         .num-stack { display: flex; flex-direction: column; align-items: flex-end; }
         
-        /* Removed "Ans" placeholder visually, kept box for printing */
         .answer-box { width: 100%; height: 50px; border: 2px dashed var(--border-color); border-radius: 6px; margin-top: 10px; text-align: center; font-size: 24px; font-weight: bold; outline: none; }
 
         /* --- Touch Point CSS Engine --- */
@@ -67,7 +62,11 @@
             display: inline-block;
             width: 0.6em; 
             text-align: center;
-            font-family: 'Andika', sans-serif !important; 
+        }
+
+        /* Forces universally available system fonts with an open 4 */
+        .open-four {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif !important; 
         }
 
         .dot { position: absolute; width: 9px; height: 9px; background-color: var(--dot-color); border-radius: 50%; z-index: 10; transform: translate(-50%, -50%); }
@@ -80,15 +79,14 @@
         .d2-1 { top: 25%; left: 20%; } 
         .d2-2 { top: 85%; left: 80%; } 
         
-        /* 3: Lowered top dot to sit on the curve */
         .d3-1 { top: 22%; left: 25%; } 
         .d3-2 { top: 50%; left: 45%; } 
         .d3-3 { top: 85%; left: 25%; }
         
-        /* 4: Top points and two elbow points */
-        .d4-1 { top: 15%; left: 20%; } 
+        /* 4 Coordinates (adjusted slightly to fit the Comic Sans MS open 4) */
+        .d4-1 { top: 15%; left: 15%; } 
         .d4-2 { top: 15%; left: 80%; } 
-        .d4-3 { top: 60%; left: 20%; } 
+        .d4-3 { top: 60%; left: 15%; } 
         .d4-4 { top: 60%; left: 80%; }
         
         .d5-1 { top: 20%; left: 20%; } 
@@ -101,7 +99,6 @@
         .d6-2 { top: 50%; left: 25%; } 
         .d6-3 { top: 75%; left: 30%; }
         
-        /* 7: Single top left (lowered), three doubles on spine */
         .d7-1 { top: 22%; left: 15%; } 
         .d7-2 { top: 35%; left: 45%; } 
         .d7-3 { top: 60%; left: 35%; }
@@ -112,7 +109,6 @@
         .d8-3 { top: 65%; left: 20%; } 
         .d8-4 { top: 65%; left: 80%; }
         
-        /* 9: Three doubles on spine, one double top, one single bottom of bubble */
         .d9-1 { top: 40%; left: 75%; } 
         .d9-2 { top: 65%; left: 70%; } 
         .d9-3 { top: 90%; left: 60%; }
@@ -161,9 +157,13 @@
 
 <div id="worksheet-container">
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;">
-        <h2>Name: ______________________</h2>
-        <h2 style="margin-left: 20px;">Score: ____ / <span id="max-score-display">0</span></h2>
+        <div style="display: flex; gap: 30px;">
+            <h2>Name: ______________________</h2>
+            <h2>Hour: ______</h2>
+        </div>
+        <h2>Score: ____ / <span id="max-score-display">0</span></h2>
     </div>
+
     <div id="worksheet-grid"></div>
     <div class="print-hide" style="display:flex; gap: 15px; max-width: 500px; margin: 0 auto;">
         <button onclick="window.print()" class="btn-print">Print Worksheet</button>
@@ -177,7 +177,8 @@
         '1': `<span class="touch-digit">1<span class="dot d1-1"></span></span>`,
         '2': `<span class="touch-digit">2<span class="dot d2-1"></span><span class="dot d2-2"></span></span>`,
         '3': `<span class="touch-digit">3<span class="dot d3-1"></span><span class="dot d3-2"></span><span class="dot d3-3"></span></span>`,
-        '4': `<span class="touch-digit">4<span class="dot d4-1"></span><span class="dot d4-2"></span><span class="dot d4-3"></span><span class="dot d4-4"></span></span>`,
+        /* Applied the .open-four class exclusively to the 4 */
+        '4': `<span class="touch-digit open-four">4<span class="dot d4-1"></span><span class="dot d4-2"></span><span class="dot d4-3"></span><span class="dot d4-4"></span></span>`,
         '5': `<span class="touch-digit">5<span class="dot d5-1"></span><span class="dot d5-2"></span><span class="dot d5-3"></span><span class="dot d5-4"></span><span class="dot d5-5"></span></span>`,
         '6': `<span class="touch-digit">6<span class="dot double d6-1"></span><span class="dot double d6-2"></span><span class="dot double d6-3"></span></span>`,
         '7': `<span class="touch-digit">7<span class="dot d7-1"></span><span class="dot double d7-2"></span><span class="dot double d7-3"></span><span class="dot double d7-4"></span></span>`, 
