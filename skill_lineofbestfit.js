@@ -1,18 +1,21 @@
 /**
  * skill_lineofbestfit.js
  * - Primary skill for 7.1.3
- * - Generates real-world scatter data tables.
+ * - Generates real-world scatter data tables with realistic variance.
  * - Draws scatterplot with a line of best fit.
- * - Asks for equation (y=mx+b), prediction, and y-intercept interpretation.
+ * - Progressive steps (Equation -> Prediction -> Interpretation).
+ * - Includes targeted hint logic.
  */
 
-console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
+console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit");
 
 (function() {
     let lbfData = {};
     let lbfRound = 1;
     const totalLbfRounds = 3;
     let sessionCorrectFirstTry = 0;
+    let currentStep = 1;
+    let errorCount = 0;
 
     const scenarios = [
         {
@@ -77,6 +80,8 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
     };
 
     function startLbfRound() {
+        currentStep = 1;
+        errorCount = 0;
         generateLbfProblem();
         renderLbfUI();
     }
@@ -84,31 +89,32 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
     function generateLbfProblem() {
         const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
         
-        // Pick a clean, integer-based slope and y-intercept
-        let b = Math.floor(Math.random() * 20) + 20; // y-int between 20 and 40
-        if (scenario.mSign === 1) b = Math.floor(Math.random() * 10) + 5; // lower y-int for positive growth
+        let b = Math.floor(Math.random() * 20) + 20; 
+        if (scenario.mSign === 1) b = Math.floor(Math.random() * 10) + 5; 
         
-        let m = scenario.mSign * (Math.floor(Math.random() * 3) + 2); // slope +/- 2, 3, or 4
+        let m = scenario.mSign * (Math.floor(Math.random() * 3) + 2); 
         
-        // Two clear points the line will pass through
         let p1 = { x: 0, y: b };
-        let xStep = Math.floor(Math.random() * 3) + 3; // 3, 4, or 5
+        let xStep = Math.floor(Math.random() * 3) + 3; 
         let p2 = { x: xStep * 2, y: b + m * (xStep * 2) };
 
-        // Generate scatter points around the line
         let points = [];
         let tableData = [];
-        for (let i = 0; i <= 5; i++) {
+        for (let i = 0; i <= 6; i++) {
             let cx = i * xStep;
-            // Add a little noise so it's a scatterplot, not a perfect line
-            let noise = (Math.random() * 4 - 2);
+            // INCREASED NOISE: Creates realistic scatter instead of a tight line
+            let noise = (Math.random() * 16 - 8); 
             let cy = Math.max(0, Math.round(b + m * cx + noise)); 
+            
+            // Ensure the two "anchor" points the line is drawn through are actually in the data
+            if (i === 0) cy = p1.y;
+            if (i === 2) cy = p2.y;
+
             points.push({ x: cx, y: cy });
             tableData.push({ x: cx, y: cy });
         }
 
-        // Generate prediction target (further down the x-axis)
-        let predictX = (6 * xStep) + Math.floor(Math.random() * xStep);
+        let predictX = (7 * xStep) + Math.floor(Math.random() * xStep);
         let expectedPredictY = m * predictX + b;
 
         let interpretations = [
@@ -139,14 +145,49 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
 
         // Build HTML Table
         let tableHTML = `<table style="width:100%; border-collapse: collapse; text-align: center; margin-bottom: 15px; font-size: 14px;">`;
-        
         tableHTML += `<tr><th style="border: 1px solid #cbd5e1; padding: 8px; background: #f1f5f9; text-align: left; width: 40%;">${lbfData.xLabel}</th>`;
         lbfData.tableData.forEach(d => { tableHTML += `<td style="border: 1px solid #cbd5e1; padding: 8px;">${d.x}</td>`; });
         tableHTML += `</tr>`;
-
         tableHTML += `<tr><th style="border: 1px solid #cbd5e1; padding: 8px; background: #f1f5f9; text-align: left;">${lbfData.yLabel}</th>`;
         lbfData.tableData.forEach(d => { tableHTML += `<td style="border: 1px solid #cbd5e1; padding: 8px;">${d.y}</td>`; });
         tableHTML += `</tr></table>`;
+
+        // Generate Progressive Steps
+        let stepHTML = "";
+        
+        let ruleDisplay = (currentStep > 1) ? `
+            <div style="background: #ecfdf5; border: 1px dashed #10b981; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; color: #065f46; font-size: 16px;">
+                <strong>Equation:</strong> y = ${lbfData.m}x + ${lbfData.b}
+            </div>` : "";
+
+        if (currentStep === 1) {
+            stepHTML = `
+                <div style="margin-bottom: 15px;">
+                    <strong style="font-size: 16px;">Step 1. Equation:</strong> Find the equation of the line of best fit.<br>
+                    <div style="display:flex; align-items:center; justify-content:center; gap: 8px; margin-top: 15px; font-size: 18px;">
+                        y = <input type="number" id="lbf-ans-m" step="0.1" placeholder="m" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;"> 
+                        x + 
+                        <input type="number" id="lbf-ans-b" step="0.1" placeholder="b" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
+                    </div>
+                </div>`;
+        } else if (currentStep === 2) {
+            stepHTML = ruleDisplay + `
+                <div style="margin-bottom: 15px;">
+                    <strong style="font-size: 16px;">Step 2. Prediction:</strong> Use your equation to predict the ${lbfData.yLabel.toLowerCase()} when the ${lbfData.xLabel.toLowerCase()} is <strong>${lbfData.predictX}</strong>.<br>
+                    <div style="margin-top: 15px; text-align: center;">
+                        <input type="number" id="lbf-ans-pred" step="0.1" placeholder="?" style="width: 100px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
+                    </div>
+                </div>`;
+        } else {
+            stepHTML = ruleDisplay + `
+                <div style="margin-bottom: 15px;">
+                    <strong style="font-size: 16px;">Step 3. Interpretation:</strong> What does the y-intercept represent in this situation?<br>
+                    <select id="lbf-ans-int" style="margin-top: 15px; width: 100%; height:45px; padding: 0 10px; font-size:14px; border:2px solid #3b82f6; border-radius:6px; outline:none; background: white; cursor: pointer;">
+                        <option value="none">-- Select the best interpretation --</option>
+                        ${lbfData.interpretations.map((s, i) => `<option value="${s.isCorrect ? 'correct' : 'wrong' + i}">${s.text}</option>`).join('')}
+                    </select>
+                </div>`;
+        }
 
         qContent.innerHTML = `
             <div style="max-width: 650px; margin: 0 auto; background:#f8fafc; padding:25px; border-radius:12px; border:1px solid #e2e8f0;">
@@ -159,34 +200,12 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
                 </div>
                 
                 <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
-                    
-                    <div style="margin-bottom: 20px;">
-                        <strong style="font-size: 16px;">a. Equation:</strong> Find the equation of the line of best fit.<br>
-                        <div style="display:flex; align-items:center; gap: 8px; margin-top: 10px; font-size: 18px;">
-                            y = <input type="number" id="lbf-ans-m" step="0.1" placeholder="m" style="width: 60px; height:35px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;"> 
-                            x + 
-                            <input type="number" id="lbf-ans-b" step="0.1" placeholder="b" style="width: 60px; height:35px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 20px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
-                        <strong style="font-size: 16px;">b. Prediction:</strong> Use your equation to predict the ${lbfData.yLabel.toLowerCase()} when the ${lbfData.xLabel.toLowerCase()} is <strong>${lbfData.predictX}</strong>.<br>
-                        <div style="margin-top: 10px;">
-                            <input type="number" id="lbf-ans-pred" step="0.1" placeholder="?" style="width: 80px; height:35px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
-                        </div>
-                    </div>
-
-                    <div style="font-size: 16px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
-                        <strong style="font-size: 16px;">c. Interpretation:</strong> What does the y-intercept represent in this situation?<br>
-                        <select id="lbf-ans-int" style="margin-top: 10px; width: 100%; height:40px; padding: 0 10px; font-size:14px; border:2px solid #3b82f6; border-radius:6px; outline:none; background: white; cursor: pointer;">
-                            <option value="none">-- Select the best interpretation --</option>
-                            ${lbfData.interpretations.map((s, i) => `<option value="${s.isCorrect ? 'correct' : 'wrong' + i}">${s.text}</option>`).join('')}
-                        </select>
-                    </div>
-
+                    ${stepHTML}
                 </div>
 
-                <button onclick="checkLbf()" id="lbf-check-btn" style="width:100%; height:50px; background:#1e293b; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 18px; transition: background 0.2s;">CHECK ANSWERS</button>
+                <div id="lbf-hint" style="margin-bottom: 15px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 14px; color: #92400e; text-align:center; line-height:1.4;"></div>
+
+                <button onclick="checkLbfStep()" id="lbf-check-btn" style="width:100%; height:50px; background:#1e293b; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 18px; transition: background 0.2s;">CHECK ANSWER</button>
             </div>
             <div id="lbf-flash" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; z-index:100;"></div>
         `;
@@ -206,7 +225,6 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Find max values for scaling
         let maxX = Math.max(...lbfData.points.map(p => p.x)) + 5;
         let maxY = Math.max(...lbfData.points.map(p => p.y), lbfData.b) + 10;
 
@@ -223,16 +241,6 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
         ctx.lineTo(padX, 10);
         ctx.stroke();
 
-        // Draw Points
-        ctx.fillStyle = '#0f172a';
-        lbfData.points.forEach(p => {
-            let px = padX + (p.x * scaleX);
-            let py = (canvas.height - padY) - (p.y * scaleY);
-            ctx.beginPath();
-            ctx.arc(px, py, 4, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
         // Draw Line of Best Fit
         ctx.strokeStyle = '#2563eb';
         ctx.lineWidth = 3;
@@ -241,8 +249,6 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
         
         let lineStartX = padX + (0 * scaleX);
         let lineStartY = (canvas.height - padY) - (lbfData.b * scaleY);
-        
-        // Extend line slightly past last point
         let endX = maxX;
         let endY = lbfData.m * endX + lbfData.b;
         let lineEndX = padX + (endX * scaleX);
@@ -252,65 +258,87 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Line of Best Fit");
         ctx.lineTo(lineEndX, lineEndY);
         ctx.stroke();
         ctx.setLineDash([]);
+
+        // Draw Points (drawn after line so they sit on top)
+        ctx.fillStyle = '#0f172a';
+        lbfData.points.forEach(p => {
+            let px = padX + (p.x * scaleX);
+            let py = (canvas.height - padY) - (p.y * scaleY);
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, Math.PI * 2);
+            ctx.fill();
+        });
     }
 
-    window.checkLbf = function() {
-        const elM = document.getElementById('lbf-ans-m');
-        const elB = document.getElementById('lbf-ans-b');
-        const elPred = document.getElementById('lbf-ans-pred');
-        const elInt = document.getElementById('lbf-ans-int');
+    window.showLbfHint = function() {
+        const hintBox = document.getElementById('lbf-hint');
+        if (!hintBox) return;
+        hintBox.style.display = 'block';
 
-        if (!elM || !elB || !elPred || !elInt) return;
-
-        const uM = parseFloat(elM.value);
-        const uB = parseFloat(elB.value);
-        const uPred = parseFloat(elPred.value);
-        const uInt = elInt.value;
-
-        let allCorrect = true;
-
-        if (Math.abs(uM - lbfData.m) < 0.05) {
-            elM.style.backgroundColor = "#dcfce7"; elM.style.borderColor = "#22c55e";
+        if (currentStep === 1) {
+            hintBox.innerHTML = `<strong>Need a hint?</strong><br>The line passes through <strong>(0, ${lbfData.b})</strong>, so your y-intercept (b) is <strong>${lbfData.b}</strong>.<br>Use the slope formula <span style="font-family: monospace;">(y2 - y1) / (x2 - x1)</span> with points (0, ${lbfData.b}) and (${lbfData.p2.x}, ${lbfData.p2.y}) to find <strong>m</strong>.`;
+        } else if (currentStep === 2) {
+            hintBox.innerHTML = `<strong>Need a hint?</strong><br>Plug the new value into the equation you just found: <br><strong>y = ${lbfData.m}(${lbfData.predictX}) + ${lbfData.b}</strong>`;
         } else {
-            allCorrect = false;
-            elM.style.backgroundColor = "#fee2e2"; elM.style.borderColor = "#ef4444";
+            hintBox.innerHTML = `<strong>Need a hint?</strong><br>The y-intercept (${lbfData.b}) happens when the x-axis value (${lbfData.xLabel.toLowerCase()}) is exactly 0.`;
+        }
+    };
+
+    window.checkLbfStep = function() {
+        let isCorrect = false;
+
+        if (currentStep === 1) {
+            const elM = document.getElementById('lbf-ans-m');
+            const elB = document.getElementById('lbf-ans-b');
+            if (!elM || !elB) return;
+            const uM = parseFloat(elM.value);
+            const uB = parseFloat(elB.value);
+            
+            if (Math.abs(uM - lbfData.m) < 0.05 && Math.abs(uB - lbfData.b) < 0.05) isCorrect = true;
+            else {
+                if (Math.abs(uM - lbfData.m) >= 0.05) { elM.style.backgroundColor = "#fee2e2"; elM.style.borderColor = "#ef4444"; }
+                else { elM.style.backgroundColor = "#dcfce7"; elM.style.borderColor = "#22c55e"; }
+                
+                if (Math.abs(uB - lbfData.b) >= 0.05) { elB.style.backgroundColor = "#fee2e2"; elB.style.borderColor = "#ef4444"; }
+                else { elB.style.backgroundColor = "#dcfce7"; elB.style.borderColor = "#22c55e"; }
+            }
+        } 
+        else if (currentStep === 2) {
+            const elPred = document.getElementById('lbf-ans-pred');
+            if (!elPred) return;
+            const uPred = parseFloat(elPred.value);
+            
+            if (Math.abs(uPred - lbfData.predictY) < 0.05) isCorrect = true;
+            else { elPred.style.backgroundColor = "#fee2e2"; elPred.style.borderColor = "#ef4444"; }
+        } 
+        else if (currentStep === 3) {
+            const elInt = document.getElementById('lbf-ans-int');
+            if (!elInt) return;
+            
+            if (elInt.value === 'correct') isCorrect = true;
+            else { elInt.style.backgroundColor = "#fee2e2"; elInt.style.borderColor = "#ef4444"; }
         }
 
-        if (Math.abs(uB - lbfData.b) < 0.05) {
-            elB.style.backgroundColor = "#dcfce7"; elB.style.borderColor = "#22c55e";
+        if (isCorrect) {
+            document.getElementById('lbf-hint').style.display = 'none';
+            if (currentStep < 3) {
+                currentStep++;
+                renderLbfUI();
+            } else {
+                document.getElementById('lbf-check-btn').disabled = true;
+                showLbfFlash("Correct!", "success");
+                
+                if (errorCount === 0) sessionCorrectFirstTry++;
+
+                lbfRound++;
+                setTimeout(() => {
+                    if (lbfRound > totalLbfRounds) finishLbfGame();
+                    else startLbfRound();
+                }, 1200);
+            }
         } else {
-            allCorrect = false;
-            elB.style.backgroundColor = "#fee2e2"; elB.style.borderColor = "#ef4444";
-        }
-
-        if (Math.abs(uPred - lbfData.predictY) < 0.05) {
-            elPred.style.backgroundColor = "#dcfce7"; elPred.style.borderColor = "#22c55e";
-        } else {
-            allCorrect = false;
-            elPred.style.backgroundColor = "#fee2e2"; elPred.style.borderColor = "#ef4444";
-        }
-
-        if (uInt === 'correct') {
-            elInt.style.backgroundColor = "#dcfce7"; elInt.style.borderColor = "#22c55e";
-        } else {
-            allCorrect = false;
-            elInt.style.backgroundColor = "#fee2e2"; elInt.style.borderColor = "#ef4444";
-        }
-
-        if (uInt === 'none') allCorrect = false; 
-
-        if (allCorrect) {
-            document.getElementById('lbf-check-btn').disabled = true;
-            showLbfFlash("Correct!", "success");
-            sessionCorrectFirstTry++;
-
-            lbfRound++;
-            setTimeout(() => {
-                if (lbfRound > totalLbfRounds) finishLbfGame();
-                else startLbfRound();
-            }, 1200);
-        } else {
-            showLbfFlash("Check your work.", "error");
+            errorCount++;
+            showLbfHint();
         }
     };
 
