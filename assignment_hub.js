@@ -9,7 +9,9 @@ if (!window.supabaseClient) {
 
 // --- Dynamic Time Requirements ---
 const timeRequirements = {
-    'C6Review': 35 * 60, // 35 minutes -> 2100s
+    'C6Review': 35 * 60,
+    '7.1.1': 15 * 60,
+    '7.1.3': 15 * 60, 
     'default': 12 * 60
 };
 
@@ -19,7 +21,7 @@ window.isCurrentQActive = false;
 window.currentQSeconds = 0;
 window.currentUser = sessionStorage.getItem('target_user') || 'test_user';
 
-// FIX: Now accepts any lesson string dynamically without hardcoded forcing
+// Safely route target lessons 
 let reqLesson = sessionStorage.getItem('target_lesson');
 window.targetLesson = reqLesson || 'C6Review';
 
@@ -51,7 +53,6 @@ window.currentHour = sessionStorage.getItem('target_hour');
     });
 });
 
-console.log("Session Loaded:", window.currentUser, window.currentHour);
 const GOAL_SECONDS = timeRequirements[window.targetLesson] || timeRequirements['default'];
 
 // --- Window Size Checker Function ---
@@ -76,18 +77,11 @@ function checkWindowSize() {
 }
 
 // --- Activity & Focus Listeners ---
-window.onblur = () => {
-    window.canCount = false;
-    clearTimeout(window.resumeTimeout);
-};
-
+window.onblur = () => { window.canCount = false; clearTimeout(window.resumeTimeout); };
 window.onfocus = () => {
     clearTimeout(window.resumeTimeout);
-    if (isAssignmentPage) {
-        window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 5000);
-    } else {
-        window.canCount = true;
-    }
+    if (isAssignmentPage) window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 5000);
+    else window.canCount = true;
 };
 
 window.addEventListener('resize', checkWindowSize);
@@ -100,11 +94,8 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-if (!isAssignmentPage) {
-    window.canCount = true; 
-} else {
-    window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 5000);
-}
+if (!isAssignmentPage) window.canCount = true; 
+else window.resumeTimeout = setTimeout(() => { window.canCount = true; }, 5000);
 
 // --- The Master Timer Loop ---
 setInterval(() => {
@@ -129,18 +120,14 @@ setInterval(() => {
         
         if (totalDisplay) totalDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         
-        if (window.totalSecondsWorked % 10 === 0) {
-            syncTimerToDB();
-        }
+        if (window.totalSecondsWorked % 10 === 0) syncTimerToDB();
 
         if (statePill) {
             statePill.innerText = "RUNNING";
             statePill.style.background = "#22c55e";
         }
         
-        if (window.totalSecondsWorked >= GOAL_SECONDS && !window.isFreePlay) {
-            finishAssignment();
-        }
+        if (window.totalSecondsWorked >= GOAL_SECONDS && !window.isFreePlay) finishAssignment();
     } else {
         if (statePill) {
             if (!window.isWindowLargeEnough) {
@@ -186,7 +173,6 @@ async function loadNextQuestion() {
         feedback.style.display = 'none';
         feedback.className = '';
     }
-    
     window.scrollTo(0,0);
 
     const currentHour = sessionStorage.getItem('target_hour') || "00";
@@ -201,7 +187,6 @@ async function loadNextQuestion() {
             .maybeSingle();
 
         if (!data && !error) {
-            console.warn(`User ${window.currentUser} not found. Creating record...`);
             await window.supabaseClient
                 .from('assignment')
                 .insert([{ 
@@ -254,11 +239,10 @@ async function loadNextQuestion() {
             { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
             { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null },
             { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null },
-            { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null }
+            { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null } 
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
-            console.error("No skill scripts loaded.");
             window.isCurrentQActive = false;
             return;
         }
@@ -266,27 +250,23 @@ async function loadNextQuestion() {
         // --- NEW: Scalable Dictionary Routing ---
         const lessonAnchors = {
             'C6Review': 'C6Transformation',
-            '7.1.1': 'PieChart'
-            '7.1.3': 'Scatterplot'
+            '7.1.1': 'PieChart',
+            '7.1.3': 'Scatterplot' 
         };
 
         const primarySkillId = lessonAnchors[window.targetLesson];
 
         if (primarySkillId) {
-            // Anchor Logic: Play the primary lesson skill first
             if (!window.hasDonePrimaryLesson) {
                 window.hasDonePrimaryLesson = true;
                 const primarySkill = skillMap.find(s => s.id === primarySkillId);
-                
                 if (primarySkill) {
                     window.skillsCompletedThisSession.push(primarySkillId);
                     return primarySkill.fn();
                 }
             }
 
-            // Fallback Logic: Cycle through lowest-mastery past skills
             let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
-            
             if (availableSkills.length === 0) {
                 window.skillsCompletedThisSession = [];
                 availableSkills = skillMap;
@@ -308,7 +288,6 @@ async function loadNextQuestion() {
             nextSkill.fn(); 
 
         } else {
-            // Failsafe for missing lessons
             document.getElementById('q-title').innerText = "Under Construction";
             document.getElementById('q-content').innerHTML = `Lesson ${window.targetLesson} is not yet available in the routing dictionary.`;
             window.isCurrentQActive = false;
