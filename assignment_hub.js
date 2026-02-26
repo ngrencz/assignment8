@@ -3,7 +3,6 @@ const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
 const isAssignmentPage = window.location.pathname.includes('assignment.html');
 
-// FIX: Use window.supabaseClient to avoid redeclaration errors in global scope
 if (!window.supabaseClient) {
     window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 }
@@ -11,6 +10,7 @@ if (!window.supabaseClient) {
 // --- Dynamic Time Requirements ---
 const timeRequirements = {
     'C6Review': 35 * 60, // 35 minutes -> 2100s
+    '7.1.1': 15 * 60,
     'default': 12 * 60
 };
 
@@ -20,9 +20,9 @@ window.isCurrentQActive = false;
 window.currentQSeconds = 0;
 window.currentUser = sessionStorage.getItem('target_user') || 'test_user';
 
-// FIX: Safely route target lessons (defaults to C6Review if old 6.2.4 is found)
+// FIX: Now accepts any lesson string dynamically without hardcoded forcing
 let reqLesson = sessionStorage.getItem('target_lesson');
-window.targetLesson = (reqLesson === '7.1.1') ? '7.1.1' : 'C6Review';
+window.targetLesson = reqLesson || 'C6Review';
 
 window.lastActivity = Date.now();
 window.isIdle = false;
@@ -33,10 +33,7 @@ window.resumeTimeout = null;
 window.isWindowLargeEnough = true;
 window.hasLoadedTime = false; 
 
-// --- NEW: Free Play Override ---
 window.isFreePlay = sessionStorage.getItem('free_play_mode') === 'true';
-
-// This "Bridge" pulls data from the login page and gives it to the math scripts
 window.currentHour = sessionStorage.getItem('target_hour');
 
 // --- Activity Reset Logic ---
@@ -127,14 +124,12 @@ setInterval(() => {
         window.totalSecondsWorked++;
         window.currentQSeconds++;
         
-        // --- COUNTDOWN DISPLAY LOGIC ---
         const remaining = Math.max(0, GOAL_SECONDS - window.totalSecondsWorked);
         let mins = Math.floor(remaining / 60);
         let secs = remaining % 60;
         
         if (totalDisplay) totalDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         
-        // --- PERSISTENCE: Sync to Supabase every 10 seconds ---
         if (window.totalSecondsWorked % 10 === 0) {
             syncTimerToDB();
         }
@@ -144,7 +139,6 @@ setInterval(() => {
             statePill.style.background = "#22c55e";
         }
         
-        // --- NEW: Trigger completion ONLY if not in Free Play Mode ---
         if (window.totalSecondsWorked >= GOAL_SECONDS && !window.isFreePlay) {
             finishAssignment();
         }
@@ -199,7 +193,6 @@ async function loadNextQuestion() {
     const currentHour = sessionStorage.getItem('target_hour') || "00";
     let userData = null; 
 
-    // --- Resilient Database Fetch ---
     try {
         let { data, error } = await window.supabaseClient
             .from('assignment')
@@ -232,17 +225,13 @@ async function loadNextQuestion() {
             userData = data; 
             const timerCol = `${window.targetLesson}Timer`;
             
-            // --- NEW: Handle Free Play vs Locked Completion ---
             if (data[window.targetLesson] === true) {
                 if (window.isFreePlay) {
-                    // Let them keep practicing, resume timer from where it was
                     window.totalSecondsWorked = Math.max(0, (data[timerCol] || 0) - 30); 
                 } else {
-                    // Force the lock
                     window.totalSecondsWorked = Math.max(GOAL_SECONDS, data[timerCol] || 0);
                 }
             } else {
-                // Normal resume
                 const savedTime = data[timerCol] || 0;
                 window.totalSecondsWorked = Math.max(0, savedTime - 30); 
             }
@@ -253,7 +242,6 @@ async function loadNextQuestion() {
         window.hasLoadedTime = true;
     }
 
-    // --- Safe Routing Execution ---
     try {
         const skillMap = [
             { id: 'C6Transformation', fn: typeof initTransformationGame !== 'undefined' ? initTransformationGame : null },
@@ -266,7 +254,7 @@ async function loadNextQuestion() {
             { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
             { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
             { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null },
-            { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null } // NEW SKILL ADDED
+            { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null } 
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -275,14 +263,18 @@ async function loadNextQuestion() {
             return;
         }
 
-        // --- NEW: Dynamic Primary Skill Routing ---
-        if (window.targetLesson === 'C6Review' || window.targetLesson === '7.1.1') {
-            
+        // --- NEW: Scalable Dictionary Routing ---
+        const lessonAnchors = {
+            'C6Review': 'C6Transformation',
+            '7.1.1': 'PieChart'
+        };
+
+        const primarySkillId = lessonAnchors[window.targetLesson];
+
+        if (primarySkillId) {
+            // Anchor Logic: Play the primary lesson skill first
             if (!window.hasDonePrimaryLesson) {
                 window.hasDonePrimaryLesson = true;
-                
-                // Determine which skill acts as the starting anchor for this specific lesson
-                let primarySkillId = (window.targetLesson === '7.1.1') ? 'PieChart' : 'C6Transformation';
                 const primarySkill = skillMap.find(s => s.id === primarySkillId);
                 
                 if (primarySkill) {
@@ -291,6 +283,7 @@ async function loadNextQuestion() {
                 }
             }
 
+            // Fallback Logic: Cycle through lowest-mastery past skills
             let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
             
             if (availableSkills.length === 0) {
@@ -305,7 +298,6 @@ async function loadNextQuestion() {
             });
 
             const nextSkill = availableSkills[0];
-            
             if (!nextSkill) {
                 window.isCurrentQActive = false;
                 return;
@@ -315,8 +307,10 @@ async function loadNextQuestion() {
             nextSkill.fn(); 
 
         } else {
+            // Failsafe for missing lessons
             document.getElementById('q-title').innerText = "Under Construction";
-            document.getElementById('q-content').innerHTML = `Lesson ${window.targetLesson} is not yet available.`;
+            document.getElementById('q-content').innerHTML = `Lesson ${window.targetLesson} is not yet available in the routing dictionary.`;
+            window.isCurrentQActive = false;
         }
     } catch (err) {
         console.error("Error executing skill script:", err);
