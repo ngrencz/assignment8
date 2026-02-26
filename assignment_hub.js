@@ -237,7 +237,8 @@ async function loadNextQuestion() {
             { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
             { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null },
             { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null },
-            { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null } 
+            { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null },
+            { id: 'LineOfBestFit', fn: typeof initLineOfBestFitGame !== 'undefined' ? initLineOfBestFitGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -249,7 +250,7 @@ async function loadNextQuestion() {
         const lessonAnchors = {
             'C6Review': 'C6Transformation',
             '7.1.1': 'PieChart',
-            '7.1.3': 'Scatterplot' 
+            '7.1.3': 'LineOfBestFit' 
         };
 
         const primarySkillId = lessonAnchors[window.targetLesson];
