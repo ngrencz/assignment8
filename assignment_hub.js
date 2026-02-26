@@ -239,7 +239,8 @@ async function loadNextQuestion() {
             { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null },
             { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null },
             { id: 'LineOfBestFit', fn: typeof initLineOfBestFitGame !== 'undefined' ? initLineOfBestFitGame : null },
-            { id: 'MixedCalc', fn: typeof initMixedCalcGame !== 'undefined' ? initMixedCalcGame : null }
+            { id: 'MixedCalc', fn: typeof initMixedCalcGame !== 'undefined' ? initMixedCalcGame : null },
+            { id: 'ScientificNotation', fn: typeof initScientificGame !== 'undefined' ? initScientificGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
