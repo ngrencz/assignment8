@@ -8,10 +8,87 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
-        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
-    </script>
+    window.onload = async () => {
+        // 1. Catch Deep Links (e.g., ?lesson=C6Review)
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedLesson = urlParams.get('lesson');
+        if (requestedLesson) {
+            const selectEl = document.getElementById('lesson-select');
+            if (selectEl.querySelector(`option[value="${requestedLesson}"]`)) {
+                selectEl.value = requestedLesson;
+            }
+        }
+
+        // 2. Did we JUST bounce back from Google? (Google adds a hash to the URL)
+        if (window.location.hash.includes('access_token')) {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                const anonymousUUID = session.user.id;
+                const savedHour = sessionStorage.getItem('pending_hour') || document.getElementById('hour-select').value;
+                const savedLesson = sessionStorage.getItem('pending_lesson') || document.getElementById('lesson-select').value;
+
+                sessionStorage.setItem('target_user', anonymousUUID); 
+                sessionStorage.setItem('current_user', session.user.email); 
+                sessionStorage.setItem('target_hour', savedHour);
+                sessionStorage.setItem('target_lesson', savedLesson);
+                sessionStorage.setItem('total_work_time', 0);
+                sessionStorage.removeItem('free_play_mode');
+
+                window.location.href = 'assignment.html';
+                return; // Stop the rest of the script
+            }
+        }
+        
+        // 3. Are they already logged in from a previous day?
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            // Change the button so they know they don't have to re-authenticate
+            const btn = document.querySelector('.google-btn');
+            btn.innerHTML = '🚀 Start Practice (Already Logged In)';
+            btn.style.backgroundColor = '#dcfce7';
+            btn.style.borderColor = '#22c55e';
+            btn.style.color = '#166534';
+        }
+    };
+
+    async function handleGoogleLogin() {
+        const hour = document.getElementById('hour-select').value;
+        const lesson = document.getElementById('lesson-select').value;
+
+        // Check if they are already logged in
+        const { data: { session } } = await supabaseClient.auth.getSession();
+
+        if (session) {
+            // Instantly send them to the hub with their NEW dropdown choices
+            sessionStorage.setItem('target_user', session.user.id); 
+            sessionStorage.setItem('current_user', session.user.email); 
+            sessionStorage.setItem('target_hour', hour);
+            sessionStorage.setItem('target_lesson', lesson);
+            sessionStorage.setItem('total_work_time', 0);
+            sessionStorage.removeItem('free_play_mode');
+
+            window.location.href = 'assignment.html';
+        } else {
+            // Not logged in yet, save choices and go to Google
+            sessionStorage.setItem('pending_hour', hour);
+            sessionStorage.setItem('pending_lesson', lesson);
+
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.href 
+                }
+            });
+
+            if (error) {
+                console.error("Auth error:", error);
+                alert("Could not connect to Google. Please try again.");
+            }
+        }
+    }
+</script>
 
     <style>
         body { 
