@@ -6,7 +6,7 @@
  */
 
 (function() {
-    console.log("🚀 skill_rateofchange.js LIVE (Proper Canvas & Fixed Formatting)");
+    console.log("🚀 skill_rateofchange.js LIVE (Dark Grid & Staggered Labels)");
 
     var gameState = {
         type: '', // 'graph' or 'racer'
@@ -169,8 +169,8 @@
 
         ctx.clearRect(0,0,w,h);
 
-        // Draw Grid
-        ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1;
+        // Draw Grid - DARKENED to #cbd5e1 for better visibility
+        ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1;
         for(let i=0; i<=w; i+=step) {
             ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,h); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(w,i); ctx.stroke();
@@ -194,6 +194,9 @@
         // Draw Lines
         const colors = ["#2563eb", "#10b981", "#8b5cf6"];
         
+        // Stagger the labels so they don't bunch up on the right side
+        const labelTargets = [-6, 2, 7]; 
+        
         gameState.currentScenario.lines.forEach((line, index) => {
             let x1 = -10; let y1 = (line.m * x1) + line.b;
             let x2 = 10; let y2 = (line.m * x2) + line.b;
@@ -205,16 +208,22 @@
             ctx.lineTo(cx + (x2 * step), cy - (y2 * step));
             ctx.stroke();
 
-            // Label Placement
-            let lx = 8; let ly = (line.m * lx) + line.b;
-            if (ly > 9) { ly = 9; lx = (ly - line.b) / line.m; }
-            if (ly < -9) { ly = -9; lx = (ly - line.b) / line.m; }
+            // Label Placement: Target the staggered X, but clamp to graph boundaries
+            let lx = labelTargets[index]; 
+            let ly = (line.m * lx) + line.b;
+            if (ly > 8.5) { ly = 8.5; lx = (ly - line.b) / line.m; }
+            if (ly < -8.5) { ly = -8.5; lx = (ly - line.b) / line.m; }
 
+            ctx.font = "bold 20px Arial";
+            
+            // Draw a solid white halo so the grid doesn't cut through the letter
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "white";
+            ctx.strokeText(line.id, cx + (lx * step) - 12, cy - (ly * step) - 15);
+            
+            // Draw the actual text letter over the halo
             ctx.fillStyle = "#1e293b";
-            ctx.font = "bold 18px Arial";
-            ctx.shadowColor="white"; ctx.shadowBlur=4;
-            ctx.fillText(line.id, cx + (lx * step) - 10, cy - (ly * step) - 10);
-            ctx.shadowBlur=0;
+            ctx.fillText(line.id, cx + (lx * step) - 12, cy - (ly * step) - 15);
         });
     }
 
