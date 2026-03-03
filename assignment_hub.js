@@ -240,6 +240,7 @@ async function loadNextQuestion() {
             { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null },
             { id: 'LineOfBestFit', fn: typeof initLineOfBestFitGame !== 'undefined' ? initLineOfBestFitGame : null },
             { id: 'MixedCalc', fn: typeof initMixedCalcGame !== 'undefined' ? initMixedCalcGame : null },
+            { id: 'RateOfChange', fn: typeof initRateOfChangeGame !== 'undefined' ? initRateOfChangeGame : null },
             { id: 'ScientificNotation', fn: typeof initScientificGame !== 'undefined' ? initScientificGame : null }
         ].filter(s => s.fn !== null);
 
@@ -253,6 +254,7 @@ async function loadNextQuestion() {
             'C6Review': 'C6Transformation',
             '7.1.1': 'PieChart',
             '7.1.3': 'LineOfBestFit', 
+            '7.2.2': 'RateOfChange',
             '7.2.1': 'Graphing'
         };
 
