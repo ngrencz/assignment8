@@ -6,7 +6,7 @@
  */
 
 (function() {
-    console.log("🚀 skill_rateofchange.js LIVE (Proper Canvas & Exact Image Scenarios)");
+    console.log("🚀 skill_rateofchange.js LIVE (Proper Canvas & Fixed Formatting)");
 
     var gameState = {
         type: '', // 'graph' or 'racer'
@@ -49,28 +49,26 @@
         gameState.type = Math.random() < 0.5 ? 'graph' : 'racer';
 
         if (gameState.type === 'graph') {
-            // Generate 3 lines: One steep positive, one shallow positive, one different (negative or mixed)
+            // Generate 3 lines: One steep positive, one shallow positive, one different (negative or mild)
             let m1 = Math.floor(Math.random() * 3) + 2; // Slope 2, 3, 4
             let m2 = 1 / (Math.floor(Math.random() * 3) + 2); // Slope 1/2, 1/3, 1/4
-            let m3 = Math.random() > 0.5 ? -1 : (Math.floor(Math.random() * 2) + 1); // Negative or mild
+            let m3 = Math.random() > 0.5 ? -1 : (Math.floor(Math.random() * 2) + 1); 
             
-            // Ensure no duplicate slopes conceptually
             if (m3 === m1) m3 = -2;
 
             let lines = [
-                { id: 'A', m: m1, b: Math.floor(Math.random() * -4) }, // steep
-                { id: 'B', m: m2, b: Math.floor(Math.random() * 5) + 1 }, // shallow
-                { id: 'C', m: m3, b: Math.floor(Math.random() * 8) - 2 } // wild
-            ].sort(() => 0.5 - Math.random()); // Shuffle A, B, C assignments
+                { id: 'A', m: m1, b: Math.floor(Math.random() * -4) }, 
+                { id: 'B', m: m2, b: Math.floor(Math.random() * 5) + 1 }, 
+                { id: 'C', m: m3, b: Math.floor(Math.random() * 8) - 2 } 
+            ].sort(() => 0.5 - Math.random()); 
 
-            // Find which line actually has the greatest slope
             let greatestLine = lines.reduce((prev, current) => (prev.m > current.m) ? prev : current);
 
             // Pick a line and an X to ask for a Y value. Ensure it lands on an integer.
             let targetLine = lines[Math.floor(Math.random() * 3)];
             let targetX = 2;
             if (targetLine.m < 1 && targetLine.m > 0) {
-                targetX = Math.round(1 / targetLine.m) * (Math.floor(Math.random() * 2) + 1); // Ensure integer y
+                targetX = Math.round(1 / targetLine.m) * (Math.floor(Math.random() * 2) + 1); 
             }
             let targetY = (targetLine.m * targetX) + targetLine.b;
 
@@ -78,7 +76,7 @@
                 lines: lines,
                 questions: [
                     { text: `Which line has the <strong>greatest slope</strong>?`, ans: greatestLine.id, type: 'select', options: ['A', 'B', 'C'], dbSkill: 'roc_unit_rate' },
-                    { text: `What is the $y$-value of <strong>line ${targetLine.id}</strong> when $x = ${targetX}$?`, ans: targetY, type: 'number', dbSkill: 'roc_predict' }
+                    { text: `What is the <i>y</i>-value of <strong>line ${targetLine.id}</strong> when <i>x</i> = ${targetX}?`, ans: targetY, type: 'number', dbSkill: 'roc_predict' }
                 ]
             };
 
@@ -93,17 +91,14 @@
 
             racers.forEach(r => {
                 r.n = Math.floor(Math.random() * 6) + 2; 
-                r.d = r.n + Math.floor(Math.random() * 8) + 1; // Always a proper fraction < 1
+                r.d = r.n + Math.floor(Math.random() * 8) + 1; 
                 r.dec = r.n / r.d;
             });
 
-            // Ensure no ties
             racers.sort((a, b) => b.dec - a.dec);
-            // After sort: index 0 is fastest, index 3 is slowest
             let fastest = racers[0].id;
             let slowest = racers[3].id;
 
-            // Re-sort alphabetically for display
             racers.sort((a, b) => a.id.localeCompare(b.id));
 
             gameState.currentScenario = {
@@ -141,11 +136,11 @@
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:20px; font-size:18px;">
                         ${s.racers.map(r => `
                             <div style="display:flex; align-items:center; justify-content:center; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #cbd5e1;">
-                                <span style="margin-right:10px;">Runner ${r.id}: slope = </span>
+                                <span style="margin-right:10px; font-weight:bold; color:#334155;">Runner ${r.id}: slope = </span>
                                 <div style="display:inline-flex; flex-direction:column; align-items:center;">
-                                    <span>${r.n}</span>
+                                    <span style="font-weight:bold; color:#2563eb;">${r.n}</span>
                                     <div style="width:100%; height:2px; background:#1e293b;"></div>
-                                    <span>${r.d}</span>
+                                    <span style="font-weight:bold; color:#2563eb;">${r.d}</span>
                                 </div>
                             </div>
                         `).join('')}
@@ -192,15 +187,14 @@
         ctx.fillText("x", w - 15, cy - 10);
         for(let i = -8; i <= 8; i+=2) {
             if(i === 0) continue;
-            ctx.fillText(i, cx + (i*step) - 5, cy + 15); // X
-            ctx.fillText(i, cx - 20, cy - (i*step) + 4); // Y
+            ctx.fillText(i, cx + (i*step) - 5, cy + 15); 
+            ctx.fillText(i, cx - 20, cy - (i*step) + 4); 
         }
 
         // Draw Lines
         const colors = ["#2563eb", "#10b981", "#8b5cf6"];
         
         gameState.currentScenario.lines.forEach((line, index) => {
-            // Find points at x = -10 and x = 10
             let x1 = -10; let y1 = (line.m * x1) + line.b;
             let x2 = 10; let y2 = (line.m * x2) + line.b;
 
@@ -211,14 +205,13 @@
             ctx.lineTo(cx + (x2 * step), cy - (y2 * step));
             ctx.stroke();
 
-            // Label Placement (find a spot near the edge of the graph)
+            // Label Placement
             let lx = 8; let ly = (line.m * lx) + line.b;
             if (ly > 9) { ly = 9; lx = (ly - line.b) / line.m; }
             if (ly < -9) { ly = -9; lx = (ly - line.b) / line.m; }
 
             ctx.fillStyle = "#1e293b";
             ctx.font = "bold 18px Arial";
-            // Draw a white halo behind text for readability
             ctx.shadowColor="white"; ctx.shadowBlur=4;
             ctx.fillText(line.id, cx + (lx * step) - 10, cy - (ly * step) - 10);
             ctx.shadowBlur=0;
@@ -277,7 +270,6 @@
             feedback.style.color = "#16a34a";
             feedback.innerText = "✅ Correct!";
             
-            // Sub-skill DB Tracking
             if (q.dbSkill && gameState.errorsThisPart === 0 && window.supabaseClient && window.currentUser) {
                 let current = window.userMastery[q.dbSkill] || 0;
                 let newVal = Math.min(10, current + 1);
