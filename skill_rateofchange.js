@@ -3,10 +3,11 @@
  * - 8th Grade: Lesson 7.2.2 How y changes with respect to x
  * - Alternates between "Graph Slope Comparison" and "Athlete Rate Comparison".
  * - Uses proper Canvas rendering for coordinate planes.
+ * - NEW: 3-part progressive questions to hit every subskill in a single run.
  */
 
 (function() {
-    console.log("🚀 skill_rateofchange.js LIVE (Dark Grid & Staggered Labels)");
+    console.log("🚀 skill_rateofchange.js LIVE (Comprehensive 3-Part Assessment)");
 
     var gameState = {
         type: '', // 'graph' or 'racer'
@@ -62,21 +63,28 @@
                 { id: 'C', m: m3, b: Math.floor(Math.random() * 8) - 2 } 
             ].sort(() => 0.5 - Math.random()); 
 
+            // Part 1: Total Change
+            let dx = Math.floor(Math.random() * 3) + 2; 
+            let q1Line = lines[Math.floor(Math.random() * 3)];
+            let totalChangeAns = q1Line.m * dx;
+
+            // Part 2: Unit Rate (Steepest)
             let greatestLine = lines.reduce((prev, current) => (prev.m > current.m) ? prev : current);
 
-            // Pick a line and an X to ask for a Y value. Ensure it lands on an integer.
-            let targetLine = lines[Math.floor(Math.random() * 3)];
+            // Part 3: Prediction
+            let q3Line = lines[Math.floor(Math.random() * 3)];
             let targetX = 2;
-            if (targetLine.m < 1 && targetLine.m > 0) {
-                targetX = Math.round(1 / targetLine.m) * (Math.floor(Math.random() * 2) + 1); 
+            if (q3Line.m < 1 && q3Line.m > 0) {
+                targetX = Math.round(1 / q3Line.m) * (Math.floor(Math.random() * 2) + 1); 
             }
-            let targetY = (targetLine.m * targetX) + targetLine.b;
+            let targetY = (q3Line.m * targetX) + q3Line.b;
 
             gameState.currentScenario = {
                 lines: lines,
                 questions: [
-                    { text: `Which line has the <strong>greatest slope</strong>?`, ans: greatestLine.id, type: 'select', options: ['A', 'B', 'C'], dbSkill: 'roc_unit_rate' },
-                    { text: `What is the <i>y</i>-value of <strong>line ${targetLine.id}</strong> when <i>x</i> = ${targetX}?`, ans: targetY, type: 'number', dbSkill: 'roc_predict' }
+                    { text: `Look at <strong>Line ${q1Line.id}</strong>. If the <i>x</i>-value increases by ${dx}, how much does the <i>y</i>-value change? <br><small style="color:#64748b;">(Total Change)</small>`, ans: totalChangeAns, type: 'number', dbSkill: 'roc_total_change' },
+                    { text: `Which line has the <strong>greatest slope</strong>? <br><small style="color:#64748b;">(Unit Rate)</small>`, ans: greatestLine.id, type: 'select', options: ['A', 'B', 'C'], dbSkill: 'roc_unit_rate' },
+                    { text: `What is the <i>y</i>-value of <strong>Line ${q3Line.id}</strong> when <i>x</i> = ${targetX}? <br><small style="color:#64748b;">(Prediction)</small>`, ans: targetY, type: 'number', dbSkill: 'roc_predict' }
                 ]
             };
 
@@ -96,8 +104,19 @@
             });
 
             racers.sort((a, b) => b.dec - a.dec);
-            let fastest = racers[0].id;
-            let slowest = racers[3].id;
+            let fastest = racers[0].id; // Part 1: Fastest
+
+            // Part 2: Total Change
+            let q2Runner = racers[Math.floor(Math.random() * 4)];
+            let multiplier1 = Math.floor(Math.random() * 3) + 2; 
+            let time1 = q2Runner.d * multiplier1;
+            let dist1 = q2Runner.n * multiplier1;
+
+            // Part 3: Prediction
+            let q3Runner = racers[Math.floor(Math.random() * 4)];
+            let multiplier2 = Math.floor(Math.random() * 3) + 2;
+            let dist2 = q3Runner.n * multiplier2;
+            let time2 = q3Runner.d * multiplier2;
 
             racers.sort((a, b) => a.id.localeCompare(b.id));
 
@@ -105,8 +124,9 @@
                 context: context,
                 racers: racers,
                 questions: [
-                    { text: `Which runner has the <strong>fastest</strong> rate?`, ans: fastest, type: 'select', options: ['A', 'B', 'C', 'D'], dbSkill: 'roc_unit_rate' },
-                    { text: `Which runner has the <strong>slowest</strong> rate?`, ans: slowest, type: 'select', options: ['A', 'B', 'C', 'D'], dbSkill: 'roc_total_change' }
+                    { text: `Which runner has the <strong>fastest unit rate</strong>?`, ans: fastest, type: 'select', options: ['A', 'B', 'C', 'D'], dbSkill: 'roc_unit_rate' },
+                    { text: `Based on their slope, how far does <strong>Runner ${q2Runner.id}</strong> travel in ${time1} minutes? <br><small style="color:#64748b;">(Total Change)</small>`, ans: dist1, type: 'number', dbSkill: 'roc_total_change' },
+                    { text: `At their current rate, how many minutes will it take <strong>Runner ${q3Runner.id}</strong> to travel ${dist2} miles? <br><small style="color:#64748b;">(Prediction)</small>`, ans: time2, type: 'number', dbSkill: 'roc_predict' }
                 ]
             };
         }
@@ -131,7 +151,7 @@
             mainVisual = `
                 <div style="background:white; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
                     <p style="font-size:16px; color:#1e293b; line-height:1.5; margin-top:0;">
-                        Lydia drew a graph of four athletes in the final part of the ${s.context}. She found the slope of each runner's line. Her results are listed below.
+                        Lydia drew a graph of four athletes in the final part of the ${s.context}. She found the slope of each runner's line (miles per minute). Her results are listed below.
                     </p>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:20px; font-size:18px;">
                         ${s.racers.map(r => `
@@ -169,7 +189,7 @@
 
         ctx.clearRect(0,0,w,h);
 
-        // Draw Grid - DARKENED to #cbd5e1 for better visibility
+        // Draw Grid - DARKENED
         ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1;
         for(let i=0; i<=w; i+=step) {
             ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,h); ctx.stroke();
@@ -193,8 +213,6 @@
 
         // Draw Lines
         const colors = ["#2563eb", "#10b981", "#8b5cf6"];
-        
-        // Stagger the labels so they don't bunch up on the right side
         const labelTargets = [-6, 2, 7]; 
         
         gameState.currentScenario.lines.forEach((line, index) => {
@@ -208,20 +226,16 @@
             ctx.lineTo(cx + (x2 * step), cy - (y2 * step));
             ctx.stroke();
 
-            // Label Placement: Target the staggered X, but clamp to graph boundaries
+            // Label Placement
             let lx = labelTargets[index]; 
             let ly = (line.m * lx) + line.b;
             if (ly > 8.5) { ly = 8.5; lx = (ly - line.b) / line.m; }
             if (ly < -8.5) { ly = -8.5; lx = (ly - line.b) / line.m; }
 
             ctx.font = "bold 20px Arial";
-            
-            // Draw a solid white halo so the grid doesn't cut through the letter
             ctx.lineWidth = 4;
             ctx.strokeStyle = "white";
             ctx.strokeText(line.id, cx + (lx * step) - 12, cy - (ly * step) - 15);
-            
-            // Draw the actual text letter over the halo
             ctx.fillStyle = "#1e293b";
             ctx.fillText(line.id, cx + (lx * step) - 12, cy - (ly * step) - 15);
         });
@@ -233,7 +247,7 @@
         let q = gameState.currentScenario.questions[partIdx];
         
         let inputHtml = "";
-        let labels = ["a.", "b."];
+        let labels = ["a.", "b.", "c."];
 
         if (q.type === 'select') {
             inputHtml = `
@@ -259,6 +273,8 @@
                 <div id="roc-feedback" style="margin-top:10px; min-height:24px; font-weight:bold;"></div>
             </div>
         `;
+        
+        if (q.type === 'number') setTimeout(() => { document.getElementById('roc-ans').focus(); }, 100);
     }
 
     window.checkROCAnswer = function() {
@@ -299,7 +315,7 @@
                 } else {
                     renderROCQuestionPart();
                 }
-            }, 1000);
+            }, 1200);
 
         } else {
             feedback.style.color = "#dc2626";
