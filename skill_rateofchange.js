@@ -3,11 +3,11 @@
  * - 8th Grade: Lesson 7.2.2 How y changes with respect to x
  * - Alternates between "Graph Slope Comparison" and "Athlete Rate Comparison".
  * - Uses proper Canvas rendering for coordinate planes.
- * - NEW: 3-part progressive questions to hit every subskill in a single run.
+ * - Features Grid Boundary Intelligence to ensure all questions are visually verifiable.
  */
 
 (function() {
-    console.log("🚀 skill_rateofchange.js LIVE (Comprehensive 3-Part Assessment)");
+    console.log("🚀 skill_rateofchange.js LIVE (Grid-Bound Question Logic)");
 
     var gameState = {
         type: '', // 'graph' or 'racer'
@@ -63,28 +63,44 @@
                 { id: 'C', m: m3, b: Math.floor(Math.random() * 8) - 2 } 
             ].sort(() => 0.5 - Math.random()); 
 
-            // Part 1: Total Change
-            let dx = Math.floor(Math.random() * 3) + 2; 
+            // Part 1: Total Change (Grid-Bound)
             let q1Line = lines[Math.floor(Math.random() * 3)];
-            let totalChangeAns = q1Line.m * dx;
+            let dx;
+            if (Math.abs(q1Line.m) >= 1) {
+                // If steep, limit x-jump to 1 or 2 so it stays on the graph
+                dx = (Math.abs(q1Line.m) <= 2 && Math.random() > 0.5) ? 2 : 1; 
+            } else {
+                // If fractional, set x-jump to the denominator for a clean integer y-jump
+                dx = Math.round(1 / q1Line.m); 
+            }
+            let totalChangeAns = Math.round(q1Line.m * dx);
 
             // Part 2: Unit Rate (Steepest)
             let greatestLine = lines.reduce((prev, current) => (prev.m > current.m) ? prev : current);
 
-            // Part 3: Prediction
-            let q3Line = lines[Math.floor(Math.random() * 3)];
-            let targetX = 2;
-            if (q3Line.m < 1 && q3Line.m > 0) {
-                targetX = Math.round(1 / q3Line.m) * (Math.floor(Math.random() * 2) + 1); 
-            }
-            let targetY = (q3Line.m * targetX) + q3Line.b;
+            // Part 3: Prediction (Grid-Bound)
+            let validPoints = [];
+            lines.forEach(l => {
+                for (let x = -8; x <= 8; x++) {
+                    if (x === 0) continue; // Skip y-intercept to force reading the line
+                    let y = (l.m * x) + l.b;
+                    // Safely check if y is an integer (accounting for floating point math)
+                    if (Math.abs(y - Math.round(y)) < 0.001) {
+                        y = Math.round(y);
+                        if (y >= -9 && y <= 9) { // Ensure it is visually on the grid
+                            validPoints.push({ id: l.id, x: x, y: y });
+                        }
+                    }
+                }
+            });
+            let targetPt = validPoints[Math.floor(Math.random() * validPoints.length)];
 
             gameState.currentScenario = {
                 lines: lines,
                 questions: [
                     { text: `Look at <strong>Line ${q1Line.id}</strong>. If the <i>x</i>-value increases by ${dx}, how much does the <i>y</i>-value change? <br><small style="color:#64748b;">(Total Change)</small>`, ans: totalChangeAns, type: 'number', dbSkill: 'roc_total_change' },
                     { text: `Which line has the <strong>greatest slope</strong>? <br><small style="color:#64748b;">(Unit Rate)</small>`, ans: greatestLine.id, type: 'select', options: ['A', 'B', 'C'], dbSkill: 'roc_unit_rate' },
-                    { text: `What is the <i>y</i>-value of <strong>Line ${q3Line.id}</strong> when <i>x</i> = ${targetX}? <br><small style="color:#64748b;">(Prediction)</small>`, ans: targetY, type: 'number', dbSkill: 'roc_predict' }
+                    { text: `What is the <i>y</i>-value of <strong>Line ${targetPt.id}</strong> when <i>x</i> = ${targetPt.x}? <br><small style="color:#64748b;">(Reading the Graph)</small>`, ans: targetPt.y, type: 'number', dbSkill: 'roc_predict' }
                 ]
             };
 
@@ -104,15 +120,13 @@
             });
 
             racers.sort((a, b) => b.dec - a.dec);
-            let fastest = racers[0].id; // Part 1: Fastest
+            let fastest = racers[0].id; 
 
-            // Part 2: Total Change
             let q2Runner = racers[Math.floor(Math.random() * 4)];
             let multiplier1 = Math.floor(Math.random() * 3) + 2; 
             let time1 = q2Runner.d * multiplier1;
             let dist1 = q2Runner.n * multiplier1;
 
-            // Part 3: Prediction
             let q3Runner = racers[Math.floor(Math.random() * 4)];
             let multiplier2 = Math.floor(Math.random() * 3) + 2;
             let dist2 = q3Runner.n * multiplier2;
