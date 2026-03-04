@@ -248,7 +248,8 @@ async function loadNextQuestion() {
             { id: 'DRT', fn: typeof initDRTGame !== 'undefined' ? initDRTGame : null },
             { id: 'ParallelSlope', fn: typeof initParallelSlopeGame !== 'undefined' ? initParallelSlopeGame : null },
             { id: 'TransformCoords', fn: typeof initTransformCoordsGame !== 'undefined' ? initTransformCoordsGame : null },
-            { id: 'SolveY', fn: typeof initSolveYGame !== 'undefined' ? initSolveYGame : null }
+            { id: 'SolveY', fn: typeof initSolveYGame !== 'undefined' ? initSolveYGame : null },
+            { id: 'SolutionTypes', fn: typeof initSolutionTypesGame !== 'undefined' ? initSolutionTypesGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -264,6 +265,7 @@ async function loadNextQuestion() {
             'LinearSystem',
             'FigureGrowth',
             'SolveX',
+            'SolutionTypes',
             'SolveY',
             'DiamondMath',
             'Graphing',
