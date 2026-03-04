@@ -223,8 +223,8 @@ async function loadNextQuestion() {
     } finally {
         window.hasLoadedTime = true;
     }
-
     try {
+        // 1. ALL AVAILABLE SKILLS (Make sure all your new files are linked here!)
         const skillMap = [
             { id: 'C6Transformation', fn: typeof initTransformationGame !== 'undefined' ? initTransformationGame : null },
             { id: 'LinearSystem', fn: typeof initLinearSystemGame !== 'undefined' ? initLinearSystemGame : null },
@@ -233,17 +233,16 @@ async function loadNextQuestion() {
             { id: 'BoxPlot', fn: typeof initBoxPlotGame !== 'undefined' ? initBoxPlotGame : null },
             { id: 'Similarity', fn: typeof initSimilarityGame !== 'undefined' ? initSimilarityGame : null },
             { id: 'ComplexShapes', fn: typeof initComplexShapesGame !== 'undefined' ? initComplexShapesGame : null },
+            { id: 'AreaPerimeter', fn: typeof initAreaPerimeterGame !== 'undefined' ? initAreaPerimeterGame : null },
             { id: 'Graphing', fn: typeof initGraphingGame !== 'undefined' ? initGraphingGame : null },
             { id: 'DiamondMath', fn: typeof initDiamondMath !== 'undefined' ? initDiamondMath : null },
             { id: 'LinearMastery', fn: typeof initLinearMastery !== 'undefined' ? initLinearMastery : null },
+            { id: 'SlopeRatios', fn: typeof initSlopeRatiosGame !== 'undefined' ? initSlopeRatiosGame : null },
             { id: 'PieChart', fn: typeof initPieChartGame !== 'undefined' ? initPieChartGame : null },
             { id: 'Scatterplot', fn: typeof initScatterplotGame !== 'undefined' ? initScatterplotGame : null },
             { id: 'LineOfBestFit', fn: typeof initLineOfBestFitGame !== 'undefined' ? initLineOfBestFitGame : null },
             { id: 'MixedCalc', fn: typeof initMixedCalcGame !== 'undefined' ? initMixedCalcGame : null },
-            { id: 'RateOfChange', fn: typeof initRateOfChangeGame !== 'undefined' ? initRateOfChangeGame : null },
             { id: 'ScientificNotation', fn: typeof initScientificGame !== 'undefined' ? initScientificGame : null },
-            { id: 'SlopeRatios', fn: typeof initSlopeRatiosGame !== 'undefined' ? initSlopeRatiosGame : null },
-            { id: 'AreaPerimeter', fn: typeof initAreaPerimeterGame !== 'undefined' ? initAreaPerimeterGame : null },
             { id: 'Association', fn: typeof initAssociationGame !== 'undefined' ? initAssociationGame : null },
             { id: 'ConditionalFreq', fn: typeof initConditionalFreqGame !== 'undefined' ? initConditionalFreqGame : null }
         ].filter(s => s.fn !== null);
@@ -253,19 +252,47 @@ async function loadNextQuestion() {
             return;
         }
 
-        // --- SCALABLE DICTIONARY ROUTING ---
+        // 2. THE CURRICULUM SEQUENCE (This dictates the strict chronological order)
+        // Arrange these from earliest taught in the year to latest.
+        const curriculumSequence = [
+            'C6Transformation',
+            'LinearSystem',
+            'FigureGrowth',
+            'SolveX',
+            'DiamondMath',
+            'Graphing',
+            'BoxPlot',
+            'Similarity',
+            'AreaPerimeter',
+            'ComplexShapes',
+            'PieChart',           // Lesson 7.1.1
+            'LineOfBestFit',      // Lesson 7.1.3
+            'Scatterplot',
+            'LinearMastery',
+            'SlopeRatios',        // Lesson 7.2.3
+            'Association',        // Lesson 7.3.2 (Assuming this is Association)
+            'ConditionalFreq',    // Lesson 7.3.3
+            'MixedCalc',
+            'ScientificNotation'
+        ];
+
+        // 3. SCALABLE DICTIONARY ROUTING
         const lessonAnchors = {
             'C6Review': 'C6Transformation',
             '7.1.1': 'PieChart',
             '7.1.3': 'LineOfBestFit', 
-            '7.2.2': 'RateOfChange',
             '7.2.1': 'Graphing',
-            '7.2.3': 'Association'
+            '7.2.3': 'SlopeRatios',
+            '7.3.2': 'Association',
+            '7.3.3': 'ConditionalFreq'
         };
 
         const primarySkillId = lessonAnchors[window.targetLesson];
 
         if (primarySkillId) {
+            // Determine the "ceiling" - how far into the curriculum are they allowed to go?
+            const maxAllowedIndex = curriculumSequence.indexOf(primarySkillId);
+
             if (!window.hasDonePrimaryLesson) {
                 window.hasDonePrimaryLesson = true;
                 const primarySkill = skillMap.find(s => s.id === primarySkillId);
@@ -275,12 +302,25 @@ async function loadNextQuestion() {
                 }
             }
 
-            let availableSkills = skillMap.filter(s => !window.skillsCompletedThisSession.includes(s.id));
+            // Filter out future skills AND skills already done this session
+            let availableSkills = skillMap.filter(s => {
+                const skillIndex = curriculumSequence.indexOf(s.id);
+                // Allow it if it's placed before or at the current lesson in the sequence
+                const isNotFuture = skillIndex > -1 && skillIndex <= maxAllowedIndex;
+                const isNotDoneToday = !window.skillsCompletedThisSession.includes(s.id);
+                return isNotFuture && isNotDoneToday;
+            });
+
+            // If they exhausted all previous skills, loop back to the beginning of the allowed list
             if (availableSkills.length === 0) {
                 window.skillsCompletedThisSession = [];
-                availableSkills = skillMap;
+                availableSkills = skillMap.filter(s => {
+                    const skillIndex = curriculumSequence.indexOf(s.id);
+                    return skillIndex > -1 && skillIndex <= maxAllowedIndex;
+                });
             }
 
+            // Sort the *allowed* historical skills by lowest mastery score
             availableSkills.sort((a, b) => {
                 const scoreA = userData ? (userData[a.id] || 0) : 0;
                 const scoreB = userData ? (userData[b.id] || 0) : 0;
