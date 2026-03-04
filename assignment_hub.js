@@ -243,7 +243,8 @@ async function loadNextQuestion() {
             { id: 'RateOfChange', fn: typeof initRateOfChangeGame !== 'undefined' ? initRateOfChangeGame : null },
             { id: 'ScientificNotation', fn: typeof initScientificGame !== 'undefined' ? initScientificGame : null },
             { id: 'SlopeRatios', fn: typeof initSlopeRatiosGame !== 'undefined' ? initSlopeRatiosGame : null },
-            { id: 'AreaPerimeter', fn: typeof initAreaPerimeterGame !== 'undefined' ? initAreaPerimeterGame : null }
+            { id: 'AreaPerimeter', fn: typeof initAreaPerimeterGame !== 'undefined' ? initAreaPerimeterGame : null },
+            { id: 'Association', fn: typeof initAssociationGame !== 'undefined' ? initAssociationGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
