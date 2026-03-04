@@ -241,7 +241,8 @@ async function loadNextQuestion() {
             { id: 'LineOfBestFit', fn: typeof initLineOfBestFitGame !== 'undefined' ? initLineOfBestFitGame : null },
             { id: 'MixedCalc', fn: typeof initMixedCalcGame !== 'undefined' ? initMixedCalcGame : null },
             { id: 'RateOfChange', fn: typeof initRateOfChangeGame !== 'undefined' ? initRateOfChangeGame : null },
-            { id: 'ScientificNotation', fn: typeof initScientificGame !== 'undefined' ? initScientificGame : null }
+            { id: 'ScientificNotation', fn: typeof initScientificGame !== 'undefined' ? initScientificGame : null },
+            { id: 'SlopeRatios', fn: typeof initSlopeRatiosGame !== 'undefined' ? initSlopeRatiosGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
