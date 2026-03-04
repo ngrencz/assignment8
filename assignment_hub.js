@@ -245,7 +245,8 @@ async function loadNextQuestion() {
             { id: 'ScientificNotation', fn: typeof initScientificGame !== 'undefined' ? initScientificGame : null },
             { id: 'Association', fn: typeof initAssociationGame !== 'undefined' ? initAssociationGame : null },
             { id: 'ConditionalFreq', fn: typeof initConditionalFreqGame !== 'undefined' ? initConditionalFreqGame : null },
-            { id: 'DRT', fn: typeof initDRTGame !== 'undefined' ? initDRTGame : null }
+            { id: 'DRT', fn: typeof initDRTGame !== 'undefined' ? initDRTGame : null },
+            { id: 'ParallelSlope', fn: typeof initParallelSlopeGame !== 'undefined' ? initParallelSlopeGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -274,6 +275,7 @@ async function loadNextQuestion() {
             'LineOfBestFit',      // Lesson 7.1.3
             'Scatterplot',
             'SlopeRatios',        // Lesson 7.2.3
+            'ParallelSlope',
             'Association',        // Lesson 7.3.2 (Assuming this is Association)
             'ConditionalFreq'    // Lesson 7.3.3
         ];
