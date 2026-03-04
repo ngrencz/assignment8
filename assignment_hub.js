@@ -266,15 +266,16 @@ async function loadNextQuestion() {
             'Similarity',
             'AreaPerimeter',
             'ComplexShapes',
+            'MixedCalc',
+            'ScientificNotation',
+            'LinearMastery',
+            'DRT',
             'PieChart',           // Lesson 7.1.1
             'LineOfBestFit',      // Lesson 7.1.3
             'Scatterplot',
-            'LinearMastery',
             'SlopeRatios',        // Lesson 7.2.3
             'Association',        // Lesson 7.3.2 (Assuming this is Association)
-            'ConditionalFreq',    // Lesson 7.3.3
-            'MixedCalc',
-            'ScientificNotation'
+            'ConditionalFreq'    // Lesson 7.3.3
         ];
 
         // 3. SCALABLE DICTIONARY ROUTING
