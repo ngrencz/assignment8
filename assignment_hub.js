@@ -258,7 +258,8 @@ async function loadNextQuestion() {
             '7.1.1': 'PieChart',
             '7.1.3': 'LineOfBestFit', 
             '7.2.2': 'RateOfChange',
-            '7.2.1': 'Graphing'
+            '7.2.1': 'Graphing',
+            '7.2.3': 'Association'
         };
 
         const primarySkillId = lessonAnchors[window.targetLesson];
