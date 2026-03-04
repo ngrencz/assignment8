@@ -250,7 +250,8 @@ async function loadNextQuestion() {
             { id: 'TransformCoords', fn: typeof initTransformCoordsGame !== 'undefined' ? initTransformCoordsGame : null },
             { id: 'SolveY', fn: typeof initSolveYGame !== 'undefined' ? initSolveYGame : null },
             { id: 'SolutionTypes', fn: typeof initSolutionTypesGame !== 'undefined' ? initSolutionTypesGame : null },
-            { id: 'TableRules', fn: typeof initTableRulesGame !== 'undefined' ? initTableRulesGame : null }
+            { id: 'TableRules', fn: typeof initTableRulesGame !== 'undefined' ? initTableRulesGame : null },
+            { id: 'C7Review', fn: typeof initC7ReviewGame !== 'undefined' ? initC7ReviewGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -285,7 +286,8 @@ async function loadNextQuestion() {
             'SlopeRatios',        // Lesson 7.2.3
             'ParallelSlope',
             'Association',        // Lesson 7.3.2 (Assuming this is Association)
-            'ConditionalFreq'    // Lesson 7.3.3
+            'ConditionalFreq',    // Lesson 7.3.3
+            'C7Review'
         ];
 
         // 3. SCALABLE DICTIONARY ROUTING
@@ -297,6 +299,7 @@ async function loadNextQuestion() {
             '7.2.3': 'SlopeRatios',
             '7.3.2': 'Association',
             '7.3.3': 'ConditionalFreq'
+            'C7Rev': 'C7Review'
         };
 
         const primarySkillId = lessonAnchors[window.targetLesson];
