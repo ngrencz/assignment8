@@ -1,23 +1,24 @@
 /**
  * skill_association.js
  * - 8th Grade: Scatterplots & Association
- * - Generates random scatterplots with varying direction and strength.
  * - Part A: Describe association (Direction, Form, Strength).
  * - Part B: Interpret the y-intercept in context.
  * - Part C: Evaluate if the y-intercept makes real-world sense.
+ * - Part D: Identify Association from purely text-based scenarios (CL 7-118).
  */
 
 (function() {
-    console.log("🚀 skill_association.js LIVE (Scatterplot Analysis)");
+    console.log("🚀 skill_association.js LIVE (Scatterplot & Context Analysis)");
 
     var assocData = {
         round: 1,
-        maxRounds: 3,
+        maxRounds: 4,
         errorsThisPart: 0,
         currentPart: 0, 
         context: {},
         points: [],
-        trend: { m: 0, b: 0 }
+        trend: { m: 0, b: 0 },
+        textScenario: {}
     };
 
     window.initAssociationGame = async function() {
@@ -36,7 +37,7 @@
                 const h = sessionStorage.getItem('target_hour') || "00";
                 const { data } = await window.supabaseClient
                     .from('assignment')
-                    .select('Association, assoc_describe, assoc_intercept')
+                    .select('Association, assoc_describe, assoc_intercept, assoc_text')
                     .eq('userName', window.currentUser)
                     .eq('hour', h)
                     .maybeSingle();
@@ -58,6 +59,7 @@
     }
 
     function generateAssocProblem() {
+        // --- Graph Scenarios (Parts A, B, C) ---
         const contexts = [
             { 
                 title: "Child Growth", xL: "Age (years)", yL: "Height (inches)", 
@@ -100,22 +102,31 @@
         assocData.context = ctx;
         assocData.points = [];
 
-        // Generate data based on parameters
         let m = ctx.dir === "Positive" ? (Math.random() * 1.5 + 1) : -(Math.random() * 1.5 + 1);
         let b = ctx.dir === "Positive" ? (Math.random() * 10 + 15) : (Math.random() * 20 + 80);
-        
         let noiseLevel = strength === "Strong" ? 4 : 15;
 
         for (let i = 0; i < 18; i++) {
             let x = Math.random() * 20;
-            // Lower limit x slightly so y-intercept is visible on graph
             if (x < 1) x += 1; 
             let y = (m * x) + b + ((Math.random() * noiseLevel * 2) - noiseLevel);
-            if (y < 0) y = 0; // Prevent negative physical values
+            if (y < 0) y = 0; 
             assocData.points.push({x, y});
         }
-
         assocData.trend = { m, b };
+
+        // --- Text Scenarios (Part D) ---
+        const textScenarios = [
+            { text: "The number of inches of rain per hour and the height of water in a reservoir.", ans: "Positive", hint: "As rain goes up, the water level goes up." },
+            { text: "The amount of food a person eats and how many pets he or she has.", ans: "None", hint: "Eating habits do not affect pet ownership." },
+            { text: "The height of a tree and the amount of nutrients it gets.", ans: "Positive", hint: "More nutrients usually means more growth." },
+            { text: "The number of hours spent hiking in the mountains and the amount of water left in your water bottle.", ans: "Negative", hint: "As hours of hiking go up, the water left goes down." },
+            { text: "The outside temperature and the number of winter coats sold.", ans: "Negative", hint: "As the temperature goes up, coat sales go down." },
+            { text: "A student's shoe size and their score on a math test.", ans: "None", hint: "Shoe size does not logically affect math ability." },
+            { text: "The time spent practicing free throws and the percentage of shots made.", ans: "Positive", hint: "More practice generally leads to a higher percentage of shots made." }
+        ];
+        
+        assocData.textScenario = textScenarios[Math.floor(Math.random() * textScenarios.length)];
     }
 
     function renderAssocUI() {
@@ -126,7 +137,7 @@
 
         qContent.innerHTML = `
             <div style="max-width: 650px; margin: 0 auto; animation: fadeIn 0.4s;">
-                <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <div id="graph-container" style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                     <h3 style="margin-top:0; text-align:center; color:#1e293b;">${ctx.title}</h3>
                     <div style="position:relative; width:400px; height:300px; margin:0 auto;">
                         <canvas id="assocCanvas" width="400" height="300" style="border-left:2px solid #334155; border-bottom:2px solid #334155;"></canvas>
@@ -150,15 +161,13 @@
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,400,300);
 
-        // Find max values to scale
         let maxX = 25; 
         let maxY = Math.max(...assocData.points.map(p => p.y)) * 1.2;
-        if (maxY < 10) maxY = 10; // safety
+        if (maxY < 10) maxY = 10; 
 
         const pX = (val) => (val / maxX) * 380 + 10;
         const pY = (val) => 290 - ((val / maxY) * 280);
 
-        // Draw points
         ctx.fillStyle = "#1e293b";
         assocData.points.forEach(p => {
             ctx.beginPath();
@@ -166,9 +175,8 @@
             ctx.fill();
         });
 
-        // If part 1 or 2, show trend line
         if (assocData.currentPart > 0) {
-            ctx.strokeStyle = "rgba(59, 130, 246, 0.7)"; // Translucent Blue
+            ctx.strokeStyle = "rgba(59, 130, 246, 0.7)"; 
             ctx.lineWidth = 3;
             ctx.beginPath();
             let startY = assocData.trend.b;
@@ -177,7 +185,6 @@
             ctx.lineTo(pX(maxX), pY(endY));
             ctx.stroke();
 
-            // Highlight y-intercept
             ctx.fillStyle = "#ef4444";
             ctx.beginPath();
             ctx.arc(pX(0), pY(startY), 6, 0, Math.PI*2);
@@ -192,7 +199,6 @@
         const container = document.getElementById('assoc-question-container');
         let ctx = assocData.context;
         let part = assocData.currentPart;
-
         let html = "";
 
         if (part === 0) {
@@ -230,7 +236,6 @@
             `;
         } 
         else if (part === 1) {
-            // Shuffle MC options
             let options = [ctx.intMeaning, ctx.wrongInt1, ctx.wrongInt2].sort(() => Math.random() - 0.5);
             html = `
                 <div style="font-size:16px; color:#1e293b; margin-bottom:15px;">
@@ -261,6 +266,30 @@
                 </div>
             `;
         }
+        else if (part === 3) {
+            // Hide the graph for the text portion
+            document.getElementById('graph-container').style.display = 'none';
+            
+            html = `
+                <div style="font-size:16px; color:#1e293b; margin-bottom:15px;">
+                    <span style="font-weight:bold; color:#3b82f6;">d.</span> Read the following situation. Do you expect a positive association, negative association, or no association?
+                </div>
+                <div style="background:white; padding:15px; border-radius:8px; border:1px solid #cbd5e1; font-weight:bold; color:#334155; margin-bottom:15px; text-align:center;">
+                    "${assocData.textScenario.text}"
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <label style="flex:1; background:white; padding:12px; border-radius:8px; border:1px solid #cbd5e1; cursor:pointer; text-align:center; font-weight:bold;">
+                        <input type="radio" name="ans-text" value="Positive"> Positive
+                    </label>
+                    <label style="flex:1; background:white; padding:12px; border-radius:8px; border:1px solid #cbd5e1; cursor:pointer; text-align:center; font-weight:bold;">
+                        <input type="radio" name="ans-text" value="Negative"> Negative
+                    </label>
+                    <label style="flex:1; background:white; padding:12px; border-radius:8px; border:1px solid #cbd5e1; cursor:pointer; text-align:center; font-weight:bold;">
+                        <input type="radio" name="ans-text" value="None"> No Association
+                    </label>
+                </div>
+            `;
+        }
 
         html += `
             <div style="margin-top:20px; text-align:right;">
@@ -282,7 +311,6 @@
             let uForm = document.getElementById('ans-form').value;
             let uDir = document.getElementById('ans-dir').value;
             let uStr = document.getElementById('ans-str').value;
-            
             if (!uForm || !uDir || !uStr) return;
             isCorrect = (uForm === ctx.form && uDir === ctx.dir && uStr === ctx.strength);
         } 
@@ -296,20 +324,31 @@
             if (!selected) return;
             isCorrect = (selected.value === ctx.makesSense);
         }
+        else if (part === 3) {
+            let selected = document.querySelector('input[name="ans-text"]:checked');
+            if (!selected) return;
+            isCorrect = (selected.value === assocData.textScenario.ans);
+        }
 
         if (isCorrect) {
             feedback.style.color = "#16a34a";
-            feedback.innerText = part === 2 ? `✅ Correct! ${ctx.senseReason}` : "✅ Correct!";
+            if (part === 2) feedback.innerText = `✅ Correct! ${ctx.senseReason}`;
+            else if (part === 3) feedback.innerText = `✅ Correct!`;
+            else feedback.innerText = "✅ Correct!";
             
             // Sub-skill Tracking
-            let dbSkill = part === 0 ? 'assoc_describe' : 'assoc_intercept';
+            let dbSkill = '';
+            if (part === 0) dbSkill = 'assoc_describe';
+            else if (part === 1 || part === 2) dbSkill = 'assoc_intercept';
+            else if (part === 3) dbSkill = 'assoc_text';
+
             if (assocData.errorsThisPart === 0) updateAssocSkill(dbSkill, 1);
 
             assocData.currentPart++;
             assocData.errorsThisPart = 0;
 
             setTimeout(() => {
-                if (assocData.currentPart > 2) {
+                if (assocData.currentPart > 3) {
                     assocData.round++;
                     if (assocData.round > assocData.maxRounds) {
                         finishAssocGame();
@@ -317,11 +356,10 @@
                         startAssocRound();
                     }
                 } else {
-                    // Re-draw scatterplot if we moved to part 1 so the trend line appears
                     if (assocData.currentPart === 1) drawScatterplot();
                     renderQuestionPart();
                 }
-            }, part === 2 ? 3000 : 1000); // Give them longer to read the explanation on part 2
+            }, part === 2 || part === 3 ? 2500 : 1000); 
 
         } else {
             assocData.errorsThisPart++;
@@ -329,6 +367,7 @@
             if (part === 0) feedback.innerText = "❌ Look closely at the pattern, direction, and how tightly packed the dots are.";
             if (part === 1) feedback.innerText = "❌ Remember: The y-intercept is the y-value when x is EXACTLY zero.";
             if (part === 2) feedback.innerText = "❌ Incorrect. Think about what the zero value literally means in real life.";
+            if (part === 3) feedback.innerText = `❌ Incorrect. ${assocData.textScenario.hint}`;
         }
     };
 
