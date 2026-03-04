@@ -249,7 +249,8 @@ async function loadNextQuestion() {
             { id: 'ParallelSlope', fn: typeof initParallelSlopeGame !== 'undefined' ? initParallelSlopeGame : null },
             { id: 'TransformCoords', fn: typeof initTransformCoordsGame !== 'undefined' ? initTransformCoordsGame : null },
             { id: 'SolveY', fn: typeof initSolveYGame !== 'undefined' ? initSolveYGame : null },
-            { id: 'SolutionTypes', fn: typeof initSolutionTypesGame !== 'undefined' ? initSolutionTypesGame : null }
+            { id: 'SolutionTypes', fn: typeof initSolutionTypesGame !== 'undefined' ? initSolutionTypesGame : null },
+            { id: 'TableRules', fn: typeof initTableRulesGame !== 'undefined' ? initTableRulesGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -264,6 +265,7 @@ async function loadNextQuestion() {
             'TransformCoords',
             'LinearSystem',
             'FigureGrowth',
+            'TableRules'
             'SolveX',
             'SolutionTypes',
             'SolveY',
