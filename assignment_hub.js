@@ -246,7 +246,8 @@ async function loadNextQuestion() {
             { id: 'Association', fn: typeof initAssociationGame !== 'undefined' ? initAssociationGame : null },
             { id: 'ConditionalFreq', fn: typeof initConditionalFreqGame !== 'undefined' ? initConditionalFreqGame : null },
             { id: 'DRT', fn: typeof initDRTGame !== 'undefined' ? initDRTGame : null },
-            { id: 'ParallelSlope', fn: typeof initParallelSlopeGame !== 'undefined' ? initParallelSlopeGame : null }
+            { id: 'ParallelSlope', fn: typeof initParallelSlopeGame !== 'undefined' ? initParallelSlopeGame : null },
+            { id: 'TransformCoords', fn: typeof initTransformCoordsGame !== 'undefined' ? initTransformCoordsGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
@@ -258,6 +259,7 @@ async function loadNextQuestion() {
         // Arrange these from earliest taught in the year to latest.
         const curriculumSequence = [
             'C6Transformation',
+            'TransformCoords',
             'LinearSystem',
             'FigureGrowth',
             'SolveX',
