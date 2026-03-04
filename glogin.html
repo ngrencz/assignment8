@@ -110,7 +110,19 @@
 
 <script>
     window.onload = async () => {
-        // 1. Catch Deep Links (e.g., ?lesson=C6Review)
+        // 1. Auto-Select Previous Hour (Quality of Life Fix)
+        const hourDropdown = document.getElementById('hour-select');
+        const savedHour = localStorage.getItem('mathgame_hour');
+        if (savedHour) {
+            hourDropdown.value = savedHour;
+        }
+        
+        // Save the hour whenever they change it
+        hourDropdown.addEventListener('change', (e) => {
+            localStorage.setItem('mathgame_hour', e.target.value);
+        });
+
+        // 2. Catch Deep Links (e.g., ?lesson=C6Review)
         const urlParams = new URLSearchParams(window.location.search);
         const requestedLesson = urlParams.get('lesson');
         if (requestedLesson) {
@@ -120,7 +132,7 @@
             }
         }
 
-        // 2. Did we JUST bounce back from Google? (Google adds a hash to the URL)
+        // 3. Did we JUST bounce back from Google? (Google adds a hash to the URL)
         if (window.location.hash.includes('access_token')) {
             document.getElementById('loading-overlay').style.display = 'flex';
             
@@ -142,7 +154,7 @@
             }
         }
         
-        // 3. Are they already logged in from a previous day?
+        // 4. Are they already logged in from a previous day?
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             // Change the button so they know they don't have to re-authenticate
