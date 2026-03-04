@@ -1,12 +1,11 @@
 /**
- * Transformation Geometry Game - STANDARDIZED & HARDENED VERSION
- * - Follows unified Hub Interaction architecture.
- * - Added strict Try/Catch blocks to prevent silent button failures.
- * - Safe fallback for Web Animations API.
+ * Transformation Geometry Game - v2.6.0
+ * - Dynamic difficulty scaling based on mastery (1 to 4 steps).
+ * - Contextual tool hints and failure scaffolding.
+ * - Smart decimal input scrollers.
  */
 
 (function() {
-    // --- RULE 1: Strict Encapsulation ---
     let currentShape = [];
     let targetShape = [];
     let originalStartShape = [];
@@ -16,6 +15,7 @@
     let moveSequence = [];
     let generatedMoves = []; 
     let activeSkills = [];   
+    let failedAttempts = 0;
 
     const SHAPES = {
         rightTriangle: [[0,0], [0,3], [3,0]],
@@ -26,7 +26,6 @@
         L_shape: [[0,0], [0,4], [2,4], [2,2], [4,2], [4,0]]
     };
 
-    // --- RULE 2: Safe Initialization & DB Merge ---
     window.initTransformationGame = async function() {
         if (!document.getElementById('q-content')) return;
 
@@ -61,6 +60,7 @@
         activeSkills = [];
         editingIndex = -1;
         isAnimating = false;
+        failedAttempts = 0;
         
         let skillWeights = [
             { type: 'translation', key: 'C6Translation', score: window.userMastery.C6Translation || 0 },
@@ -78,6 +78,13 @@
             for(let k=0; k<weight; k++) typePool.push(skill);
         });
 
+        // Calculate steps based on Mastery Score
+        let mastery = window.userMastery.C6Transformation || 0;
+        let stepCount = 1;
+        if (mastery >= 10) stepCount = 4;
+        else if (mastery >= 7) stepCount = 3;
+        else if (mastery >= 5) stepCount = 2;
+
         let validChallenge = false;
         while (!validChallenge) {
             const shapeKeys = Object.keys(SHAPES);
@@ -90,7 +97,6 @@
             originalStartShape = JSON.parse(JSON.stringify(currentShape));
             targetShape = JSON.parse(JSON.stringify(currentShape));
 
-            let stepCount = Math.floor(Math.random() * 3) + 3; 
             let tempSkills = [];
             let allStepsValid = true; 
 
@@ -102,7 +108,7 @@
                 if (!tempSkills.includes(picked.key)) tempSkills.push(picked.key);
 
                 let isStepOnGrid = targetShape.every(p => Math.abs(p[0]) <= 10 && Math.abs(p[1]) <= 10);
-                let isCleanDecimals = targetShape.every(p => Number.isInteger(p[0] * 2) && Number.isInteger(p[1] * 2));
+                let isCleanDecimals = targetShape.every(p => Number.isInteger(p[0] * 4) && Number.isInteger(p[1] * 4)); // Allow quarters
 
                 if (!isStepOnGrid || !isCleanDecimals) {
                     allStepsValid = false;
@@ -140,6 +146,15 @@
         return { type }; 
     }
 
+    function formatMoveType(type) {
+        if (type === 'translation') return 'Translation';
+        if (type === 'reflectX') return 'Reflection (X-Axis)';
+        if (type === 'reflectY') return 'Reflection (Y-Axis)';
+        if (type === 'rotate') return 'Rotation';
+        if (type === 'dilation') return 'Dilation';
+        return type;
+    }
+
     function applyMoveToPoints(pts, m) {
         pts.forEach(p => {
             let x = p[0], y = p[1];
@@ -158,9 +173,22 @@
     function renderUI() {
         const qContent = document.getElementById('q-content');
         if (!qContent) return;
-        document.getElementById('q-title').innerText = `Transformations (Round ${currentRound}/3)`;
         
+        let targetMoves = generatedMoves.length;
+        let hintHTML = failedAttempts > 0 ? `
+            <div style="background:#fffbeb; border:1px solid #fef3c7; color:#92400e; padding:10px; border-radius:8px; margin-bottom:12px; font-size:13px; text-align:center;">
+                <strong>Hint:</strong> The optimal sequence starts with a <strong>${formatMoveType(generatedMoves[0]?.type)}</strong>. 
+                <br><em>Check the exact coordinates on the right to measure the exact change!</em>
+            </div>
+        ` : '';
+
         qContent.innerHTML = `
+            <div style="text-align:center; color:#64748b; margin-bottom:10px; font-weight:bold; text-transform:uppercase; letter-spacing:1px; font-size:13px;">
+                Round ${currentRound}/3 &nbsp;|&nbsp; Target Moves: ${targetMoves}
+            </div>
+            
+            ${hintHTML}
+
             <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 10px; position:relative;">
                 <div style="position:relative; width:440px; height:440px;">
                     <canvas id="gridCanvas" width="440" height="440" style="background: white; border-radius: 8px; border: 1px solid #94a3b8; cursor: crosshair;"></canvas>
@@ -169,7 +197,8 @@
                 </div>
                 
                 <div id="vertex-list" style="flex: 1; background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1; max-height: 440px; overflow-y: auto;">
-                    <h4 style="margin: 0 0 8px 0; color: #334155; text-transform:uppercase; letter-spacing:0.5px;">Coordinates</h4>
+                    <h4 style="margin: 0 0 4px 0; color: #334155; text-transform:uppercase; letter-spacing:0.5px;">Coordinates</h4>
+                    <p style="color:#8b5cf6; font-size:10px; margin:0 0 10px 0; font-weight:bold; line-height:1.3;">💡 Tip: Use these exact values to calculate decimal distances!</p>
                     <div style="color: #15803d; font-weight: bold; margin-bottom: 4px;">Current (Green)</div>
                     <div id="current-coords" style="margin-bottom: 12px; line-height:1.4;"></div>
                     <div style="color: #64748b; font-weight: bold; margin-bottom: 4px;">Target (Ghost)</div>
@@ -195,7 +224,7 @@
                     <option value="dilation">Dilation (Origin)</option>
                 </select>
                 
-                <div id="sub-inputs" style="grid-column: span 2; display:flex; gap:15px; align-items:center; justify-content:center; padding:5px; height:40px;"></div>
+                <div id="sub-inputs" style="grid-column: span 2; display:flex; align-items:center; justify-content:center; padding:5px; min-height:50px;"></div>
                 
                 <button onclick="executeAction()" style="grid-column: span 2; height:45px; background:${editingIndex === -1 ? '#22c55e' : '#f59e0b'}; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:14px; box-shadow: 0 2px 0 rgba(0,0,0,0.1);">
                     ${editingIndex === -1 ? 'ADD MOVE' : 'UPDATE MOVE'}
@@ -214,7 +243,6 @@
         draw(currentShape); 
     }
 
-    // --- HARDENED FLASH FUNCTION ---
     function showFlash(msg, type) {
         try {
             const overlay = document.getElementById('flash-overlay');
@@ -223,7 +251,6 @@
             overlay.style.display = 'block';
             overlay.style.backgroundColor = type === 'success' ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)';
             
-            // Safe fallback if .animate is unsupported
             if (typeof overlay.animate === 'function') {
                 overlay.animate([
                     { opacity: 0, transform: 'translate(-50%, -40%)' }, 
@@ -241,8 +268,8 @@
         const curDiv = document.getElementById('current-coords');
         const tarDiv = document.getElementById('target-coords');
         if (!curDiv || !tarDiv) return;
-        curDiv.innerHTML = currentShape.map((p, i) => `(${p[0].toFixed(2)}, ${p[1].toFixed(2)})`).join('<br>');
-        tarDiv.innerHTML = targetShape.map((p, i) => `(${p[0].toFixed(2)}, ${p[1].toFixed(2)})`).join('<br>');
+        curDiv.innerHTML = currentShape.map((p, i) => `(${p[0].toFixed(2).replace(/\.00$/, '')}, ${p[1].toFixed(2).replace(/\.00$/, '')})`).join('<br>');
+        tarDiv.innerHTML = targetShape.map((p, i) => `(${p[0].toFixed(2).replace(/\.00$/, '')}, ${p[1].toFixed(2).replace(/\.00$/, '')})`).join('<br>');
     }
 
     function formatMove(m) {
@@ -271,36 +298,58 @@
         const container = document.getElementById('sub-inputs');
         let existing = (editingIndex !== -1) ? moveSequence[editingIndex] : null;
 
-        const hasDecimals = currentShape.some(p => !Number.isInteger(p[0]) || !Number.isInteger(p[1]));
-        const stepVal = hasDecimals ? "0.25" : "1";
+        // Check if ANY point in either shape is a decimal to adjust the scroller
+        const needsDecimals = [...currentShape, ...targetShape].some(p => !Number.isInteger(p[0]) || !Number.isInteger(p[1]));
+        const stepVal = needsDecimals ? "0.25" : "1";
+
+        let innerHTML = "";
+        let toolHint = "";
 
         if (val === 'translation') {
-            container.innerHTML = `
-                <div style="display:flex; align-items:center; margin-right: 10px;">
-                    <span style="font-weight:bold; margin-right:5px;">X:</span> 
-                    <input type="number" id="dx" step="${stepVal}" value="${existing?.dx || 0}" style="width:80px; height:35px; text-align:center; border:1px solid #cbd5e1; border-radius:4px; font-size:14px;">
-                </div>
-                <div style="display:flex; align-items:center;">
-                    <span style="font-weight:bold; margin-right:5px;">Y:</span> 
-                    <input type="number" id="dy" step="${stepVal}" value="${existing?.dy || 0}" style="width:80px; height:35px; text-align:center; border:1px solid #cbd5e1; border-radius:4px; font-size:14px;">
+            toolHint = "Moves the shape Left/Right (X) or Up/Down (Y).";
+            innerHTML = `
+                <div style="display:flex; gap: 15px; justify-content:center;">
+                    <div style="display:flex; align-items:center;">
+                        <span style="font-weight:bold; margin-right:5px;">X:</span> 
+                        <input type="number" id="dx" step="${stepVal}" value="${existing?.dx || 0}" style="width:70px; height:35px; text-align:center; border:1px solid #cbd5e1; border-radius:4px; font-size:14px;">
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <span style="font-weight:bold; margin-right:5px;">Y:</span> 
+                        <input type="number" id="dy" step="${stepVal}" value="${existing?.dy || 0}" style="width:70px; height:35px; text-align:center; border:1px solid #cbd5e1; border-radius:4px; font-size:14px;">
+                    </div>
                 </div>`;
         } else if (val === 'rotate') {
-            container.innerHTML = `
-                <select id="rot-deg" style="height:35px; border-radius:4px;">
-                    <option value="90" ${existing?.deg == 90 ? 'selected' : ''}>90°</option>
-                    <option value="180" ${existing?.deg == 180 ? 'selected' : ''}>180°</option>
-                </select>
-                <select id="rot-dir" style="height:35px; border-radius:4px;">
-                    <option value="CW" ${existing?.dir == 'CW' ? 'selected' : ''}>CW</option>
-                    <option value="CCW" ${existing?.dir == 'CCW' ? 'selected' : ''}>CCW</option>
-                </select>`;
+            toolHint = "Spins the shape around the origin (0,0).";
+            innerHTML = `
+                <div style="display:flex; justify-content:center; gap:10px;">
+                    <select id="rot-deg" style="height:35px; border-radius:4px; border:1px solid #cbd5e1;">
+                        <option value="90" ${existing?.deg == 90 ? 'selected' : ''}>90°</option>
+                        <option value="180" ${existing?.deg == 180 ? 'selected' : ''}>180°</option>
+                    </select>
+                    <select id="rot-dir" style="height:35px; border-radius:4px; border:1px solid #cbd5e1;">
+                        <option value="CW" ${existing?.dir == 'CW' ? 'selected' : ''}>CW</option>
+                        <option value="CCW" ${existing?.dir == 'CCW' ? 'selected' : ''}>CCW</option>
+                    </select>
+                </div>`;
         } else if (val === 'dilation') {
-            container.innerHTML = `
-                <span style="font-weight:bold; margin-right:5px;">Scale:</span> 
-                <input type="number" id="dil-factor" step="0.25" value="${existing?.factor || 1}" style="width:80px; height:35px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;">`;
-        } else {
-            container.innerHTML = `<span style="color:#64748b; font-size:12px; font-style:italic;">No parameters needed</span>`;
+            toolHint = "Shrinks or stretches the shape from the center. (e.g. 0.5 is half size)";
+            innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:center;">
+                    <span style="font-weight:bold; margin-right:5px;">Scale:</span> 
+                    <input type="number" id="dil-factor" step="0.25" value="${existing?.factor || 1}" style="width:80px; height:35px; text-align:center; border:1px solid #cbd5e1; border-radius:4px;">
+                </div>`;
+        } else if (val === 'reflectX') {
+            toolHint = "Flips the shape vertically across the horizontal X-Axis.";
+        } else if (val === 'reflectY') {
+            toolHint = "Flips the shape horizontally across the vertical Y-Axis.";
         }
+
+        container.innerHTML = `
+            <div style="width:100%; display:flex; flex-direction:column; gap:8px;">
+                ${innerHTML}
+                <div style="text-align:center; font-size:12px; color:#64748b; font-style:italic;">${toolHint}</div>
+            </div>
+        `;
     };
 
     window.editStep = function(i) {
@@ -441,14 +490,12 @@
         });
     }
 
-    // --- RULE 3: Strict Validation Check ---
     window.checkWin = function() {
         try {
             const sorter = (a, b) => (a[0] - b[0]) || (a[1] - b[1]);
             let sortedCurrent = [...currentShape].sort(sorter);
             let sortedTarget = [...targetShape].sort(sorter);
 
-            // Fail-safe check: Ensure shapes haven't corrupted length
             let isCorrect = false;
             if (sortedCurrent.length === sortedTarget.length) {
                 isCorrect = sortedCurrent.every((p, i) => 
@@ -462,13 +509,11 @@
                 let i = 0;
                 while (i < moveSequence.length) {
                     let m1 = moveSequence[i];
-                    
                     if (i < moveSequence.length - 1) {
                         let m2 = moveSequence[i+1];
                         if (m1.type === 'translation' && m2.type === 'translation') {
                             if ((Math.abs(m1.dx) > 0 && m1.dy === 0 && m2.dx === 0 && Math.abs(m2.dy) > 0) ||
                                 (m1.dx === 0 && Math.abs(m1.dy) > 0 && Math.abs(m2.dx) > 0 && m2.dy === 0)) {
-                                
                                 adjustedUserMoves++;
                                 i += 2; 
                                 continue;
@@ -479,7 +524,6 @@
                     i++;
                 }
 
-                // Prevent division by 0 error if user somehow matches with 0 moves
                 adjustedUserMoves = Math.max(1, adjustedUserMoves); 
 
                 const optimalMoves = generatedMoves.length;
@@ -505,7 +549,6 @@
                 window.userMastery.C6Transformation = newAgg;
                 updates.C6Transformation = newAgg;
 
-                // Fire and forget
                 if (window.supabaseClient && window.currentUser) {
                     const currentHour = sessionStorage.getItem('target_hour') || "00";
                     window.supabaseClient
@@ -514,7 +557,6 @@
                         .eq('userName', window.currentUser)
                         .eq('hour', currentHour) 
                         .then(({error}) => { if (error) console.error("Supabase Error:", error); });
-                        // REMOVED THE CATCH LINE HERE
                 }
 
                 showFlash("Correct!", "success");
@@ -526,7 +568,9 @@
                 }, 1500);
 
             } else {
+                failedAttempts++;
                 showFlash("Incorrect", "error");
+                renderUI(); // Re-render to show the hint box
             }
         } catch (err) {
             console.error("Critical error in checkWin:", err);
@@ -534,7 +578,6 @@
         }
     };
 
-    // --- RULE 4: Standard Handoff ---
     function finishGame() { 
         window.isCurrentQActive = false;
         const qContent = document.getElementById('q-content');
