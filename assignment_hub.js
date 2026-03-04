@@ -244,7 +244,8 @@ async function loadNextQuestion() {
             { id: 'MixedCalc', fn: typeof initMixedCalcGame !== 'undefined' ? initMixedCalcGame : null },
             { id: 'ScientificNotation', fn: typeof initScientificGame !== 'undefined' ? initScientificGame : null },
             { id: 'Association', fn: typeof initAssociationGame !== 'undefined' ? initAssociationGame : null },
-            { id: 'ConditionalFreq', fn: typeof initConditionalFreqGame !== 'undefined' ? initConditionalFreqGame : null }
+            { id: 'ConditionalFreq', fn: typeof initConditionalFreqGame !== 'undefined' ? initConditionalFreqGame : null },
+            { id: 'DRT', fn: typeof initDRTGame !== 'undefined' ? initDRTGame : null }
         ].filter(s => s.fn !== null);
 
         if (skillMap.length === 0) {
