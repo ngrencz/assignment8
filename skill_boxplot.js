@@ -1,7 +1,8 @@
 /**
- * skill_boxplot.js - Full Integrated Version (RESTORED LABELS)
+ * skill_boxplot.js - Full Integrated Version (PATCHED)
  * Handles: Median, Mean, Range, Q1, and IQR
- * UPDATED: Targeted sub-skill weighting & .then() Supabase fixes.
+ * FIXED: Prevented double-click fatal crash on the final question.
+ * FIXED: Universal DB routing (works for both 7th and 8th grade databases).
  */
 
 (function() {
@@ -14,6 +15,11 @@
     let boxPlotSessionQuestions = [];
     let sessionCorrectFirstTry = 0; 
 
+    // Smart Database Router (7th grade uses Ch 5, 8th grade uses Ch 7)
+    function getDbTable() {
+        return (window.targetLesson && window.targetLesson.startsWith('5')) ? 'assignment7' : 'assignment';
+    }
+
     // 2. Init Function
     window.initBoxPlotGame = async function() {
         window.isCurrentQActive = true;
@@ -22,20 +28,19 @@
         boxPlotStep = 0;
         sessionCorrectFirstTry = 0;
 
-        // --- HUB FIX: Ensure mastery object exists safely ---
         if (!window.userMastery) window.userMastery = {};
 
         try {
             const currentHour = sessionStorage.getItem('target_hour') || "00";
+            const dbTable = getDbTable();
             
             const { data } = await window.supabaseClient
-                .from('assignment')
+                .from(dbTable)
                 .select('BoxPlot, bp_median, bp_mean, bp_range, bp_quartiles, bp_iqr')
                 .eq('userName', window.currentUser)
                 .eq('hour', currentHour)
                 .maybeSingle();
             
-            // --- HUB FIX: Safely merge data instead of overwriting ---
             if (data) {
                 window.userMastery = { ...window.userMastery, ...data };
             }
@@ -57,7 +62,6 @@
         let weightedBag = [];
         fullPool.forEach(item => {
             let score = window.userMastery[item.col] || 0;
-            // Mastery 0-3: 4 entries | 4-7: 2 entries | 8-10: 1 entry
             let weight = score <= 3 ? 4 : (score <= 7 ? 2 : 1);
             for (let i = 0; i < weight; i++) {
                 weightedBag.push(item);
@@ -68,7 +72,6 @@
         while (boxPlotSessionQuestions.length < 3) {
             let randomIndex = Math.floor(Math.random() * weightedBag.length);
             let selected = weightedBag[randomIndex];
-            // Ensure no duplicates in the current session
             if (!boxPlotSessionQuestions.some(q => q.col === selected.col)) {
                 boxPlotSessionQuestions.push(selected);
             }
@@ -133,16 +136,17 @@
                 <canvas id="boxCanvas" width="400" height="120" style="max-width:100%;"></canvas>
             </div>
             
-            <div class="card">
+            <div class="card" style="padding: 20px; background: white; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
                 <p style="font-size: 1.1rem; margin-bottom: 15px;"><strong>Question:</strong> ${current.q}</p>
                 <div style="display:flex; gap:10px; align-items:center; justify-content:center;">
-                    <input type="number" id="box-ans" step="0.1" class="math-input" placeholder="?" style="width: 100px; padding: 10px;">
-                    <button onclick="checkStep()" class="primary-btn">Submit</button>
+                    <input type="number" id="box-ans" step="0.1" class="math-input" placeholder="?" style="width: 100px; padding: 10px; font-size:18px; text-align:center; border: 2px solid #cbd5e1; border-radius:6px;">
+                    <button id="bp-submit-btn" onclick="checkStep()" style="background:#1e293b; color:white; border:none; padding:10px 20px; font-size:16px; font-weight:bold; border-radius:6px; cursor:pointer;">Submit</button>
                 </div>
-                <div id="feedback-box" style="margin-top: 15px; display: none; padding: 10px; border-radius: 6px;"></div>
+                <div id="feedback-box" style="margin-top: 15px; display: none; padding: 10px; border-radius: 6px; font-weight:bold;"></div>
             </div>
         `;
         setTimeout(drawBoxPlot, 50); 
+        setTimeout(() => document.getElementById('box-ans')?.focus(), 100);
     }
 
     function drawBoxPlot() {
@@ -187,7 +191,6 @@
             max: padding + currentBoxData.max * scale
         };
 
-        // --- RESTORED: Draw Stats Text Labels ---
         ctx.fillStyle = "#1e293b";
         ctx.font = "bold 12px Arial";
         ctx.fillText(currentBoxData.min, pts.min, y - 35);
@@ -221,9 +224,12 @@
         ctx.stroke();
     }
 
-    // --- HUB FIX: Removed async to make it non-blocking ---
     window.checkStep = function() {
+        // Prevent fatal error if they double click during transition
+        if (boxPlotStep >= boxPlotSessionQuestions.length) return;
+
         const input = document.getElementById('box-ans');
+        const btn = document.getElementById('bp-submit-btn');
         if(!input) return;
         
         const userAns = parseFloat(input.value);
@@ -234,28 +240,30 @@
         feedback.style.display = "block";
 
         if (Math.abs(userAns - current.a) < 0.11) {
-            feedback.className = "correct";
+            // Instantly disable button to stop double-click crashes
+            if (btn) btn.disabled = true;
+            input.disabled = true;
+
+            feedback.style.color = "#16a34a";
+            feedback.style.backgroundColor = "#dcfce7";
             feedback.innerText = "✅ Correct!";
 
-            if (boxErrorCount === 0) {
-                sessionCorrectFirstTry++;
-            }
+            if (boxErrorCount === 0) sessionCorrectFirstTry++;
 
             let subAdjustment = (boxErrorCount === 0) ? 1 : 0; 
             const updateObj = {};
             
-            // --- HUB FIX: Use safe local mastery merge ---
             if (!window.userMastery) window.userMastery = {};
             let currentScore = window.userMastery[current.col] || 0;
             updateObj[current.col] = Math.min(10, currentScore + subAdjustment);
-            window.userMastery[current.col] = updateObj[current.col]; // Update instantly
+            window.userMastery[current.col] = updateObj[current.col]; 
 
             const currentHour = sessionStorage.getItem('target_hour') || "00";
+            const dbTable = getDbTable();
 
-            // --- HUB FIX: Background DB Sync (using .then) ---
             if (window.supabaseClient && window.currentUser) {
                 window.supabaseClient
-                    .from('assignment')
+                    .from(dbTable)
                     .update(updateObj)
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
@@ -268,21 +276,30 @@
             boxErrorCount = 0;
 
             if (boxPlotStep >= boxPlotSessionQuestions.length) {
-                finishBoxPlotSession();
+                setTimeout(finishBoxPlotSession, 800);
             } else {
                 setTimeout(renderBoxUI, 1000);
             }
         } else {
             boxErrorCount++;
-            feedback.className = "incorrect";
+            feedback.style.color = "#dc2626";
+            feedback.style.backgroundColor = "#fee2e2";
             feedback.innerText = `❌ Not quite. Hint: ${current.hint}`;
         }
     };
 
    function finishBoxPlotSession() {
         window.isCurrentQActive = false;
-        const feedback = document.getElementById('feedback-box');
-        if(feedback) feedback.innerText = "✅ Box Plot Set Complete!";
+        const qContent = document.getElementById('q-content');
+        
+        // Massive UI replacement to completely remove the old buttons
+        qContent.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px; animation: fadeIn 0.5s;">
+                <div style="font-size:60px; margin-bottom:15px;">📊</div>
+                <h2 style="color:#1e293b; margin:0 0 10px 0;">Box Plot Set Complete!</h2>
+                <p style="color:#64748b; font-size:16px;">Saving results...</p>
+            </div>
+        `;
 
         let mainAdjustment = 0;
         if (sessionCorrectFirstTry === 3) mainAdjustment = 1;
@@ -292,13 +309,13 @@
             const currentMain = window.userMastery?.['BoxPlot'] || 0;
             const newMain = Math.max(0, Math.min(10, currentMain + mainAdjustment));
             const currentHour = sessionStorage.getItem('target_hour') || "00";
+            const dbTable = getDbTable();
 
             if (window.userMastery) window.userMastery['BoxPlot'] = newMain;
 
             if (window.supabaseClient && window.currentUser) {
-                // Fire and forget using .then
                 window.supabaseClient
-                    .from('assignment')
+                    .from(dbTable)
                     .update({ 'BoxPlot': newMain })
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
@@ -308,13 +325,12 @@
             }
         }
 
-        // This will now reliably fire after exactly 1.5 seconds
         setTimeout(() => {
             if (typeof window.loadNextQuestion === 'function') {
                 window.loadNextQuestion();
             } else {
                 location.reload();
             }
-        }, 1500);
+        }, 1800);
     }
 })();
