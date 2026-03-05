@@ -297,7 +297,7 @@ async function loadNextQuestion() {
             '7.1.1': 'PieChart',
             '7.1.3': 'LineOfBestFit', 
             '7.2.1': 'Graphing',
-            '7.2.3': 'SlopeRatios',
+            '7.2.2': 'SlopeRatios',
             '7.3.2': 'Association',
             '7.3.3': 'ConditionalFreq',
             'C7Rev': 'C7Review'
