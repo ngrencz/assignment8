@@ -17,7 +17,7 @@
 
     // Smart Database Router (7th grade uses Ch 5, 8th grade uses Ch 7)
     function getDbTable() {
-        return (window.targetLesson && window.targetLesson.startsWith('5')) ? 'assignment7' : 'assignment';
+        return (window.targetLesson && window.targetLesson.startsWith('5')) ? 'assignment' : 'assignment';
     }
 
     // 2. Init Function
