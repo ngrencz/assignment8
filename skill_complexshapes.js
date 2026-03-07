@@ -143,6 +143,9 @@ function renderComplexUI() {
     const qContent = document.getElementById('q-content');
     if (!qContent) return;
 
+    // Tell the Sandbox what the answer is
+    window.expectedTestAnswer = current.a;
+        
     qContent.innerHTML = `
         <div style="max-width:650px; margin:0 auto; font-family: sans-serif;">
             <div style="text-align:center; margin-bottom:8px; color:#64748b; font-weight:bold; font-size:14px;">
