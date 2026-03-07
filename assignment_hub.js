@@ -2,7 +2,11 @@
 const SB_URL = "https://khazeoycsjdqnmwodncw.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoYXplb3ljc2pkcW5td29kbmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5MDMwOTMsImV4cCI6MjA3ODQ3OTA5M30.h-WabaGcQZ968sO2ImetccUaRihRFmO2mUKCdPiAbEI";
 const isAssignmentPage = window.location.pathname.includes('assignment.html');
-
+// Catch Sandbox URL parameters
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('user')) sessionStorage.setItem('target_user', urlParams.get('user'));
+if (urlParams.has('hour')) sessionStorage.setItem('target_hour', urlParams.get('hour'));
+if (urlParams.has('lesson')) sessionStorage.setItem('target_lesson', urlParams.get('lesson'));
 if (!window.supabaseClient) {
     window.supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 }
