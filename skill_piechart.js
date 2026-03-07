@@ -135,6 +135,9 @@
             `;
         }
 
+        // Tell the Sandbox what the answer is
+        window.expectedTestAnswer = current.a;
+        
         qContent.innerHTML = `
             <div style="display:flex; flex-wrap:wrap; gap:20px; align-items:center; justify-content:center;">
                 <div style="text-align:center; background:white; padding:15px; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
