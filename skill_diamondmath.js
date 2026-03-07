@@ -173,6 +173,9 @@ function renderDiamondUI() {
 
     document.getElementById('q-title').innerText = `Diamond Problems (Round ${diamondRound}/${totalDiamondRounds})`;
 
+    // Tell the Sandbox what the answer is
+    window.expectedTestAnswer = current.a;
+        
     qContent.innerHTML = `
         <div style="display: flex; gap: 40px; flex-wrap: wrap; justify-content:center; align-items:center; min-height: 350px;">
             
