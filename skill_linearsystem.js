@@ -192,6 +192,9 @@ function renderLinearUI() {
     // Add the flash overlay to the UI
     html += `<div id="flash-overlay" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; pointer-events:none; text-align:center; z-index:100;"></div>`;
 
+    // Tell the Sandbox what the answer is
+    window.expectedTestAnswer = current.a;
+        
     qContent.innerHTML = html;
     if (currentStep === 4) initCanvas();
 }
