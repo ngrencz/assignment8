@@ -112,6 +112,9 @@
 
         document.getElementById('q-title').innerText = `Comparing Slopes (Round ${srData.round}/${srData.maxRounds})`;
 
+        // Tell the Sandbox what the answer is
+        window.expectedTestAnswer = current.a;
+        
         qContent.innerHTML = `
             <style>
                 .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 15px; font-size: 2rem; font-weight: bold; color: #1e293b; }
