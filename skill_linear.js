@@ -216,6 +216,10 @@ function renderLinearStage() {
 
     html += `<div id="lin-feedback" style="margin-top:15px; min-height:30px; font-weight:bold;"></div>
              <div id="lin-hint" style="margin-top: 10px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 0.95rem; color: #92400e;"></div></div>`;
+    
+    // Tell the Sandbox what the answer is
+    window.expectedTestAnswer = current.a;
+        
     qContent.innerHTML = html;
 
     if (stage === 'graph') setupLinearGraph();
