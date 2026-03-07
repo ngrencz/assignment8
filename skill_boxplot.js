@@ -124,6 +124,9 @@
         
         const dataString = displayDataset.join(', ');
 
+        // Tell the Sandbox what the answer is
+        window.expectedTestAnswer = current.a;
+        
         qContent.innerHTML = `
             <div style="text-align:center; margin-bottom: 20px;">
                 <p style="margin-bottom:5px; color:#64748b; font-size:0.9rem; font-weight:bold;">DATA SET (Random Order):</p>
