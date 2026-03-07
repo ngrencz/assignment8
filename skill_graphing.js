@@ -110,6 +110,9 @@ function renderGraphingUI() {
     const qTitle = document.getElementById('q-title');
     if (qTitle) qTitle.innerText = `Graph the Shape`;
 
+    // Tell the Sandbox what the answer is
+    window.expectedTestAnswer = current.a;
+        
     qContent.innerHTML = `
         <div style="text-align:center; font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 20px; background: #e2e8f0; padding: 8px 16px; border-radius: 20px; width: fit-content; margin-left: auto; margin-right: auto; border: 1px solid #cbd5e1;">
             Problem ${graphRound} of ${totalGraphRounds}
