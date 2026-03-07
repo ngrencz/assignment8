@@ -208,6 +208,9 @@ function renderSolveXUI() {
 
     let expertBadge = solveXData.isExpertMode ? `<div style="color: #8b5cf6; font-weight: bold; font-size: 13px; margin-bottom: 5px;">🌟 Advanced Mode Active</div>` : ``;
 
+    // Tell the Sandbox what the answer is
+    window.expectedTestAnswer = current.a;
+        
     qContent.innerHTML = `
         <div style="max-width:550px; margin:0 auto;">
             <div style="text-align:center; color:#64748b; margin-bottom:10px;">
