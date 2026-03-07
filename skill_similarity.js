@@ -87,6 +87,9 @@ function renderSimilarityUI() {
     const qContent = document.getElementById('q-content');
     if (!qContent) return;
 
+    // Tell the Sandbox what the answer is
+    window.expectedTestAnswer = current.a;
+        
     qContent.innerHTML = `
         <div style="max-width:650px; margin:0 auto; animation: fadeIn 0.5s;">
             <h2 style="text-align:center; margin: 0 0 5px 0; color:#1e293b; font-size: 1.25rem;">Similar Shapes</h2>
