@@ -137,6 +137,9 @@ function renderFigureUI() {
             <div id="drawing-grid" style="display: grid; grid-template-columns: repeat(10, 32px); gap: 4px; justify-content: center; margin: 20px 0; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; touch-action: none;"></div>`;
     }
 
+    // Tell the Sandbox what the answer is
+    window.expectedTestAnswer = current.a;
+        
     qContent.innerHTML = headerHTML + stepHTML + `
         <div style="text-align:center; margin-top:15px; display: flex; justify-content: center; gap: 10px;">
             <button onclick="checkFigureAns()" style="background:#1e293b; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Submit Answer</button>
