@@ -289,7 +289,7 @@ async function loadNextQuestion() {
             'LineOfBestFit',      // Lesson 7.1.3
             'Scatterplot',
             'SlopeRatios',        // Lesson 7.2.3
-            'ParallelSlope',
+            'ParallelSlope',      // Lesson 7.2.5
             'Association',        // Lesson 7.3.2 (Assuming this is Association)
             'ConditionalFreq',    // Lesson 7.3.3
             'C7Review'
@@ -307,6 +307,7 @@ async function loadNextQuestion() {
             '7.1.3': 'LineOfBestFit', 
             '7.2.1': 'Graphing',
             '7.2.2': 'SlopeRatios',
+            '7.2.5': 'ParallelSlope',
             '7.3.2': 'Association',
             '7.3.3': 'ConditionalFreq',
             'C7Rev': 'C7Review'
