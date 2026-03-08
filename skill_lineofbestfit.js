@@ -190,7 +190,29 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
         }
 
         // Tell the Sandbox what the answer is
-        window.expectedTestAnswer = current.a;
+        if (currentStep === 1) {
+            window.expectedTestAnswer = {
+                targets: [
+                    { id: 'lbf-ans-m', val: lbfData.m },
+                    { id: 'lbf-ans-b', val: lbfData.b }
+                ],
+                btnId: 'lbf-check-btn'
+            };
+        } else if (currentStep === 2) {
+            window.expectedTestAnswer = {
+                targets: [
+                    { id: 'lbf-ans-pred', val: lbfData.predictY }
+                ],
+                btnId: 'lbf-check-btn'
+            };
+        } else if (currentStep === 3) {
+            window.expectedTestAnswer = {
+                targets: [
+                    { id: 'lbf-ans-int', val: 'correct' }
+                ],
+                btnId: 'lbf-check-btn'
+            };
+        }
         
         qContent.innerHTML = `
             <div style="max-width: 650px; margin: 0 auto; background:#f8fafc; padding:25px; border-radius:12px; border:1px solid #e2e8f0;">
