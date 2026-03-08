@@ -1,13 +1,13 @@
 /**
  * skill_lineofbestfit.js
  * - Primary skill for 7.1.3
- * - Generates real-world scatter data tables with realistic variance.
- * - Draws scatterplot with a line of best fit.
- * - Progressive steps (Equation -> Prediction -> Interpretation).
- * - Includes targeted hint logic.
+ * - Generates real-world scatter data tables.
+ * - NEW: Desmos-style interactive graph with drag-and-drop grabbers.
+ * - NEW: Grid lines and axis scales.
+ * - Grades the equation based on the student's visually placed line.
  */
 
-console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit");
+console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
 
 (function() {
     let lbfData = {};
@@ -63,7 +63,7 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
             if (window.supabaseClient && window.currentUser) {
                 const currentHour = sessionStorage.getItem('target_hour') || "00";
                 const { data, error } = await window.supabaseClient
-                    .from('assignment')
+                    .from('assignment7')
                     .select('LineOfBestFit')
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
@@ -72,9 +72,7 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
                 if (error) console.error("[LineOfBestFit] Fetch error:", error);
                 if (data) window.userMastery.LineOfBestFit = data.LineOfBestFit || 0;
             }
-        } catch (e) { 
-            console.error("[LineOfBestFit] Init error:", e); 
-        }
+        } catch (e) { console.error("[LineOfBestFit] Init error:", e); }
         
         startLbfRound();
     };
@@ -94,28 +92,19 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
         
         let m = scenario.mSign * (Math.floor(Math.random() * 3) + 2); 
         
-        let p1 = { x: 0, y: b };
         let xStep = Math.floor(Math.random() * 3) + 3; 
-        let p2 = { x: xStep * 2, y: b + m * (xStep * 2) };
-
         let points = [];
         let tableData = [];
+
         for (let i = 0; i <= 6; i++) {
             let cx = i * xStep;
-            // INCREASED NOISE: Creates realistic scatter instead of a tight line
             let noise = (Math.random() * 16 - 8); 
             let cy = Math.max(0, Math.round(b + m * cx + noise)); 
-            
-            // Ensure the two "anchor" points the line is drawn through are actually in the data
-            if (i === 0) cy = p1.y;
-            if (i === 2) cy = p2.y;
-
             points.push({ x: cx, y: cy });
             tableData.push({ x: cx, y: cy });
         }
 
         let predictX = (7 * xStep) + Math.floor(Math.random() * xStep);
-        let expectedPredictY = m * predictX + b;
 
         let interpretations = [
             { text: scenario.intCorrect, isCorrect: true },
@@ -124,16 +113,10 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
         ].sort(() => 0.5 - Math.random());
 
         lbfData = {
-            ...scenario,
-            m: m,
-            b: b,
-            p1: p1,
-            p2: p2,
-            points: points,
-            tableData: tableData,
-            predictX: predictX,
-            predictY: expectedPredictY,
-            interpretations: interpretations
+            ...scenario, m: m, b: b,
+            points: points, tableData: tableData,
+            predictX: predictX, interpretations: interpretations,
+            grabbers: null // Will be initialized during canvas setup
         };
     }
 
@@ -143,33 +126,31 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
 
         document.getElementById('q-title').innerText = `Lines of Best Fit (Round ${lbfRound}/${totalLbfRounds})`;
 
-        // Build HTML Table
         let tableHTML = `<table style="width:100%; border-collapse: collapse; text-align: center; margin-bottom: 15px; font-size: 14px;">`;
         tableHTML += `<tr><th style="border: 1px solid #cbd5e1; padding: 8px; background: #f1f5f9; text-align: left; width: 40%;">${lbfData.xLabel}</th>`;
         lbfData.tableData.forEach(d => { tableHTML += `<td style="border: 1px solid #cbd5e1; padding: 8px;">${d.x}</td>`; });
-        tableHTML += `</tr>`;
-        tableHTML += `<tr><th style="border: 1px solid #cbd5e1; padding: 8px; background: #f1f5f9; text-align: left;">${lbfData.yLabel}</th>`;
+        tableHTML += `</tr><tr><th style="border: 1px solid #cbd5e1; padding: 8px; background: #f1f5f9; text-align: left;">${lbfData.yLabel}</th>`;
         lbfData.tableData.forEach(d => { tableHTML += `<td style="border: 1px solid #cbd5e1; padding: 8px;">${d.y}</td>`; });
         tableHTML += `</tr></table>`;
 
-        // Generate Progressive Steps
         let stepHTML = "";
-        
         let ruleDisplay = (currentStep > 1) ? `
             <div style="background: #ecfdf5; border: 1px dashed #10b981; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; color: #065f46; font-size: 16px;">
-                <strong>Equation:</strong> y = ${lbfData.m}x + ${lbfData.b}
+                <strong>Accepted Equation:</strong> y = ${lbfData.acceptedM}x + ${lbfData.acceptedB}
             </div>` : "";
 
         if (currentStep === 1) {
             stepHTML = `
                 <div style="margin-bottom: 15px;">
-                    <strong style="font-size: 16px;">Step 1. Equation:</strong> Find the equation of the line of best fit.<br>
+                    <strong style="font-size: 16px;">Step 1. Equation:</strong> 
+                    <span style="color: #475569; font-size: 14px;">Drag the blue points on the graph to create a line of best fit. Then use the coordinates shown on your points to calculate the equation of your line.</span><br>
                     <div style="display:flex; align-items:center; justify-content:center; gap: 8px; margin-top: 15px; font-size: 18px;">
-                        y = <input type="number" id="lbf-ans-m" step="0.1" placeholder="m" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;"> 
+                        y = <input type="number" id="lbf-ans-m" step="0.01" placeholder="m" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;"> 
                         x + 
                         <input type="number" id="lbf-ans-b" step="0.1" placeholder="b" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
                     </div>
                 </div>`;
+            window.expectedTestAnswer = { targets: [{ id: 'lbf-ans-m', val: lbfData.m }, { id: 'lbf-ans-b', val: lbfData.b }], btnId: 'lbf-check-btn' };
         } else if (currentStep === 2) {
             stepHTML = ruleDisplay + `
                 <div style="margin-bottom: 15px;">
@@ -178,6 +159,7 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
                         <input type="number" id="lbf-ans-pred" step="0.1" placeholder="?" style="width: 100px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
                     </div>
                 </div>`;
+            window.expectedTestAnswer = { targets: [{ id: 'lbf-ans-pred', val: lbfData.predictY }], btnId: 'lbf-check-btn' };
         } else {
             stepHTML = ruleDisplay + `
                 <div style="margin-bottom: 15px;">
@@ -187,126 +169,190 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
                         ${lbfData.interpretations.map((s, i) => `<option value="${s.isCorrect ? 'correct' : 'wrong' + i}">${s.text}</option>`).join('')}
                     </select>
                 </div>`;
+            window.expectedTestAnswer = { targets: [{ id: 'lbf-ans-int', val: 'correct' }], btnId: 'lbf-check-btn' };
         }
 
-        // Tell the Sandbox what the answer is
-        if (currentStep === 1) {
-            window.expectedTestAnswer = {
-                targets: [
-                    { id: 'lbf-ans-m', val: lbfData.m },
-                    { id: 'lbf-ans-b', val: lbfData.b }
-                ],
-                btnId: 'lbf-check-btn'
-            };
-        } else if (currentStep === 2) {
-            window.expectedTestAnswer = {
-                targets: [
-                    { id: 'lbf-ans-pred', val: lbfData.predictY }
-                ],
-                btnId: 'lbf-check-btn'
-            };
-        } else if (currentStep === 3) {
-            window.expectedTestAnswer = {
-                targets: [
-                    { id: 'lbf-ans-int', val: 'correct' }
-                ],
-                btnId: 'lbf-check-btn'
-            };
-        }
-        
         qContent.innerHTML = `
             <div style="max-width: 650px; margin: 0 auto; background:#f8fafc; padding:25px; border-radius:12px; border:1px solid #e2e8f0;">
-                
                 ${tableHTML}
-
-                <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; text-align: center;">
-                    <canvas id="lbfCanvas" width="350" height="250" style="max-width:100%;"></canvas>
-                    <p style="font-size: 13px; color: #475569; margin-top: 10px;"><em>The drawn line of best fit passes exactly through <strong>(0, ${lbfData.b})</strong> and <strong>(${lbfData.p2.x}, ${lbfData.p2.y})</strong>.</em></p>
+                <div style="background: white; padding: 20px 10px 10px 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; text-align: center;">
+                    <canvas id="lbfCanvas" width="550" height="350" style="max-width:100%; touch-action: none; cursor: crosshair;"></canvas>
                 </div>
-                
                 <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
                     ${stepHTML}
                 </div>
-
                 <div id="lbf-hint" style="margin-bottom: 15px; padding: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; display: none; font-size: 14px; color: #92400e; text-align:center; line-height:1.4;"></div>
-
                 <button onclick="checkLbfStep()" id="lbf-check-btn" style="width:100%; height:50px; background:#1e293b; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 18px; transition: background 0.2s;">CHECK ANSWER</button>
             </div>
             <div id="lbf-flash" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.8); color:white; padding:20px 40px; border-radius:12px; font-size:24px; font-weight:bold; display:none; z-index:100;"></div>
         `;
 
-        setTimeout(drawLbfGraph, 50);
+        setTimeout(setupInteractiveCanvas, 50);
     }
 
-    function drawLbfGraph() {
+    function setupInteractiveCanvas() {
         const canvas = document.getElementById('lbfCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        
-        const padX = 40; 
-        const padY = 40; 
-        const chartW = canvas.width - padX - 10;
-        const chartH = canvas.height - padY - 10;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Chart dimensions and scales
+        const padX = 60; const padY = 50;
+        const chartW = canvas.width - padX - 20;
+        const chartH = canvas.height - padY - 20;
 
-        let maxX = Math.max(...lbfData.points.map(p => p.x)) + 5;
-        let maxY = Math.max(...lbfData.points.map(p => p.y), lbfData.b) + 10;
+        let maxX = Math.max(...lbfData.points.map(p => p.x));
+        maxX = Math.ceil(maxX / 10) * 10 || 10;
+        if (maxX < 20) maxX = 20;
+
+        let maxY = Math.max(...lbfData.points.map(p => p.y), lbfData.b);
+        maxY = Math.ceil(maxY / 10) * 10 || 10;
 
         const scaleX = chartW / maxX;
         const scaleY = chartH / maxY;
+        lbfData.chartOpts = { padX, padY, chartW, chartH, maxX, maxY, scaleX, scaleY };
 
-        // Draw Axes
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(padX, canvas.height - padY);
-        ctx.lineTo(canvas.width - 10, canvas.height - padY);
-        ctx.moveTo(padX, canvas.height - padY);
-        ctx.lineTo(padX, 10);
-        ctx.stroke();
+        // Initialize grabbers intentionally off-center so the student has to drag them
+        if (!lbfData.grabbers) {
+            lbfData.grabbers = [
+                { x: maxX * 0.2, y: maxY * 0.2 },
+                { x: maxX * 0.8, y: maxY * 0.8 }
+            ];
+        }
 
-        // Draw Line of Best Fit
-        ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
-        
-        let lineStartX = padX + (0 * scaleX);
-        let lineStartY = (canvas.height - padY) - (lbfData.b * scaleY);
-        let endX = maxX;
-        let endY = lbfData.m * endX + lbfData.b;
-        let lineEndX = padX + (endX * scaleX);
-        let lineEndY = (canvas.height - padY) - (endY * scaleY);
+        window.drawLbfInteractive = function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Grid
+            ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1;
+            ctx.font = '12px sans-serif'; ctx.fillStyle = '#64748b'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+            
+            for(let i=0; i<=5; i++) {
+                let val = (maxY / 5) * i;
+                let py = (canvas.height - padY) - (val * scaleY);
+                ctx.beginPath(); ctx.moveTo(padX, py); ctx.lineTo(canvas.width - 20, py); ctx.stroke();
+                ctx.fillText(Math.round(val), padX - 10, py);
+            }
 
-        ctx.moveTo(lineStartX, lineStartY);
-        ctx.lineTo(lineEndX, lineEndY);
-        ctx.stroke();
-        ctx.setLineDash([]);
+            ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            for(let i=0; i<=5; i++) {
+                let val = (maxX / 5) * i;
+                let px = padX + (val * scaleX);
+                ctx.beginPath(); ctx.moveTo(px, canvas.height - padY); ctx.lineTo(px, 20); ctx.stroke();
+                ctx.fillText(Math.round(val), px, canvas.height - padY + 10);
+            }
 
-        // Draw Points (drawn after line so they sit on top)
-        ctx.fillStyle = '#0f172a';
-        lbfData.points.forEach(p => {
-            let px = padX + (p.x * scaleX);
-            let py = (canvas.height - padY) - (p.y * scaleY);
-            ctx.beginPath();
-            ctx.arc(px, py, 4, 0, Math.PI * 2);
-            ctx.fill();
-        });
+            // Draw Axes
+            ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(padX, canvas.height - padY); ctx.lineTo(canvas.width - 20, canvas.height - padY);
+            ctx.moveTo(padX, canvas.height - padY); ctx.lineTo(padX, 20); ctx.stroke();
+
+            // Draw Labels
+            ctx.save(); ctx.translate(15, canvas.height/2); ctx.rotate(-Math.PI/2);
+            ctx.textAlign = 'center'; ctx.fillStyle = '#1e293b'; ctx.font = 'bold 14px sans-serif';
+            ctx.fillText(lbfData.yLabel, 0, 0); ctx.restore();
+            ctx.fillText(lbfData.xLabel, padX + chartW/2, canvas.height - 15);
+
+            // Draw Scatter Points
+            ctx.fillStyle = '#0f172a';
+            lbfData.points.forEach(p => {
+                let px = padX + (p.x * scaleX);
+                let py = (canvas.height - padY) - (p.y * scaleY);
+                ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+            });
+
+            // Calculate Dynamic Line
+            let g1 = lbfData.grabbers[0]; let g2 = lbfData.grabbers[1];
+            let px1 = padX + (g1.x * scaleX); let py1 = (canvas.height - padY) - (g1.y * scaleY);
+            let px2 = padX + (g2.x * scaleX); let py2 = (canvas.height - padY) - (g2.y * scaleY);
+
+            // Extend line across canvas
+            ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 3;
+            if (px1 !== px2) {
+                let mPixel = (py2 - py1) / (px2 - px1);
+                let bPixel = py1 - mPixel * px1;
+                ctx.beginPath();
+                ctx.moveTo(padX, mPixel * padX + bPixel);
+                ctx.lineTo(canvas.width - 20, mPixel * (canvas.width - 20) + bPixel);
+                ctx.stroke();
+            }
+
+            // Draw Grabbers
+            lbfData.grabbers.forEach((g) => {
+                let px = padX + (g.x * scaleX);
+                let py = (canvas.height - padY) - (g.y * scaleY);
+                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                
+                ctx.fillStyle = '#1e293b'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'left';
+                ctx.fillText(`(${Math.round(g.x)}, ${Math.round(g.y)})`, px + 12, py - 12);
+            });
+        };
+
+        // --- Interaction Listeners (Mouse & Touch) ---
+        let draggingIdx = -1;
+
+        const getDragIndex = (mx, my) => {
+            let idx = -1;
+            lbfData.grabbers.forEach((g, i) => {
+                let px = lbfData.chartOpts.padX + (g.x * lbfData.chartOpts.scaleX);
+                let py = (canvas.height - lbfData.chartOpts.padY) - (g.y * lbfData.chartOpts.scaleY);
+                if (Math.hypot(mx - px, my - py) < 30) idx = i;
+            });
+            return idx;
+        };
+
+        const updateDrag = (mx, my) => {
+            if (draggingIdx === -1) return;
+            let newX = (mx - lbfData.chartOpts.padX) / lbfData.chartOpts.scaleX;
+            let newY = ((canvas.height - lbfData.chartOpts.padY) - my) / lbfData.chartOpts.scaleY;
+            
+            // Constrain to graph bounds
+            if (newX < 0) newX = 0; if (newX > lbfData.chartOpts.maxX) newX = lbfData.chartOpts.maxX;
+            if (newY < 0) newY = 0; if (newY > lbfData.chartOpts.maxY) newY = lbfData.chartOpts.maxY;
+            
+            lbfData.grabbers[draggingIdx] = { x: newX, y: newY };
+            window.drawLbfInteractive();
+        };
+
+        // Mouse Events
+        canvas.onmousedown = (e) => {
+            if(currentStep > 1) return; // Lock graph after step 1
+            const rect = canvas.getBoundingClientRect();
+            draggingIdx = getDragIndex(e.clientX - rect.left, e.clientY - rect.top);
+        };
+        canvas.onmousemove = (e) => {
+            if (draggingIdx !== -1) {
+                const rect = canvas.getBoundingClientRect();
+                updateDrag(e.clientX - rect.left, e.clientY - rect.top);
+            }
+        };
+        canvas.onmouseup = () => draggingIdx = -1;
+        canvas.onmouseleave = () => draggingIdx = -1;
+
+        // Touch Events
+        canvas.ontouchstart = (e) => {
+            if(currentStep > 1) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            draggingIdx = getDragIndex(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+        };
+        canvas.ontouchmove = (e) => {
+            if (draggingIdx !== -1) {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                updateDrag(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+            }
+        };
+        canvas.ontouchend = () => draggingIdx = -1;
+
+        window.drawLbfInteractive();
     }
 
-    window.showLbfHint = function() {
+    window.showLbfHint = function(msg) {
         const hintBox = document.getElementById('lbf-hint');
         if (!hintBox) return;
         hintBox.style.display = 'block';
-
-        if (currentStep === 1) {
-            hintBox.innerHTML = `<strong>Need a hint?</strong><br>The line passes through <strong>(0, ${lbfData.b})</strong>, so your y-intercept (b) is <strong>${lbfData.b}</strong>.<br>Use the slope formula <span style="font-family: monospace;">(y2 - y1) / (x2 - x1)</span> with points (0, ${lbfData.b}) and (${lbfData.p2.x}, ${lbfData.p2.y}) to find <strong>m</strong>.`;
-        } else if (currentStep === 2) {
-            hintBox.innerHTML = `<strong>Need a hint?</strong><br>Plug the new value into the equation you just found: <br><strong>y = ${lbfData.m}(${lbfData.predictX}) + ${lbfData.b}</strong>`;
-        } else {
-            hintBox.innerHTML = `<strong>Need a hint?</strong><br>The y-intercept (${lbfData.b}) happens when the x-axis value (${lbfData.xLabel.toLowerCase()}) is exactly 0.`;
-        }
+        hintBox.innerHTML = `<strong>Need a hint?</strong><br>${msg}`;
     };
 
     window.checkLbfStep = function() {
@@ -318,14 +364,46 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
             if (!elM || !elB) return;
             const uM = parseFloat(elM.value);
             const uB = parseFloat(elB.value);
-            
-            if (Math.abs(uM - lbfData.m) < 0.05 && Math.abs(uB - lbfData.b) < 0.05) isCorrect = true;
-            else {
-                if (Math.abs(uM - lbfData.m) >= 0.05) { elM.style.backgroundColor = "#fee2e2"; elM.style.borderColor = "#ef4444"; }
-                else { elM.style.backgroundColor = "#dcfce7"; elM.style.borderColor = "#22c55e"; }
-                
-                if (Math.abs(uB - lbfData.b) >= 0.05) { elB.style.backgroundColor = "#fee2e2"; elB.style.borderColor = "#ef4444"; }
-                else { elB.style.backgroundColor = "#dcfce7"; elB.style.borderColor = "#22c55e"; }
+
+            // Grade based on the VISUAL rounded coordinates shown to the student
+            let gx1 = Math.round(lbfData.grabbers[0].x);
+            let gy1 = Math.round(lbfData.grabbers[0].y);
+            let gx2 = Math.round(lbfData.grabbers[1].x);
+            let gy2 = Math.round(lbfData.grabbers[1].y);
+
+            if (gx1 === gx2) {
+                showLbfFlash("Line cannot be vertical!", "error");
+                return;
+            }
+
+            let userLineM = (gy2 - gy1) / (gx2 - gx1);
+            let userLineB = gy1 - userLineM * gx1;
+
+            // 1. Check if their drawn line is a reasonable fit to the TRUE data
+            let fitErrorM = Math.abs(userLineM - lbfData.m);
+            let fitErrorB = Math.abs(userLineB - lbfData.b);
+            let isGoodFit = (fitErrorM <= Math.abs(lbfData.m * 0.75) + 0.5) && (fitErrorB <= lbfData.b * 0.5 + 10);
+
+            if (!isGoodFit) {
+                showLbfFlash("Fit error!", "error");
+                showLbfHint("Your line doesn't seem to follow the data trend. Drag the blue points to match the scatter plot before doing the math.");
+                return; 
+            }
+
+            // 2. Check if their math matches the line they drew
+            if (Math.abs(uM - userLineM) <= 0.25 && Math.abs(uB - userLineB) <= 2) {
+                isCorrect = true;
+                elM.style.backgroundColor = "#dcfce7"; elM.style.borderColor = "#22c55e";
+                elB.style.backgroundColor = "#dcfce7"; elB.style.borderColor = "#22c55e";
+                // Lock in their valid equation for Step 2
+                lbfData.acceptedM = uM;
+                lbfData.acceptedB = uB;
+                lbfData.predictY = (uM * lbfData.predictX) + uB;
+            } else {
+                showLbfFlash("Math error!", "error");
+                showLbfHint(`Calculate the slope using your two points: <br><span style="font-family: monospace;">(${gy2} - ${gy1}) / (${gx2} - ${gx1})</span>`);
+                elM.style.backgroundColor = "#fee2e2"; elM.style.borderColor = "#ef4444";
+                elB.style.backgroundColor = "#fee2e2"; elB.style.borderColor = "#ef4444";
             }
         } 
         else if (currentStep === 2) {
@@ -333,28 +411,31 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
             if (!elPred) return;
             const uPred = parseFloat(elPred.value);
             
-            if (Math.abs(uPred - lbfData.predictY) < 0.05) isCorrect = true;
-            else { elPred.style.backgroundColor = "#fee2e2"; elPred.style.borderColor = "#ef4444"; }
+            if (Math.abs(uPred - lbfData.predictY) < 1.0) isCorrect = true;
+            else { 
+                elPred.style.backgroundColor = "#fee2e2"; elPred.style.borderColor = "#ef4444"; 
+                showLbfHint(`Plug ${lbfData.predictX} into your equation: <strong>y = ${lbfData.acceptedM}(${lbfData.predictX}) + ${lbfData.acceptedB}</strong>`);
+            }
         } 
         else if (currentStep === 3) {
             const elInt = document.getElementById('lbf-ans-int');
             if (!elInt) return;
-            
             if (elInt.value === 'correct') isCorrect = true;
-            else { elInt.style.backgroundColor = "#fee2e2"; elInt.style.borderColor = "#ef4444"; }
+            else { 
+                elInt.style.backgroundColor = "#fee2e2"; elInt.style.borderColor = "#ef4444"; 
+                showLbfHint(`The y-intercept happens when the x-axis value (${lbfData.xLabel.toLowerCase()}) is exactly 0.`);
+            }
         }
 
         if (isCorrect) {
             document.getElementById('lbf-hint').style.display = 'none';
             if (currentStep < 3) {
                 currentStep++;
-                renderLbfUI();
+                renderLbfUI(); // Re-render next step
             } else {
                 document.getElementById('lbf-check-btn').disabled = true;
                 showLbfFlash("Correct!", "success");
-                
                 if (errorCount === 0) sessionCorrectFirstTry++;
-
                 lbfRound++;
                 setTimeout(() => {
                     if (lbfRound > totalLbfRounds) finishLbfGame();
@@ -363,7 +444,6 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
             }
         } else {
             errorCount++;
-            showLbfHint();
         }
     };
 
@@ -371,40 +451,18 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Progressive Line of Best Fit"
         window.isCurrentQActive = false; 
         const qContent = document.getElementById('q-content');
         if (!qContent) return;
-        
-        qContent.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;">
-                <div style="font-size:60px;">📈</div>
-                <h2 style="color:#1e293b; margin:10px 0;">Predictions Mastered!</h2>
-                <p style="color:#64748b; font-size:16px;">Skills updated.</p>
-            </div>
-        `;
+        qContent.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:400px; animation: fadeIn 0.5s;"><div style="font-size:60px;">📈</div><h2 style="color:#1e293b; margin:10px 0;">Predictions Mastered!</h2></div>`;
 
         let mainAdjustment = 0;
         if (sessionCorrectFirstTry >= totalLbfRounds) mainAdjustment = 1;
-
-        if (mainAdjustment !== 0) {
+        if (mainAdjustment !== 0 && window.supabaseClient && window.currentUser) {
             const currentMain = window.userMastery?.['LineOfBestFit'] || 0;
             const newMain = Math.max(0, Math.min(10, currentMain + mainAdjustment));
             window.userMastery['LineOfBestFit'] = newMain;
-
-            if (window.supabaseClient && window.currentUser) {
-                const hour = sessionStorage.getItem('target_hour') || "00";
-                window.supabaseClient.from('assignment')
-                    .update({ 'LineOfBestFit': newMain })
-                    .eq('userName', window.currentUser)
-                    .eq('hour', hour)
-                    .then(({ error }) => { if (error) console.error("[LineOfBestFit] Update Error:", error); });
-            }
+            const hour = sessionStorage.getItem('target_hour') || "00";
+            window.supabaseClient.from('assignment7').update({ 'LineOfBestFit': newMain }).eq('userName', window.currentUser).eq('hour', hour);
         }
-
-        setTimeout(() => { 
-            if (typeof window.loadNextQuestion === 'function') {
-                window.loadNextQuestion(); 
-            } else {
-                location.reload();
-            }
-        }, 2000);
+        setTimeout(() => { if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); else location.reload(); }, 2000);
     }
 
     function showLbfFlash(msg, type) {
