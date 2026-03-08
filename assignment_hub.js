@@ -257,6 +257,7 @@ async function loadNextQuestion() {
             { id: 'SolveY', fn: typeof initSolveYGame !== 'undefined' ? initSolveYGame : null },
             { id: 'SolutionTypes', fn: typeof initSolutionTypesGame !== 'undefined' ? initSolutionTypesGame : null },
             { id: 'TableRules', fn: typeof initTableRulesGame !== 'undefined' ? initTableRulesGame : null },
+            { id: 'LOBFEval', fn: typeof initLOBFEvalGame !== 'undefined' ? initLOBFEvalGame : null },
             { id: 'C7Review', fn: typeof initC7ReviewGame !== 'undefined' ? initC7ReviewGame : null }
         ].filter(s => s.fn !== null);
 
@@ -291,6 +292,7 @@ async function loadNextQuestion() {
             'Scatterplot',
             'SlopeRatios',        // Lesson 7.2.3
             'ParallelSlope',      // Lesson 7.2.5
+            'LOBFEval'            // Lesson 7.3.1
             'Association',        // Lesson 7.3.2 (Assuming this is Association)
             'ConditionalFreq',    // Lesson 7.3.3
             'C7Review'
@@ -309,6 +311,7 @@ async function loadNextQuestion() {
             '7.2.1': 'Graphing',
             '7.2.2': 'SlopeRatios',
             '7.2.5': 'ParallelSlope',
+            '7.3.1': 'LOBFEval',
             '7.3.2': 'Association',
             '7.3.3': 'ConditionalFreq',
             'C7Rev': 'C7Review'
