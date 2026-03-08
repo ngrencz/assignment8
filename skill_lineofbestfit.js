@@ -2,12 +2,12 @@
  * skill_lineofbestfit.js
  * - Primary skill for 7.1.3
  * - Generates real-world scatter data tables.
- * - NEW: Desmos-style interactive graph with drag-and-drop grabbers.
- * - NEW: Grid lines and axis scales.
- * - Grades the equation based on the student's visually placed line.
+ * - Desmos-style interactive graph with drag-and-drop grabbers.
+ * - FIXED: First grabber is locked to the Y-axis to clearly define 'b'.
+ * - FIXED: Allows fraction inputs (e.g., -1/3) and wider boxes.
  */
 
-console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
+console.log("🚀 skill_lineofbestfit.js is LIVE - Y-Axis Locked & Fractions Allowed");
 
 (function() {
     let lbfData = {};
@@ -116,7 +116,7 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
             ...scenario, m: m, b: b,
             points: points, tableData: tableData,
             predictX: predictX, interpretations: interpretations,
-            grabbers: null // Will be initialized during canvas setup
+            grabbers: null 
         };
     }
 
@@ -143,11 +143,11 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
             stepHTML = `
                 <div style="margin-bottom: 15px;">
                     <strong style="font-size: 16px;">Step 1. Equation:</strong> 
-                    <span style="color: #475569; font-size: 14px;">Drag the blue points on the graph to create a line of best fit. Then use the coordinates shown on your points to calculate the equation of your line.</span><br>
+                    <span style="color: #475569; font-size: 14px;">Drag the blue points on the graph to create a line of best fit. (Notice the left point is locked to the Y-Axis). Then calculate your equation.</span><br>
                     <div style="display:flex; align-items:center; justify-content:center; gap: 8px; margin-top: 15px; font-size: 18px;">
-                        y = <input type="number" id="lbf-ans-m" step="0.01" placeholder="m" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;"> 
+                        y = <input type="text" id="lbf-ans-m" placeholder="m" autocomplete="off" style="width: 100px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;"> 
                         x + 
-                        <input type="number" id="lbf-ans-b" step="0.1" placeholder="b" style="width: 70px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
+                        <input type="text" id="lbf-ans-b" placeholder="b" autocomplete="off" style="width: 100px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
                     </div>
                 </div>`;
             window.expectedTestAnswer = { targets: [{ id: 'lbf-ans-m', val: lbfData.m }, { id: 'lbf-ans-b', val: lbfData.b }], btnId: 'lbf-check-btn' };
@@ -156,7 +156,7 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
                 <div style="margin-bottom: 15px;">
                     <strong style="font-size: 16px;">Step 2. Prediction:</strong> Use your equation to predict the ${lbfData.yLabel.toLowerCase()} when the ${lbfData.xLabel.toLowerCase()} is <strong>${lbfData.predictX}</strong>.<br>
                     <div style="margin-top: 15px; text-align: center;">
-                        <input type="number" id="lbf-ans-pred" step="0.1" placeholder="?" style="width: 100px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
+                        <input type="text" id="lbf-ans-pred" placeholder="?" autocomplete="off" style="width: 120px; height:40px; text-align:center; font-size:16px; border:2px solid #3b82f6; border-radius:6px; outline:none;">
                     </div>
                 </div>`;
             window.expectedTestAnswer = { targets: [{ id: 'lbf-ans-pred', val: lbfData.predictY }], btnId: 'lbf-check-btn' };
@@ -195,7 +195,6 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
 
-        // Chart dimensions and scales
         const padX = 60; const padY = 50;
         const chartW = canvas.width - padX - 20;
         const chartH = canvas.height - padY - 20;
@@ -211,11 +210,10 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
         const scaleY = chartH / maxY;
         lbfData.chartOpts = { padX, padY, chartW, chartH, maxX, maxY, scaleX, scaleY };
 
-        // Initialize grabbers intentionally off-center so the student has to drag them
         if (!lbfData.grabbers) {
             lbfData.grabbers = [
-                { x: maxX * 0.2, y: maxY * 0.2 },
-                { x: maxX * 0.8, y: maxY * 0.8 }
+                { x: 0, y: maxY * 0.8 }, // LEFT GRABBER LOCKED TO X=0
+                { x: maxX * 0.8, y: maxY * 0.2 }
             ];
         }
 
@@ -260,12 +258,10 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
                 ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
             });
 
-            // Calculate Dynamic Line
             let g1 = lbfData.grabbers[0]; let g2 = lbfData.grabbers[1];
             let px1 = padX + (g1.x * scaleX); let py1 = (canvas.height - padY) - (g1.y * scaleY);
             let px2 = padX + (g2.x * scaleX); let py2 = (canvas.height - padY) - (g2.y * scaleY);
 
-            // Extend line across canvas
             ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 3;
             if (px1 !== px2) {
                 let mPixel = (py2 - py1) / (px2 - px1);
@@ -276,7 +272,6 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
                 ctx.stroke();
             }
 
-            // Draw Grabbers
             lbfData.grabbers.forEach((g) => {
                 let px = padX + (g.x * scaleX);
                 let py = (canvas.height - padY) - (g.y * scaleY);
@@ -288,7 +283,6 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
             });
         };
 
-        // --- Interaction Listeners (Mouse & Touch) ---
         let draggingIdx = -1;
 
         const getDragIndex = (mx, my) => {
@@ -306,17 +300,18 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
             let newX = (mx - lbfData.chartOpts.padX) / lbfData.chartOpts.scaleX;
             let newY = ((canvas.height - lbfData.chartOpts.padY) - my) / lbfData.chartOpts.scaleY;
             
-            // Constrain to graph bounds
             if (newX < 0) newX = 0; if (newX > lbfData.chartOpts.maxX) newX = lbfData.chartOpts.maxX;
             if (newY < 0) newY = 0; if (newY > lbfData.chartOpts.maxY) newY = lbfData.chartOpts.maxY;
             
+            // NEW: Lock the first grabber strictly to the Y-axis
+            if (draggingIdx === 0) newX = 0;
+
             lbfData.grabbers[draggingIdx] = { x: newX, y: newY };
             window.drawLbfInteractive();
         };
 
-        // Mouse Events
         canvas.onmousedown = (e) => {
-            if(currentStep > 1) return; // Lock graph after step 1
+            if(currentStep > 1) return;
             const rect = canvas.getBoundingClientRect();
             draggingIdx = getDragIndex(e.clientX - rect.left, e.clientY - rect.top);
         };
@@ -329,7 +324,6 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
         canvas.onmouseup = () => draggingIdx = -1;
         canvas.onmouseleave = () => draggingIdx = -1;
 
-        // Touch Events
         canvas.ontouchstart = (e) => {
             if(currentStep > 1) return;
             e.preventDefault();
@@ -348,6 +342,17 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
         window.drawLbfInteractive();
     }
 
+    // Fraction parser for math inputs
+    function parseMathString(str) {
+        if (!str) return NaN;
+        str = str.trim();
+        if (str.includes('/')) {
+            const parts = str.split('/');
+            return parts.length === 2 ? parseFloat(parts[0]) / parseFloat(parts[1]) : NaN;
+        }
+        return parseFloat(str);
+    }
+
     window.showLbfHint = function(msg) {
         const hintBox = document.getElementById('lbf-hint');
         if (!hintBox) return;
@@ -362,10 +367,15 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
             const elM = document.getElementById('lbf-ans-m');
             const elB = document.getElementById('lbf-ans-b');
             if (!elM || !elB) return;
-            const uM = parseFloat(elM.value);
-            const uB = parseFloat(elB.value);
+            
+            const uM = parseMathString(elM.value);
+            const uB = parseMathString(elB.value);
 
-            // Grade based on the VISUAL rounded coordinates shown to the student
+            if (isNaN(uM) || isNaN(uB)) {
+                showLbfFlash("Enter numbers or fractions!", "error");
+                return;
+            }
+
             let gx1 = Math.round(lbfData.grabbers[0].x);
             let gy1 = Math.round(lbfData.grabbers[0].y);
             let gx2 = Math.round(lbfData.grabbers[1].x);
@@ -377,9 +387,8 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
             }
 
             let userLineM = (gy2 - gy1) / (gx2 - gx1);
-            let userLineB = gy1 - userLineM * gx1;
+            let userLineB = gy1; // Since gx1 is locked to 0, gy1 is explicitly 'b'!
 
-            // 1. Check if their drawn line is a reasonable fit to the TRUE data
             let fitErrorM = Math.abs(userLineM - lbfData.m);
             let fitErrorB = Math.abs(userLineB - lbfData.b);
             let isGoodFit = (fitErrorM <= Math.abs(lbfData.m * 0.75) + 0.5) && (fitErrorB <= lbfData.b * 0.5 + 10);
@@ -390,18 +399,16 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
                 return; 
             }
 
-            // 2. Check if their math matches the line they drew
             if (Math.abs(uM - userLineM) <= 0.25 && Math.abs(uB - userLineB) <= 2) {
                 isCorrect = true;
                 elM.style.backgroundColor = "#dcfce7"; elM.style.borderColor = "#22c55e";
                 elB.style.backgroundColor = "#dcfce7"; elB.style.borderColor = "#22c55e";
-                // Lock in their valid equation for Step 2
                 lbfData.acceptedM = uM;
                 lbfData.acceptedB = uB;
                 lbfData.predictY = (uM * lbfData.predictX) + uB;
             } else {
                 showLbfFlash("Math error!", "error");
-                showLbfHint(`Calculate the slope using your two points: <br><span style="font-family: monospace;">(${gy2} - ${gy1}) / (${gx2} - ${gx1})</span>`);
+                showLbfHint(`Calculate the slope using your two points: <br><span style="font-family: monospace;">(${gy2} - ${gy1}) / (${gx2} - 0)</span>`);
                 elM.style.backgroundColor = "#fee2e2"; elM.style.borderColor = "#ef4444";
                 elB.style.backgroundColor = "#fee2e2"; elB.style.borderColor = "#ef4444";
             }
@@ -409,9 +416,9 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
         else if (currentStep === 2) {
             const elPred = document.getElementById('lbf-ans-pred');
             if (!elPred) return;
-            const uPred = parseFloat(elPred.value);
+            const uPred = parseMathString(elPred.value);
             
-            if (Math.abs(uPred - lbfData.predictY) < 1.0) isCorrect = true;
+            if (!isNaN(uPred) && Math.abs(uPred - lbfData.predictY) < 1.0) isCorrect = true;
             else { 
                 elPred.style.backgroundColor = "#fee2e2"; elPred.style.borderColor = "#ef4444"; 
                 showLbfHint(`Plug ${lbfData.predictX} into your equation: <strong>y = ${lbfData.acceptedM}(${lbfData.predictX}) + ${lbfData.acceptedB}</strong>`);
@@ -431,7 +438,7 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Interactive Desmos-Style");
             document.getElementById('lbf-hint').style.display = 'none';
             if (currentStep < 3) {
                 currentStep++;
-                renderLbfUI(); // Re-render next step
+                renderLbfUI(); 
             } else {
                 document.getElementById('lbf-check-btn').disabled = true;
                 showLbfFlash("Correct!", "success");
