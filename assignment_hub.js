@@ -297,6 +297,11 @@ async function loadNextQuestion() {
 
         // 3. SCALABLE DICTIONARY ROUTING
         const lessonAnchors = {
+            'Rev1': 'TableRules',
+            'Rev2': 'SolveY',
+            'Rev3': 'DiamondMath',
+            'Rev4': 'Similarity',
+            'Rev5': 'MixedCalc',
             'C6Review': 'C6Transformation',
             '7.1.1': 'PieChart',
             '7.1.3': 'LineOfBestFit', 
