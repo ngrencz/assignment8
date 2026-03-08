@@ -63,7 +63,7 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Y-Axis Locked & Fractions All
             if (window.supabaseClient && window.currentUser) {
                 const currentHour = sessionStorage.getItem('target_hour') || "00";
                 const { data, error } = await window.supabaseClient
-                    .from('assignment7')
+                    .from('assignment8')
                     .select('LineOfBestFit')
                     .eq('userName', window.currentUser)
                     .eq('hour', currentHour)
@@ -467,7 +467,7 @@ console.log("🚀 skill_lineofbestfit.js is LIVE - Y-Axis Locked & Fractions All
             const newMain = Math.max(0, Math.min(10, currentMain + mainAdjustment));
             window.userMastery['LineOfBestFit'] = newMain;
             const hour = sessionStorage.getItem('target_hour') || "00";
-            window.supabaseClient.from('assignment7').update({ 'LineOfBestFit': newMain }).eq('userName', window.currentUser).eq('hour', hour);
+            window.supabaseClient.from('assignment8').update({ 'LineOfBestFit': newMain }).eq('userName', window.currentUser).eq('hour', hour);
         }
         setTimeout(() => { if (typeof window.loadNextQuestion === 'function') window.loadNextQuestion(); else location.reload(); }, 2000);
     }
