@@ -1,8 +1,14 @@
+Yes, it has the exact same issue. Because it defines `window.checkStep` and uses `onclick="checkStep()"`, it will collide with any other modules loaded on the same page that use that generic function name.
+
+Here is the corrected version of the 8th-grade script. The function has been renamed to `window.checkBoxPlotStep` in both the JavaScript logic and the HTML rendering to ensure it remains completely isolated and prevents the double-click crash.
+
+```javascript
 /**
  * skill_boxplot.js - Full Integrated Version (PATCHED)
  * Handles: Median, Mean, Range, Q1, and IQR
  * FIXED: Prevented double-click fatal crash on the final question.
  * FIXED: Universal DB routing (works for both 7th and 8th grade databases).
+ * FIXED: Renamed check function to prevent namespace collisions.
  */
 
 (function() {
@@ -142,8 +148,8 @@
             <div class="card" style="padding: 20px; background: white; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
                 <p style="font-size: 1.1rem; margin-bottom: 15px;"><strong>Question:</strong> ${current.q}</p>
                 <div style="display:flex; gap:10px; align-items:center; justify-content:center;">
-                    <input type="number" id="box-ans" step="0.1" class="math-input" placeholder="?" style="width: 100px; padding: 10px; font-size:18px; text-align:center; border: 2px solid #cbd5e1; border-radius:6px;">
-                    <button id="bp-submit-btn" onclick="checkStep()" style="background:#1e293b; color:white; border:none; padding:10px 20px; font-size:16px; font-weight:bold; border-radius:6px; cursor:pointer;">Submit</button>
+                    <input type="number" id="box-ans" step="0.1" class="math-input" placeholder="?" onkeydown="if(event.key==='Enter') window.checkBoxPlotStep()" style="width: 100px; padding: 10px; font-size:18px; text-align:center; border: 2px solid #cbd5e1; border-radius:6px;">
+                    <button id="bp-submit-btn" onclick="window.checkBoxPlotStep()" style="background:#1e293b; color:white; border:none; padding:10px 20px; font-size:16px; font-weight:bold; border-radius:6px; cursor:pointer;">Submit</button>
                 </div>
                 <div id="feedback-box" style="margin-top: 15px; display: none; padding: 10px; border-radius: 6px; font-weight:bold;"></div>
             </div>
@@ -227,7 +233,7 @@
         ctx.stroke();
     }
 
-    window.checkStep = function() {
+    window.checkBoxPlotStep = function() {
         // Prevent fatal error if they double click during transition
         if (boxPlotStep >= boxPlotSessionQuestions.length) return;
 
@@ -337,3 +343,5 @@
         }, 1800);
     }
 })();
+
+```
