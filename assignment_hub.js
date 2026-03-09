@@ -292,7 +292,7 @@ async function loadNextQuestion() {
             'Scatterplot',
             'SlopeRatios',        // Lesson 7.2.3
             'ParallelSlope',      // Lesson 7.2.5
-            'LOBFEval'            // Lesson 7.3.1
+            'LOBFEval',            // Lesson 7.3.1
             'Association',        // Lesson 7.3.2 (Assuming this is Association)
             'ConditionalFreq',    // Lesson 7.3.3
             'C7Review'
